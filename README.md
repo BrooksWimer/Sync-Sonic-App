@@ -1,95 +1,50 @@
-# React Native Speaker Control App
+# Welcome to your Expo app 👋
 
-This repository contains the **React Native mobile application** for managing Bluetooth-connected speakers. The app allows users to **discover, configure, and control speakers**, including volume adjustments and speaker grouping.
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
-## 🚀 Features
-- **Discover and Connect** to Bluetooth speakers
-- **Create Speaker Configurations** (grouping multiple speakers)
-- **Control Volume** and playback settings
+## Get started
 
----
+1. Install dependencies
 
-## 📂 Project Structure
-```
-/react-native-speaker-control
-├── android/                # Android-specific files
-├── ios/                    # iOS-specific files
-├── src/                    # Main application code
-│   ├── components/         # Reusable UI components
-│   ├── screens/            # App screens
-│   ├── services/           # API and Bluetooth service logic
-│   ├── store/              # State management (Redux or Context API)
-│   ├── navigation/         # React Navigation setup
-│   └── assets/             # Images, icons, etc.
-├── App.js                  # Main application entry point
-├── package.json            # Dependencies and scripts
-├── README.md               # Documentation
-└── .gitignore              # Git ignore file
-```
+   ```bash
+   npm install
+   ```
 
----
+2. Start the app
 
-## 🛠️ Setup Instructions
+   ```bash
+    npx expo start
+   ```
 
-### **1️⃣ Install Dependencies**
-Ensure you have **Node.js** installed (recommended: Node 18+). Then, install the dependencies:
-```sh
-npm install
-# OR
-yarn install
+In the output, you'll find options to open the app in a
+
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## Get a fresh project
+
+When you're ready, run:
+
+```bash
+npm run reset-project
 ```
 
-### **2️⃣ Run the App Locally**
-For development, start the app using **Expo** or the React Native CLI.
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-#### **Using Expo:**
-```sh
-npx expo start
-```
+## Learn more
 
-#### **Using React Native CLI (Android/iOS):**
-```sh
-npx react-native start
-```
+To learn more about developing your project with Expo, look at the following resources:
 
-**For Android:**
-```sh
-npx react-native run-android
-```
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-**For iOS (Mac Required):**
-```sh
-npx react-native run-ios
-```
+## Join the community
 
----
+Join our community of developers creating universal apps.
 
-## 📡 Architecture Diagram
-Below is an **architecture diagram** showing how the mobile app communicates with Bluetooth speakers.
-
-```plaintext
-+------------------------+
-|  React Native App     |
-|  (Mobile Interface)   |
-+------------------------+
-         ⬇️  
-+------------------------+
-| Bluetooth Service     |
-| (Handles Device Discovery, Pairing, Control) |
-+------------------------+
-         ⬇️  
-+------------------------+
-|  Speaker Hardware     |
-| (Receives Commands)   |
-+------------------------+
-```
-
----
-
-## 📌 Future Improvements
-- **Multi-Speaker Synchronization** for grouped playback
-- **Cloud-based Speaker Profiles** for saving user configurations
-- **Integration with Streaming Services** (Spotify, Apple Music, etc.)
-
-
-
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
