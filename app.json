@@ -10,8 +10,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sync-sonic.sync-sonic"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,9 +19,6 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_CONNECT",
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
         "android.permission.BLUETOOTH_CONNECT"
@@ -59,6 +56,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "3809a1f4-decf-42d8-bbd8-ac1f02cc4d5d"
+      }
     }
   }
 }
