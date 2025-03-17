@@ -1,26 +1,27 @@
 
 import { Stack } from 'expo-router';
-import { Plus, SquareX } from '@tamagui/lucide-icons'
-
+import { SquareX, ArrowLeftSquare} from '@tamagui/lucide-icons' /////////////
+import { addSpeaker, getSpeakers, deleteSpeaker, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, deleteConfiguration } from '../database';
 import { Button, H1, YStack, View , Input, Label, ScrollView, XStack} from "tamagui";
 import { router } from "expo-router";
 import * as SQLite from 'expo-sqlite';
 import {useState, useEffect} from 'react';
-import { Image,Linking,PermissionsAndroid, Platform} from "react-native";
+import { Alert, Image,Linking,PermissionsAndroid, Platform} from "react-native";
 import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from "expo-router";
 //import { BleManager } from 'react-native-ble-plx';
 
 
-export default function Home() {
+export default function Config() {
 
     const params = useLocalSearchParams();
     const configID: number = Number(params.configID)
+    const initialConfigName = params.configName ? params.configName.toString() : "";
 
-    const returnHome = () => {
-        // logic to add configuration
-        router.push('../home');
-    };
+    useEffect(() => {
+        setDevices(getSpeakers(configID));
+    }, [configID]);
+    
 
     const openSettings = () => {
         Linking.openSettings(); // Opens system settings 
@@ -29,9 +30,18 @@ export default function Home() {
     const editHeader: String= "Edit Configuration";
     const createHeader: String="Create Configuration";
 
-    const [configName, setConfigName] = useState("");
-
+    const [configName, setConfigName] = useState(initialConfigName);
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
+    const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
+
+    useEffect(() => {
+        setDevices(getSpeakers(configID));
+    }, [configID]);
+
+    useEffect(() => {
+        getSpeakers(configID, setDevices);
+    }, [configID]);
+
 
     // Function to insert dummy data
     const insertDummyData = () => {
@@ -43,11 +53,64 @@ export default function Home() {
         setDevices(dummyDevices);
     };
 
-    // Function to delete a device from the list
-    const deleteDevice = (id: number) => {
+
+    const removeDevice = (id: number) => {
+        setDeletedSpeakers(prev => [...prev, id]); // Mark for deletion
         setDevices(prevDevices => prevDevices.filter(device => device.id !== id));
     };
 
+    // Save changes (update name, add/remove speakers)
+    const saveChanges = () => {
+        if (!configName.trim() || devices.length === 0) return; // Prevent saving if no devices or name is empty
+
+        if (configID) {
+            // Update existing configuration name
+            updateConfiguration(configID, configName);
+
+            // Delete marked speakers permanently
+            deletedSpeakers.forEach(speakerId => deleteSpeakerById(speakerId));
+
+            // Save new speakers (only those without an existing ID)
+            devices.forEach(device => {
+                if (!device.id) {
+                    addSpeaker(configID, device.name, device.mac);
+                }
+            });
+        } else {
+            // Create new configuration
+            addConfiguration(configName, (newConfigID) => {
+                devices.forEach(device => addSpeaker(newConfigID, device.name, device.mac));
+            });
+        }
+
+        logDatabaseContents();
+        router.replace('/home');
+    };
+
+    const confirmDelete = () => {
+        Alert.alert(
+            "Delete Configuration?",
+            "Are you sure you want to delete this configuration? This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                { text: "Delete", style: "destructive", onPress: deleteConfig },
+            ]
+        );
+    };
+
+    const deleteConfig = () => {
+        deleteConfiguration(configID);
+        logDatabaseContents();
+        router.replace('/home'); // Go back to the home screen
+    };
+
+    const goBack = () => {
+        router.replace('/home');
+    };
+
+    const isSaveDisabled = !configName.trim() || devices.length === 0;
+
+    
     return (
         <View  //all
           style={{ 
@@ -57,19 +120,33 @@ export default function Home() {
           backgroundColor="$bg"
         >
 
-        {/* Top Bar */}
-        <View style={{
-                height: 60,
-                backgroundColor: "#3E0094",
-                justifyContent: "center",
-                alignItems: "center",
-                paddingTop: 10
-              }}>
-              <Image 
-                  source={require("@/assets/images/horizontalPinkLogo.png")}
-                  style={{ width: 100, height: 40, resizeMode: "contain" }}
-              />
-        </View>
+        {/* Top Bar with Back Button */}
+        <XStack 
+                height={80} 
+                backgroundColor="#3E0094" 
+                alignItems="center" 
+                paddingHorizontal={10} 
+                paddingTop={20} 
+                justifyContent="space-between"
+            >
+                {/* Back Button */}
+                <Button
+                    icon={<ArrowLeftSquare size={32} />}
+                    backgroundColor="transparent"
+                    color="white"
+                    onPress={goBack}
+                    padding={10}
+                />
+
+                {/* App Logo */}
+                <Image 
+                    source={require("@/assets/images/horizontalPinkLogo.png")}
+                    style={{ width: 100, height: 40, resizeMode: "contain" }}
+                />
+
+                {/* Spacer (To Center Logo Properly) */}
+                <View style={{ width: 40 }} />
+            </XStack>
 
         {/* Header */}
         <View style={{
@@ -136,7 +213,7 @@ export default function Home() {
                                 backgroundColor="red"
                                 color="white"
                                 borderRadius={5}
-                                onPress={() => deleteDevice(device.id)}
+                                onPress={() => removeDevice(device.id)}
                             >
                                 
                             </Button>
@@ -145,43 +222,58 @@ export default function Home() {
                 )}
             </ScrollView>
 
-            {/* Button to Insert Dummy Data */}
-            <Button 
-                onPress={insertDummyData} 
-                backgroundColor="#007AFF"
-                color="white"
-                borderRadius={5}
-                padding={15}
-                margin={20}
-                width="90%"
-                alignSelf="center"
-            >
-                DEMO: Insert Dummy Data
-            </Button>
+            <XStack justifyContent="space-between" paddingHorizontal={20} marginTop={100} width="100%">
+    {/* Button to Insert Dummy Data */}
+    <Button 
+        fontSize={10}
+        onPress={insertDummyData} 
+        backgroundColor="#3E0094"
+        color="white"
+        borderRadius={5}
+        padding={15}
+        width="48%"
+    >
+        DEMO: Insert Dummy Data
+    </Button>
+
+    {/* Delete Configuration Button */}
+    <Button 
+        onPress={confirmDelete} 
+        backgroundColor="#FF0055"
+        color="white"
+        borderRadius={5}
+        padding={15}
+        width="48%"
+    >
+        Delete Configuration
+    </Button>
+</XStack>
 
         
 
-        {/* Plus Button (Floating) */}
-        {/* Full-Width Button at Bottom */}
-        <Button
-                onPress={returnHome}
-                backgroundColor="#FF0055"
+         {/* Save Button - Disabled if configName is empty */}
+         <Button 
+                onPress={saveChanges} 
+                backgroundColor={!isSaveDisabled ? "#3E0094" : "#CCCCCC"} 
                 color="white"
+                disabled={isSaveDisabled}
                 borderRadius={0}  // Makes it stretch full width
                 position="absolute"
                 bottom={0}
                 width="100%"
                 height={60}
-                justifyContent="center" //needs error handling vvv
-            > 
-                
-                    Save 
-                    
-                
+                justifyContent="center"
+                fontSize={32}
+            >
+                Save
             </Button>
 
+               
         
         
         </View> //all
     );
 }
+
+
+                

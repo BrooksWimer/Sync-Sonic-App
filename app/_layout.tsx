@@ -8,13 +8,14 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 export default function RootLayout() {
     const colorScheme = useColorScheme();
     return (
-    <TamaguiProvider config={config}>
-        <Theme name={colorScheme}>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
+      <TamaguiProvider config={config}>
+      <Theme name={colorScheme}>
+          {/* Ensure header is hidden on all screens */}
+          <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
           </Stack>
           <StatusBar style="auto" />
-        </Theme>
-    </TamaguiProvider>
+      </Theme>
+  </TamaguiProvider>
   );
 }

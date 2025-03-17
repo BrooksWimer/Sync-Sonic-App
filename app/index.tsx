@@ -2,13 +2,16 @@ import { Button, H1, YStack, View, Image } from "tamagui";
 import { router } from "expo-router";
 import * as SQLite from 'expo-sqlite';
 import {useState, useEffect} from 'react';
+import { setupDatabase } from "./database"; // Import the function
 
 export default function Index() {
   const handleConnect = () => {
     console.log('Connecting to RPi');
-    router.push('./home');
+    router.replace('./home');
   }
-  //const db = SQLite.openDatabase('configurations.db');
+  useEffect(() => {
+    setupDatabase(); // Initialize database on app start
+}, []);
   
 
   return (
