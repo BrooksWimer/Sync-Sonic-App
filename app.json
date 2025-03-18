@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Sync-Sonic",
-    "slug": "Sync-Sonic",
+    "slug": "sync-sonic",
     "owner": "sync-sonic",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -62,7 +62,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "3809a1f4-decf-42d8-bbd8-ac1f02cc4d5d"
+        "projectId": "a3f49fa9-2789-40b4-9826-bf1dcfe0049e"
       }
     }
   }
