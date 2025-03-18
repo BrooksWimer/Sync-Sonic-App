@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Sync-Sonic",
-    "slug": "Sync-Sonic",
+    "slug": "sync-sonic",
     "owner": "sync-sonic",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,8 +10,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sync-sonic.sync-sonic"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,9 +19,6 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_CONNECT",
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
         "android.permission.BLUETOOTH_CONNECT"
@@ -59,6 +56,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "a3f49fa9-2789-40b4-9826-bf1dcfe0049e"
+      }
     }
   }
 }
