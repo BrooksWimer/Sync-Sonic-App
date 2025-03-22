@@ -37,7 +37,7 @@ export default function Config() {
 
     useEffect(() => {
         console.log("fetching speakers")
-        getSpeakers(configID, setDevices);
+        getSpeakers(configID);
     }, [configID]);
 
     // Function to insert dummy data

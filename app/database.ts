@@ -1,93 +1,136 @@
 import * as SQLite from 'expo-sqlite';
 
-// open
+// Open the database
 const db = SQLite.openDatabaseSync("syncsonic.db");
 
-// create
-export const setupDatabase = () => { // autoincrement—no need to handle that
-    db.execSync(
-        `CREATE TABLE IF NOT EXISTS configurations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            name TEXT NOT NULL
-        );`
-    );
-    db.execSync( //many to one from speaker to config
-        `CREATE TABLE IF NOT EXISTS speakers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            config_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            mac TEXT NOT NULL,
-            FOREIGN KEY (config_id) REFERENCES configurations(id) ON DELETE CASCADE
-        );`
-    );
+export const setupDatabase = () => {
+  // Create configurations table if it doesn't exist (without isConnected column)
+  db.execSync(
+    `CREATE TABLE IF NOT EXISTS configurations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, 
+      name TEXT NOT NULL
+    );`
+  );
+  // Migrate configurations: add isConnected if it doesn't exist.
+  const configColumns = db.getAllSync(`PRAGMA table_info(configurations);`) as any[];
+  const hasIsConnected = configColumns.some((col: any) => col.name === 'isConnected');
+  if (!hasIsConnected) {
+    db.execSync(`ALTER TABLE configurations ADD COLUMN isConnected INTEGER NOT NULL DEFAULT 0;`);
+  }
+
+  // Create speakers table if it doesn't exist (initially without volume and latency)
+  db.execSync(
+    `CREATE TABLE IF NOT EXISTS speakers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      config_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      mac TEXT NOT NULL,
+      FOREIGN KEY (config_id) REFERENCES configurations(id) ON DELETE CASCADE
+    );`
+  );
+  // Migrate speakers: add volume and latency if they don't exist.
+  const speakerColumns = db.getAllSync(`PRAGMA table_info(speakers);`) as any[];
+  const hasVolume = speakerColumns.some((col: any) => col.name === 'volume');
+  const hasLatency = speakerColumns.some((col: any) => col.name === 'latency');
+  if (!hasVolume) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN volume INTEGER NOT NULL DEFAULT 50;`);
+  }
+  if (!hasLatency) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN latency INTEGER NOT NULL DEFAULT 100;`);
+  }
 };
 
-// push new config
+// Insert new configuration with default isConnected flag set to 0 (not connected)
 export const addConfiguration = (name: string, callback: (id: number) => void) => {
-    const result = db.runSync(
-        `INSERT INTO configurations (name) VALUES (?);`,
-        [name]
-    );
-    callback(result.lastInsertRowId);
+  const result = db.runSync(
+    `INSERT INTO configurations (name, isConnected) VALUES (?, 0);`,
+    [name]
+  );
+  callback(result.lastInsertRowId);
 };
 
-// insert new speaker (associated with config many-to-one)
-export const addSpeaker = (configId: number, name: string, mac: string) => {
-    db.runSync(
-        `INSERT INTO speakers (config_id, name, mac) VALUES (?, ?, ?);`,
-        [configId, name, mac]
-    );
+// Insert new speaker (associated with a configuration)
+// New speakers will have default volume 50 and latency 100 unless specified.
+export const addSpeaker = (configId: number, name: string, mac: string, volume: number = 50, latency: number = 100) => {
+  db.runSync(
+    `INSERT INTO speakers (config_id, name, mac, volume, latency) VALUES (?, ?, ?, ?, ?);`,
+    [configId, name, mac, volume, latency]
+  );
 };
-
 
 export const getConfigurations = (): any[] => {
-    return db.getAllSync(`SELECT * FROM configurations;`);
+  return db.getAllSync(`
+    SELECT c.id, c.name, c.isConnected,
+      (SELECT COUNT(*) FROM speakers WHERE config_id = c.id) AS speakerCount
+    FROM configurations c;
+  `);
 };
 
-// get speakers of a given config
-export const getSpeakers = (configId: number, setDevices?: unknown): any[] => {
-    return db.getAllSync(`SELECT * FROM speakers WHERE config_id = ?;`, [configId]);
+// Get speakers for a given configuration.
+export const getSpeakers = (configId: number): any[] => {
+  return db.getAllSync(`SELECT * FROM speakers WHERE config_id = ?;`, [configId]);
 };
 
-// delete from config (and obviously in general)
+// Delete a speaker by id
 export const deleteSpeaker = (id: number) => {
-    db.runSync(`DELETE FROM speakers WHERE id = ?;`, [id]);
+  db.runSync(`DELETE FROM speakers WHERE id = ?;`, [id]);
 };
 
-//change name
 export const updateConfiguration = (id: number, name: string) => {
-    db.runSync(
-        `UPDATE configurations SET name = ? WHERE id = ?;`,
-        [name, id]
-    );
+  db.runSync(
+    `UPDATE configurations SET name = ? WHERE id = ?;`,
+    [name, id]
+  );
 };
 
-// is this not a reapeat ................ whoops i'll fix [k]
+export const updateConnectionStatus = (id: number, status: number) => {
+  db.runSync(
+    `UPDATE configurations SET isConnected = ? WHERE id = ?;`,
+    [status, id]
+  );
+};
+
+// Delete a speaker by id (duplicate function for now)
 export const deleteSpeakerById = (id: number) => {
-    db.runSync(`DELETE FROM speakers WHERE id = ?;`, [id]);
+  db.runSync(`DELETE FROM speakers WHERE id = ?;`, [id]);
 };
 
+// Delete a configuration and its associated speakers
 export const deleteConfiguration = (id: number) => {
-    db.runSync(`DELETE FROM speakers WHERE config_id = ?;`, [id]); // delete speakers in config
-    db.runSync(`DELETE FROM configurations WHERE id = ?;`, [id]); // delete config
+  db.runSync(`DELETE FROM speakers WHERE config_id = ?;`, [id]); // delete speakers in config
+  db.runSync(`DELETE FROM configurations WHERE id = ?;`, [id]); // delete config
 };
 
-// for debugging
+// For debugging: Reset the database
 export const resetDatabase = () => {
-    db.execSync(`DROP TABLE IF EXISTS speakers;`);
-    db.execSync(`DROP TABLE IF EXISTS configurations;`);
-    setupDatabase(); // recreate tables
+  db.execSync(`DROP TABLE IF EXISTS speakers;`);
+  db.execSync(`DROP TABLE IF EXISTS configurations;`);
+  setupDatabase(); // recreate tables
 };
 
-//  sdebugging
+// For debugging: Log the database contents
 export const logDatabaseContents = () => {
-    console.log("Fetching database contents...");
+  console.log("Fetching database contents...");
+  db.getAllSync(`SELECT * FROM configurations;`)
+    .forEach(config => console.log("Config:", config));
+  db.getAllSync(`SELECT * FROM speakers;`)
+    .forEach(speaker => console.log("Speaker:", speaker));
+};
 
-    db.getAllSync(`SELECT * FROM configurations;`)
-        .forEach(config => console.log("Config:", config));
+// Get configuration status (isConnected flag)
+export const getConfigurationStatus = (configId: number): number => {
+  const rows = db.getAllSync(`SELECT isConnected FROM configurations WHERE id = ?;`, [configId]) as any[];
+  return rows.length > 0 ? rows[0].isConnected : 0;
+};
 
-    db.getAllSync(`SELECT * FROM speakers;`)
-        .forEach(speaker => console.log("Speaker:", speaker));
+// Get configuration settings for speakers (volume and latency)
+export const getConfigurationSettings = (configId: number): { [mac: string]: { volume: number, latency: number } } => {
+  const rows = db.getAllSync(`SELECT mac, volume, latency FROM speakers WHERE config_id = ?;`, [configId]) as any[];
+  const settings: { [mac: string]: { volume: number, latency: number } } = {};
+  rows.forEach(row => {
+    settings[row.mac] = { volume: row.volume, latency: row.latency };
+  });
+  return settings;
 };
 
 export default db;

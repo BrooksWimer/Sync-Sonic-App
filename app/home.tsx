@@ -5,13 +5,13 @@ import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert } from "react-native";
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getConfigurations } from './database'; // Import your function to fetch configurations
+import { getConfigurations } from './database'; // getConfigurations should return { id, name, speakerCount, isConnected }
 
 const PI_API_URL = 'http://10.0.0.89:3000'; // Replace with your Pi's IP and port
 
 export default function Home() {
   const router = useRouter(); // page changing
-  const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number }[]>([]);
+  const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
   const [piDevices, setPiDevices] = useState<{ [mac: string]: string }>({});
   const [scanning, setScanning] = useState(false);
   const [pairingInProgress, setPairingInProgress] = useState(false);
@@ -73,17 +73,12 @@ export default function Home() {
 
   // Handler for when the Connect button is pressed.
   const onConnectPress = async () => {
-    // Start scanning by calling the API.
     await scanForDevices();
-    // After scanning, show the available devices in an alert for now.
-    // In a real app, you would display a proper selection UI.
     const deviceEntries = Object.entries(piDevices);
     if (deviceEntries.length === 0) {
       Alert.alert('No Devices', 'No speakers were discovered on the Pi.');
       return;
     }
-    // For demonstration, we auto-select all discovered devices.
-    // You can replace this with a proper selection UI.
     Alert.alert(
       'Devices Found',
       deviceEntries.map(([mac, name]) => `${name} (${mac})`).join('\n'),
@@ -101,7 +96,6 @@ export default function Home() {
   };
 
   const clearDatabase = () => {
-    // Call resetDatabase() if available.
     console.log("Database Reset");
     router.replace('/home');
   };
@@ -139,11 +133,10 @@ export default function Home() {
           </H1>
         ) : (
           configurations.map((config) => (
-            // Wrapping each configuration in a touchable container allows navigation when clicked.
+            // Touching the configuration takes you to the SpeakerConfigScreen
             <XStack 
               key={config.id} 
               alignItems="center"
-              // backgroundColor="#1B1B1B"
               borderRadius={15}
               padding={15}
               marginBottom={10}
@@ -169,8 +162,10 @@ export default function Home() {
               })}
             >
               <YStack>
-                <H1 color="#FFFFF" style={{ fontSize: 18 }}>{config.name}</H1>
-                <H1 style={{ fontSize: 14, color: "#1B1B1B" }}> x {config.speakerCount} speakers</H1>
+                <H1 color="#fff" style={{ fontSize: 18 }}>{config.name}</H1>
+                <H1 style={{ fontSize: 14, color: config.isConnected ? "#3E0094" : "#FF0055" }}>
+                  {config.isConnected ? "Connected" : "Not Connected"}
+                </H1>
               </YStack>
               <Button
                 icon={<Pencil size={20} />}

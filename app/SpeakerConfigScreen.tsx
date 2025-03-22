@@ -4,7 +4,7 @@ import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView } from 'react-nat
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { addConfiguration, updateConfiguration, deleteConfiguration, addSpeaker, getSpeakers } from './database';
+import { addConfiguration, updateConfiguration, deleteConfiguration, addSpeaker, getSpeakers, getConfigurationStatus, getConfigurationSettings } from './database';
 
 const PI_API_URL = 'http://10.0.0.89:3000';
 
@@ -19,49 +19,63 @@ export default function SpeakerConfigScreen() {
   // State to hold connected speakers (mapping from mac to name)
   const [connectedSpeakers, setConnectedSpeakers] = useState<{ [mac: string]: string }>({});
 
+  // State for connection status: true means connected
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  // State for speaker settings (volume and latency)
+  const [settings, setSettings] = useState<{ [mac: string]: { volume: number; latency: number } }>({});
+
   // When component mounts or when configIDParam/speakersStr change,
-  // load speakers either from the database (if configID exists) or from URL.
-  useEffect(() => {
-    if (configIDParam) {
-      // Load speakers from database using getSpeakers(configId)
-      const dbRows = getSpeakers(Number(configIDParam));
-      const mapping: { [mac: string]: string } = {};
-      dbRows.forEach(row => {
-        mapping[row.mac] = row.name;
-      });
-      setConnectedSpeakers(mapping);
-    } else {
-      // Parse speakers from URL parameter.
-      try {
-        const spk = speakersStr ? JSON.parse(speakersStr) : {};
-        setConnectedSpeakers(spk);
-      } catch (e) {
-        console.error("Error parsing speakers param:", e);
-        setConnectedSpeakers({});
-      }
+// Load speakers either from the database (if configID exists) or from URL.
+useEffect(() => {
+  if (configIDParam) {
+    // Load speakers from the database.
+    const dbRows = getSpeakers(Number(configIDParam));
+    const mapping: { [mac: string]: string } = {};
+    dbRows.forEach(row => {
+      mapping[row.mac] = row.name;
+    });
+    setConnectedSpeakers(mapping);
+
+    // Fetch connection status from the DB.
+    try {
+      const status = getConfigurationStatus(Number(configIDParam));
+      setIsConnected(status === 1);
+    } catch (err) {
+      console.error("Error fetching connection status:", err);
     }
-  }, [configIDParam, speakersStr]);
 
-  // Initialize settings state based on connectedSpeakers.
-  // Note: This initialization runs once when the component mounts.
-  const [settings, setSettings] = useState<{ [mac: string]: { volume: number; latency: number } }>(() => {
-    const initial: { [mac: string]: { volume: number; latency: number } } = {};
-    Object.keys(connectedSpeakers).forEach(mac => {
-      initial[mac] = { volume: 50, latency: 100 };
-    });
-    return initial;
-  });
+    // Fetch saved settings from the DB.
+    try {
+      const savedSettings = getConfigurationSettings(Number(configIDParam));
+      setSettings(savedSettings);
+    } catch (err) {
+      console.error("Error fetching configuration settings:", err);
+      // Fall back to default settings for each speaker.
+      const defaultSettings: { [mac: string]: { volume: number; latency: number } } = {};
+      Object.keys(mapping).forEach(mac => {
+        defaultSettings[mac] = { volume: 50, latency: 100 };
+      });
+      setSettings(defaultSettings);
+    }
+  } else {
+    // If there's no saved configuration, parse speakers from URL.
+    try {
+      const spk = speakersStr ? JSON.parse(speakersStr) : {};
+      setConnectedSpeakers(spk);
+      // Set default settings.
+      const defaultSettings: { [mac: string]: { volume: number; latency: number } } = {};
+      Object.keys(spk).forEach(mac => {
+        defaultSettings[mac] = { volume: 50, latency: 100 };
+      });
+      setSettings(defaultSettings);
+    } catch (e) {
+      console.error("Error parsing speakers param:", e);
+      setConnectedSpeakers({});
+    }
+  }
+}, [configIDParam, speakersStr]);
 
-  // If connectedSpeakers changes and you want to update settings accordingly,
-  // you can use a useEffect (this might overwrite user adjustments if not managed carefully).
-  useEffect(() => {
-    const newSettings: { [mac: string]: { volume: number; latency: number } } = {};
-    Object.keys(connectedSpeakers).forEach(mac => {
-      // Only update if not already set; you might choose to preserve existing values.
-      newSettings[mac] = settings[mac] || { volume: 50, latency: 100 };
-    });
-    setSettings(newSettings);
-  }, [connectedSpeakers]);
 
   const adjustVolume = async (mac: string, volume: number) => {
     try {
@@ -101,9 +115,39 @@ export default function SpeakerConfigScreen() {
     adjustLatency(mac, newLatency);
   };
 
-  // Save handler: update existing configuration or create a new one along with speakers.
+  // Handler for "Connect Configuration"
+  const handleConnect = async () => {
+    if (isConnected) {
+      Alert.alert("Already Connected", "This configuration is already connected.");
+      return;
+    }
+    
+    const payload = {
+      configID: configIDParam,
+      configName: configNameParam,
+      speakers: connectedSpeakers,
+      settings: settings
+    };
+
+    try {
+      const response = await fetch(`${PI_API_URL}/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      const result = await response.json();
+      Alert.alert("Connected", "Configuration connected successfully.");
+      setIsConnected(true);
+    } catch (error) {
+      console.error("Error connecting configuration:", error);
+      Alert.alert("Connection Error", "Failed to connect configuration.");
+    }
+  };
+
   const handleSave = () => {
-    // Build an array of speakers from connectedSpeakers state.
     const speakersArray = Object.entries(connectedSpeakers).map(([mac, name]) => ({ mac, name }));
     
     if (configIDParam) {
@@ -122,7 +166,6 @@ export default function SpeakerConfigScreen() {
     }
   };
 
-  // Delete handler: deletes configuration (if exists) and navigates back to home.
   const handleDelete = () => {
     if (configIDParam) {
       deleteConfiguration(Number(configIDParam));
@@ -170,23 +213,28 @@ export default function SpeakerConfigScreen() {
         <Text style={styles.instructions}>
           Adjust the sliders for each speaker as needed.
         </Text>
-        {/* Save and Delete Buttons */}
         <SafeAreaView style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.buttonText}>Save Configuration</Text>
-          </TouchableOpacity>
+          {configIDParam ? (
+            <TouchableOpacity style={styles.saveButton} onPress={handleConnect}>
+              <Text style={styles.buttonText}>
+                {isConnected ? "Already Connected" : "Connect Configuration"}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.buttonText}>Save Configuration</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
             <Text style={styles.buttonText}>Delete Configuration</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </ScrollView>
-      {/* Home Button - Bottom Left (fixed outside ScrollView) */}
       <TouchableOpacity style={styles.homeButton} onPress={() => router.replace('/home')}>
         <Text style={styles.homeButtonText}>Home</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
-  
 }
 
 const styles = StyleSheet.create({
@@ -197,25 +245,10 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, marginTop: 10 },
   slider: { width: '100%', height: 40 },
   instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
-  buttonContainer: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    marginTop: 30 
-  },
-  saveButton: { 
-    backgroundColor: '#3E0094', 
-    padding: 15, 
-    borderRadius: 8 
-  },
-  deleteButton: { 
-    backgroundColor: '#FF0055', 
-    padding: 15, 
-    borderRadius: 8 
-  },
-  buttonText: { 
-    color: '#fff', 
-    fontSize: 16 
-  },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30 },
+  saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
+  deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
+  buttonText: { color: '#fff', fontSize: 16 },
   homeButton: {
     position: 'absolute',
     bottom: 20,
@@ -226,8 +259,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  homeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
+  homeButtonText: { color: '#fff', fontSize: 16 },
 });
