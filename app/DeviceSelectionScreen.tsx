@@ -8,10 +8,13 @@ import {
   Alert 
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSearchParams } from 'expo-router/build/hooks';
 
 const PI_API_URL = 'http://10.0.0.89:3000'; // Your Pi's API URL
 
 export default function DeviceSelectionScreen() {
+  const params = useSearchParams();
+  const configName = params.get('configName');
   const [devices, setDevices] = useState<{ mac: string, name: string }[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<{ [mac: string]: { mac: string, name: string } }>({});
   const [loading, setLoading] = useState(false);
@@ -92,7 +95,7 @@ export default function DeviceSelectionScreen() {
         devices: Object.values(selectedDevices).reduce((acc, device) => {
           acc[device.mac] = device.name;
           return acc;
-        }, {} as { [mac: string]: string })
+        }, {} as { [mac: string]: string }) 
       };
 
       const response = await fetch(`${PI_API_URL}/pair`, {
@@ -107,7 +110,13 @@ export default function DeviceSelectionScreen() {
       console.log('Pairing result:', result);
       Alert.alert('Pairing Complete', 'Devices have been paired.');
       // Optionally navigate to a different screen (e.g., a control page)
-      router.push({ pathname: '/SpeakerConfigScreen', params: { speakers: JSON.stringify(payload.devices) } });
+      router.push({ 
+        pathname: '/SpeakerConfigScreen', 
+        params: { 
+          speakers: JSON.stringify(payload.devices), 
+          configName: configName 
+        } 
+      });
 
     } catch (error) {
       console.error('Error during pairing:', error);
@@ -119,7 +128,7 @@ export default function DeviceSelectionScreen() {
 
   return (
     <View style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 24, marginBottom: 10 }}>Select Speakers</Text>
+      <Text style={{ fontSize: 24, marginBottom: 10, marginTop: 20 }}>Select Speakers</Text>
       {loading ? (
         <ActivityIndicator size="large" color="#FF0055" />
       ) : (

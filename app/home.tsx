@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Button, H1, YStack, View, XStack, ScrollView, Text} from "tamagui";
+import { Button, H1, YStack, View, XStack, ScrollView, Text } from "tamagui";
 import { ActivityIndicator } from 'react-native';
 import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert } from "react-native";
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { getConfigurations } from './database'; // Import your function to fetch configurations
 
 const PI_API_URL = 'http://10.0.0.89:3000'; // Replace with your Pi's IP and port
 
@@ -14,10 +16,10 @@ export default function Home() {
   const [scanning, setScanning] = useState(false);
   const [pairingInProgress, setPairingInProgress] = useState(false);
 
-  // Replace your existing getConfigurations if needed.
+  // Fetch configurations from the database when the component mounts.
   useEffect(() => {
-    // For now, assume configurations come from your local database.
-    // setConfigurations(getConfigurations());
+    const configs = getConfigurations();
+    setConfigurations(configs);
   }, []);
 
   // Function to call the /scan endpoint on your Pi.
@@ -48,7 +50,7 @@ export default function Home() {
       // For simplicity, we assign a fixed controller for now.
       const devices = Object.keys(selected).map(mac => ({
         mac,
-        ctrl: '2C:CF:67:CE:57:91' // you might allow user to choose or auto-assign controllers
+        ctrl: '2C:CF-67-CE-57-91' // you might allow user to choose or auto-assign controllers
       }));
       const response = await fetch(`${PI_API_URL}/pair`, {
         method: 'POST',
@@ -92,8 +94,7 @@ export default function Home() {
     );
   };
 
-  // Example addConfig and clearDatabase functions (as in your original code)
-  const configID: number = 0;
+  // Function to navigate to create a new configuration.
   const addConfig = () => {
     router.replace('/settings/config');
     console.log("creating new configuration . . .");
@@ -106,7 +107,7 @@ export default function Home() {
   };
 
   return (
-    <View style={{ flex: 1 }} backgroundColor="$bg">
+    <SafeAreaView style={{ flex: 1, backgroundColor: "$bg" }}>
       {/* Top Bar */}
       <View style={{
           height: 80,
@@ -130,7 +131,7 @@ export default function Home() {
         <H1 style={{ fontSize: 32, fontWeight: "bold" }}>Configurations</H1>
       </View>
 
-      {/* Main Content */}
+      {/* Main Content: Display saved configurations */}
       <ScrollView style={{ paddingHorizontal: 20 }}>
         {configurations.length === 0 ? (
           <H1 style={{ textAlign: "center", color: "#666", marginVertical: 10 }}>
@@ -138,10 +139,11 @@ export default function Home() {
           </H1>
         ) : (
           configurations.map((config) => (
+            // Wrapping each configuration in a touchable container allows navigation when clicked.
             <XStack 
               key={config.id} 
               alignItems="center"
-              backgroundColor="#1B1B1B"
+              // backgroundColor="#1B1B1B"
               borderRadius={15}
               padding={15}
               marginBottom={10}
@@ -153,18 +155,22 @@ export default function Home() {
               shadowOpacity={0.8}
               shadowRadius={8}
               hoverStyle={{
-                  shadowRadius: 15,
-                  shadowOpacity: 1,
-                  transform: [{ scale: 1.02 }]
+                shadowRadius: 15,
+                shadowOpacity: 1,
+                transform: [{ scale: 1.02 }]
               }}
               pressStyle={{
-                  shadowRadius: 20,
-                  transform: [{ scale: 1.04 }]
+                shadowRadius: 20,
+                transform: [{ scale: 1.04 }]
               }}
+              onPress={() => router.push({
+                pathname: "/SpeakerConfigScreen",
+                params: { configID: config.id.toString(), configName: config.name }
+              })}
             >
               <YStack>
-                <H1 style={{ fontSize: 18, fontWeight: "bold" }}>{config.name}</H1>
-                <H1 style={{ fontSize: 14, color: "#FFFFFF" }}> x {config.speakerCount} speakers</H1>
+                <H1 color="#FFFFF" style={{ fontSize: 18 }}>{config.name}</H1>
+                <H1 style={{ fontSize: 14, color: "#1B1B1B" }}> x {config.speakerCount} speakers</H1>
               </YStack>
               <Button
                 icon={<Pencil size={20} />}
@@ -172,31 +178,12 @@ export default function Home() {
                 onPress={() => router.push({
                   pathname: "/settings/config",
                   params: { configID: config.id.toString(), configName: config.name }
-                })} 
+                })}
               />
             </XStack>
           ))
         )}
       </ScrollView>
-
-      {/* Connect Button (Floating) */}
-        <Button
-        onPress={() => router.push('/DeviceSelectionScreen')}
-        style={{
-            position: 'absolute',
-            bottom: 20,
-            right: 20,
-            width: 60,
-            height: 60,
-            borderRadius: 15,
-            backgroundColor: '#FF0055',
-            justifyContent: 'center',
-            alignItems: 'center',
-        }}
-        >
-        <Text style={{ color: 'white', fontSize: 24 }}>Connect</Text>
-        </Button>
-
 
       {/* Plus Button (Floating) */}
       <Button
@@ -205,7 +192,7 @@ export default function Home() {
         style={{
           position: 'absolute',
           bottom: 20,
-          right: 90,
+          right: 20,
           width: 60,
           height: 60,
           borderRadius: 15,
@@ -214,25 +201,6 @@ export default function Home() {
           alignItems: 'center',
         }}
       />
-
-      {/* Clear Database Button (Bottom Left) */}
-      <Button 
-        onPress={clearDatabase} 
-        backgroundColor="red"
-        fontSize={8}
-        style={{
-          position: "absolute",
-          bottom: 20,
-          left: 20,
-          width: 75,
-          height: 32,
-          borderRadius: 10,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        clear db (testing)
-      </Button>
       
       {/* Loading Indicators */}
       {scanning && (
@@ -247,6 +215,6 @@ export default function Home() {
           <Text>Pairing devices...</Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
