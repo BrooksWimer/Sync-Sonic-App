@@ -123,6 +123,14 @@ export const getConfigurationStatus = (configId: number): number => {
   return rows.length > 0 ? rows[0].isConnected : 0;
 };
 
+export const updateSpeakerSettings = (configId: number, mac: string, volume: number, latency: number) => {
+    db.runSync(
+      `UPDATE speakers SET volume = ?, latency = ? WHERE config_id = ? AND mac = ?;`,
+      [volume, latency, configId, mac]
+    );
+  };
+  
+
 // Get configuration settings for speakers (volume and latency)
 export const getConfigurationSettings = (configId: number): { [mac: string]: { volume: number, latency: number } } => {
   const rows = db.getAllSync(`SELECT mac, volume, latency FROM speakers WHERE config_id = ?;`, [configId]) as any[];

@@ -4,7 +4,7 @@ import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView } from 'react-nat
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { addConfiguration, updateConfiguration, deleteConfiguration, addSpeaker, getSpeakers, getConfigurationStatus, getConfigurationSettings } from './database';
+import { addConfiguration, updateConfiguration, deleteConfiguration, addSpeaker, getSpeakers, getConfigurationStatus, getConfigurationSettings, updateConnectionStatus, updateSpeakerSettings } from './database';
 
 const PI_API_URL = 'http://10.0.0.89:3000';
 
@@ -108,13 +108,19 @@ useEffect(() => {
   const handleVolumeChange = (mac: string, newVolume: number) => {
     setSettings(prev => ({ ...prev, [mac]: { ...prev[mac], volume: newVolume } }));
     adjustVolume(mac, newVolume);
+    if (configIDParam) {
+      updateSpeakerSettings(Number(configIDParam), mac, newVolume, settings[mac]?.latency || 100);
+    }
   };
-
+  
   const handleLatencyChange = (mac: string, newLatency: number) => {
     setSettings(prev => ({ ...prev, [mac]: { ...prev[mac], latency: newLatency } }));
     adjustLatency(mac, newLatency);
+    if (configIDParam) {
+      updateSpeakerSettings(Number(configIDParam), mac, settings[mac]?.volume || 50, newLatency);
+    }
   };
-
+  
   // Handler for "Connect Configuration"
   const handleConnect = async () => {
     if (isConnected) {
@@ -128,7 +134,7 @@ useEffect(() => {
       speakers: connectedSpeakers,
       settings: settings
     };
-
+  
     try {
       const response = await fetch(`${PI_API_URL}/connect`, {
         method: 'POST',
@@ -140,13 +146,18 @@ useEffect(() => {
       }
       const result = await response.json();
       Alert.alert("Connected", "Configuration connected successfully.");
+      
+      // Update local database to mark this configuration as connected.
+      if (configIDParam) {
+        updateConnectionStatus(Number(configIDParam), 1);
+      }
       setIsConnected(true);
     } catch (error) {
       console.error("Error connecting configuration:", error);
       Alert.alert("Connection Error", "Failed to connect configuration.");
     }
   };
-
+  
   const handleSave = () => {
     const speakersArray = Object.entries(connectedSpeakers).map(([mac, name]) => ({ mac, name }));
     
