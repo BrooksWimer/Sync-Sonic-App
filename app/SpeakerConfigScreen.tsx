@@ -4,7 +4,17 @@ import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView } from 'react-nat
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { addConfiguration, updateConfiguration, deleteConfiguration, addSpeaker, getSpeakers, getConfigurationStatus, getConfigurationSettings, updateConnectionStatus, updateSpeakerSettings } from './database';
+import { 
+  addConfiguration, 
+  updateConfiguration, 
+  deleteConfiguration, 
+  addSpeaker, 
+  getSpeakers, 
+  getConfigurationStatus, 
+  getConfigurationSettings, 
+  updateConnectionStatus, 
+  updateSpeakerSettings 
+} from './database';
 
 const PI_API_URL = 'http://10.0.0.89:3000';
 
@@ -25,57 +35,55 @@ export default function SpeakerConfigScreen() {
   // State for speaker settings (volume and latency)
   const [settings, setSettings] = useState<{ [mac: string]: { volume: number; latency: number } }>({});
 
-  // When component mounts or when configIDParam/speakersStr change,
-// Load speakers either from the database (if configID exists) or from URL.
-useEffect(() => {
-  if (configIDParam) {
-    // Load speakers from the database.
-    const dbRows = getSpeakers(Number(configIDParam));
-    const mapping: { [mac: string]: string } = {};
-    dbRows.forEach(row => {
-      mapping[row.mac] = row.name;
-    });
-    setConnectedSpeakers(mapping);
-
-    // Fetch connection status from the DB.
-    try {
-      const status = getConfigurationStatus(Number(configIDParam));
-      setIsConnected(status === 1);
-    } catch (err) {
-      console.error("Error fetching connection status:", err);
-    }
-
-    // Fetch saved settings from the DB.
-    try {
-      const savedSettings = getConfigurationSettings(Number(configIDParam));
-      setSettings(savedSettings);
-    } catch (err) {
-      console.error("Error fetching configuration settings:", err);
-      // Fall back to default settings for each speaker.
-      const defaultSettings: { [mac: string]: { volume: number; latency: number } } = {};
-      Object.keys(mapping).forEach(mac => {
-        defaultSettings[mac] = { volume: 50, latency: 100 };
+  // Load speakers either from the database (if configID exists) or from URL.
+  useEffect(() => {
+    if (configIDParam) {
+      // Load speakers from the database.
+      const dbRows = getSpeakers(Number(configIDParam));
+      const mapping: { [mac: string]: string } = {};
+      dbRows.forEach(row => {
+        mapping[row.mac] = row.name;
       });
-      setSettings(defaultSettings);
-    }
-  } else {
-    // If there's no saved configuration, parse speakers from URL.
-    try {
-      const spk = speakersStr ? JSON.parse(speakersStr) : {};
-      setConnectedSpeakers(spk);
-      // Set default settings.
-      const defaultSettings: { [mac: string]: { volume: number; latency: number } } = {};
-      Object.keys(spk).forEach(mac => {
-        defaultSettings[mac] = { volume: 50, latency: 100 };
-      });
-      setSettings(defaultSettings);
-    } catch (e) {
-      console.error("Error parsing speakers param:", e);
-      setConnectedSpeakers({});
-    }
-  }
-}, [configIDParam, speakersStr]);
+      setConnectedSpeakers(mapping);
 
+      // Fetch connection status from the DB.
+      try {
+        const status = getConfigurationStatus(Number(configIDParam));
+        setIsConnected(status === 1);
+      } catch (err) {
+        console.error("Error fetching connection status:", err);
+      }
+
+      // Fetch saved settings from the DB.
+      try {
+        const savedSettings = getConfigurationSettings(Number(configIDParam));
+        setSettings(savedSettings);
+      } catch (err) {
+        console.error("Error fetching configuration settings:", err);
+        // Fall back to default settings for each speaker.
+        const defaultSettings: { [mac: string]: { volume: number; latency: number } } = {};
+        Object.keys(mapping).forEach(mac => {
+          defaultSettings[mac] = { volume: 50, latency: 100 };
+        });
+        setSettings(defaultSettings);
+      }
+    } else {
+      // If there's no saved configuration, parse speakers from URL.
+      try {
+        const spk = speakersStr ? JSON.parse(speakersStr) : {};
+        setConnectedSpeakers(spk);
+        // Set default settings.
+        const defaultSettings: { [mac: string]: { volume: number; latency: number } } = {};
+        Object.keys(spk).forEach(mac => {
+          defaultSettings[mac] = { volume: 50, latency: 100 };
+        });
+        setSettings(defaultSettings);
+      } catch (e) {
+        console.error("Error parsing speakers param:", e);
+        setConnectedSpeakers({});
+      }
+    }
+  }, [configIDParam, speakersStr]);
 
   const adjustVolume = async (mac: string, volume: number) => {
     try {
@@ -112,7 +120,7 @@ useEffect(() => {
       updateSpeakerSettings(Number(configIDParam), mac, newVolume, settings[mac]?.latency || 100);
     }
   };
-  
+
   const handleLatencyChange = (mac: string, newLatency: number) => {
     setSettings(prev => ({ ...prev, [mac]: { ...prev[mac], latency: newLatency } }));
     adjustLatency(mac, newLatency);
@@ -120,7 +128,7 @@ useEffect(() => {
       updateSpeakerSettings(Number(configIDParam), mac, settings[mac]?.volume || 50, newLatency);
     }
   };
-  
+
   // Handler for "Connect Configuration"
   const handleConnect = async () => {
     if (isConnected) {
@@ -157,7 +165,37 @@ useEffect(() => {
       Alert.alert("Connection Error", "Failed to connect configuration.");
     }
   };
-  
+
+  // Handler for disconnecting a configuration.
+  const handleDisconnect = async () => {
+    const payload = {
+      configID: configIDParam,
+      configName: configNameParam,
+      speakers: connectedSpeakers,
+      settings: settings
+    };
+
+    try {
+      const response = await fetch(`${PI_API_URL}/disconnect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      const result = await response.json();
+      Alert.alert("Disconnected", "Configuration disconnected successfully.");
+      if (configIDParam) {
+        updateConnectionStatus(Number(configIDParam), 0);
+      }
+      setIsConnected(false);
+    } catch (error) {
+      console.error("Error disconnecting configuration:", error);
+      Alert.alert("Disconnection Error", "Failed to disconnect configuration.");
+    }
+  };
+
   const handleSave = () => {
     const speakersArray = Object.entries(connectedSpeakers).map(([mac, name]) => ({ mac, name }));
     
@@ -226,11 +264,15 @@ useEffect(() => {
         </Text>
         <SafeAreaView style={styles.buttonContainer}>
           {configIDParam ? (
-            <TouchableOpacity style={styles.saveButton} onPress={handleConnect}>
-              <Text style={styles.buttonText}>
-                {isConnected ? "Already Connected" : "Connect Configuration"}
-              </Text>
-            </TouchableOpacity>
+            isConnected ? (
+              <TouchableOpacity style={styles.disconnectButton} onPress={handleDisconnect}>
+                <Text style={styles.buttonText}>Disconnect Configuration</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.saveButton} onPress={handleConnect}>
+                <Text style={styles.buttonText}>Connect Configuration</Text>
+              </TouchableOpacity>
+            )
           ) : (
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
               <Text style={styles.buttonText}>Save Configuration</Text>
@@ -258,6 +300,7 @@ const styles = StyleSheet.create({
   instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
   buttonContainer: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30 },
   saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
+  disconnectButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
   deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
   buttonText: { color: '#fff', fontSize: 16 },
   homeButton: {
