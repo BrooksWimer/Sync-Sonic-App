@@ -7,42 +7,40 @@ import { Alert, Image, Linking, PermissionsAndroid, Platform } from "react-nativ
 import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from 'react-native-safe-area-context';
-//import { BleManager } from 'react-native-ble-plx';
-
 
 export default function Config() {
     const params = useLocalSearchParams();
-    const configID: number = Number(params.configID)
+    const configID: number = Number(params.configID);
     const initialConfigName = params.configName ? params.configName.toString() : "";
-    const editHeader: String = "Edit Configuration"; // change on function
-    const createHeader: String = "Create Configuration";
+    const editHeader: string = "Edit Configuration";
+    const createHeader: string = "Create Configuration";
     const [configName, setConfigName] = useState(initialConfigName);
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
     const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
 
     useEffect(() => {
-        console.log("DB pull")
+        console.log("DB pull");
         setDevices(getSpeakers(configID));
     }, [configID]);
 
     const openSettings = () => {
-        console.log("opening app system settings")
+        console.log("opening app system settings");
         Linking.openSettings(); // Opens system settings 
     };
 
     useEffect(() => {
-        console.log("updating speaker for config: " + configID)
+        console.log("updating speaker for config: " + configID);
         setDevices(getSpeakers(configID));
     }, [configID]);
 
     useEffect(() => {
-        console.log("fetching speakers")
+        console.log("fetching speakers");
         getSpeakers(configID);
     }, [configID]);
 
-    // Function to insert dummy data
+    // Function to insert dummy data (for testing)
     const insertDummyData = () => {
-        console.log("inserting fake data into visible list")
+        console.log("inserting fake data into visible list");
         const dummyDevices = [
             { id: 0, name: "JBL abc", mac: "B8-BF-8F-61-BC-EE" },
             { id: 1, name: "Sony def", mac: "C5-AE-2C-73-F0-A7" },
@@ -51,43 +49,59 @@ export default function Config() {
         setDevices(dummyDevices);
     };
 
-    const removeDevice = (id: number) => {
-        console.log("removed " + id + " from list")
-        setDeletedSpeakers(prev => [...prev, id]); // Mark for deletion
-        setDevices(prevDevices => prevDevices.filter(device => device.id !== id));
+    // In edit mode, immediately remove a speaker:
+    // Update the DB, and call the backend disconnect endpoint for that speaker.
+    const removeDevice = async (device: { id: number, name: string, mac: string }) => {
+        console.log("Removing device " + device.id);
+        // If editing an existing configuration, update the DB immediately.
+        if (configID) {
+            deleteSpeakerById(device.id);
+        }
+        // Build payload to disconnect only this speaker.
+        const payload = {
+            configID: configID,
+            configName: configName,
+            speakers: { [device.mac]: device.name },
+            settings: {} // Assuming no settings needed for disconnecting a single speaker.
+        };
+        try {
+            const response = await fetch("http://10.0.0.89:3000/disconnect", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            const result = await response.json();
+            console.log("Disconnect result:", result);
+        } catch (error) {
+            console.error("Error disconnecting device:", error);
+            Alert.alert("Error", "There was an error disconnecting the device.");
+        }
+        // Update the local state to remove the device.
+        setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
     };
 
-    // updating the DB
+    // updating the DB when creating a new configuration.
     const saveChanges = () => {
         if (!configName.trim() || devices.length === 0) return; // don't save without name or devices
         if (configID) {
-            // change name from textbox
-            console.log("name is: " + configName)
+            // In edit mode, configuration updates happen immediately on deletion.
+            console.log("Updating configuration name: " + configName);
             updateConfiguration(configID, configName);
-
-            // remove speakers
-            deletedSpeakers.forEach(speakerId => deleteSpeakerById(speakerId));
-
-            // set new speakers
-            devices.forEach(device => {
-                if (!device.id) {
-                    console.log("adding speaker: " + device.name)
-                    addSpeaker(configID, device.name, device.mac);
-                }
-            });
         } else {
-            // create new configuration
+            // Create new configuration
             addConfiguration(configName, (newConfigID) => {
                 devices.forEach(device => addSpeaker(newConfigID, device.name, device.mac));
-                console.log("New config: " + configName + ":" + configID)
+                console.log("New config: " + configName + ":" + newConfigID);
             });
         }
-
         logDatabaseContents();
-        router.replace('/home'); // send back
+        router.replace('/home'); // navigate back to home
     };
 
-    const confirmDelete = () => { // full config
+    const confirmDelete = () => { // delete entire configuration
         Alert.alert(
             "Delete Configuration?",
             "Are you sure you want to delete this configuration? This action cannot be undone.",
@@ -100,13 +114,27 @@ export default function Config() {
 
     const deleteConfig = () => {
         deleteConfiguration(configID);
-        console.log("deleting config " + configID)
+        console.log("deleting config " + configID);
         logDatabaseContents();
         router.replace('/home'); // go back to the home screen
     };
 
     const goBack = () => {
         router.replace('/home');
+    };
+
+    // The "Find Bluetooth Devices" button is now conditionally labeled.
+    // When editing, it becomes "Add Bluetooth Devices".
+    const onSelectDevicesPress = () => {
+        // Pass along current devices (existing configuration speakers)
+        router.push({
+            pathname: '/DeviceSelectionScreen',
+            params: { 
+                configID: configID.toString(), 
+                configName, 
+                existingDevices: JSON.stringify(devices) 
+            }
+        });
     };
 
     const isSaveDisabled = !configName.trim() || devices.length === 0;
@@ -130,14 +158,12 @@ export default function Config() {
                     onPress={goBack}
                     padding={10}
                 />
-
                 {/* App Logo */}
                 <Image 
                     source={require("@/assets/images/horizontalPinkLogo.png")}
                     style={{ width: 100, height: 40, resizeMode: "contain" }}
                 />
-
-                {/* Spacer (To Center Logo Properly) */}
+                {/* Spacer (to center logo) */}
                 <View style={{ width: 40 }} />
             </XStack>
 
@@ -147,10 +173,12 @@ export default function Config() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold" }}>{editHeader}</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold" }}>
+                    {configID ? "Edit Configuration" : "Create Configuration"}
+                </H1>
             </View>
 
-            {/* Configuration Name Input Field */}
+            {/* Configuration Name Input Field and Add Devices Button */}
             <YStack marginHorizontal={20} marginTop={10} gap={10}>
                 <Label htmlFor="configName" fontSize={18}>
                     Configuration Name:
@@ -167,23 +195,22 @@ export default function Config() {
                     fontSize={16}
                 />
 
-                {/* Select Devices */}
                 <Button 
-                    onPress={() => router.push({ pathname: '/DeviceSelectionScreen', params: { configName } })}
+                    onPress={onSelectDevicesPress}
                     backgroundColor="#3E0094"
                     color="white"
                     borderRadius={5}
                     padding={10}
                 >
-                    Find Bluetooth Devices
+                    {configID ? "Add Bluetooth Devices" : "Find Bluetooth Devices"}
                 </Button>
             </YStack>
 
-            {/* List of Found Bluetooth Devices */}
+            {/* List of Connected Speakers */}
             <ScrollView style={{ maxHeight: 200, marginTop: 10, paddingHorizontal: 20 }}>
                 {devices.length === 0 ? (
                     <H1>
-                        No devices connected. Please connect devices
+                        No devices connected. Please connect devices.
                     </H1>
                 ) : (
                     devices.map((device) => (
@@ -200,17 +227,41 @@ export default function Config() {
                                 <H1 fontSize={12}>{device.mac}</H1>
                             </View>
                             <Button
-                                icon={SquareX}
+                                icon={<SquareX size={20} />}
                                 backgroundColor="red"
                                 color="white"
                                 borderRadius={5}
-                                onPress={() => removeDevice(device.id)}
-                            >            
-                            </Button>
+                                onPress={() => removeDevice(device)}
+                            /> 
                         </XStack>
                     ))
                 )}
             </ScrollView>
+
+            {/* "Save Changes" button appears only when creating a new configuration */}
+            {!configID && (
+                <Button
+                    onPress={saveChanges}
+                    disabled={isSaveDisabled}
+                    backgroundColor="#3E0094"
+                    color="white"
+                    borderRadius={5}
+                    marginHorizontal={20}
+                    marginTop={20}
+                >
+                    Save Changes
+                </Button>
+            )}
+
+            {/* Additional buttons for deleting configuration or opening system settings */}
+            <XStack justifyContent="space-around" marginTop={20}>
+                <Button onPress={confirmDelete} backgroundColor="red" color="white" borderRadius={5}>
+                    Delete Configuration
+                </Button>
+                <Button onPress={openSettings} backgroundColor="#3E0094" color="white" borderRadius={5}>
+                    Open Settings
+                </Button>
+            </XStack>
         </SafeAreaView>
     );
 }

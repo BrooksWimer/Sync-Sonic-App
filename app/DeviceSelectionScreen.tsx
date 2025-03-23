@@ -11,23 +11,34 @@ import { useRouter } from 'expo-router';
 import { useSearchParams } from 'expo-router/build/hooks';
 import { 
   addConfiguration, 
-  updateConnectionStatus, // NEW: update connection status in the DB
-  addSpeaker 
+  updateConnectionStatus, // Update connection status in the DB
+  addSpeaker, getSpeakers
 } from './database';
 
 const PI_API_URL = 'http://10.0.0.89:3000'; // Your Pi's API URL
 
 export default function DeviceSelectionScreen() {
   const params = useSearchParams();
-  const configName = params.get('configName') || 'Unnamed Configuration';  // config name passed in
+  const configName = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // might be undefined if new
+
+  // Get existing devices (object mapping mac -> name) if provided
+  const existingDevicesParam = params.get('existingDevices') || "{}";
+  let parsedExistingDevices = {};
+  try {
+    parsedExistingDevices = JSON.parse(existingDevicesParam);
+  } catch (e) {
+    console.error("Error parsing existingDevices:", e);
+  }
+  
+  // Store selected devices as an object keyed by MAC to guarantee uniqueness.
   const [devices, setDevices] = useState<{ mac: string, name: string }[]>([]);
-  const [selectedDevices, setSelectedDevices] = useState<{ [mac: string]: { mac: string, name: string } }>({});
+  const [selectedDevices, setSelectedDevices] = useState<{ [mac: string]: { mac: string, name: string } }>(parsedExistingDevices);
   const [loading, setLoading] = useState(false);
   const [pairing, setPairing] = useState(false);
   const router = useRouter();
 
-  // Fetch devices from your Pi's API
+  // Fetch devices from the Pi's API
   const fetchDevices = async () => {
     setLoading(true);
     try {
@@ -51,7 +62,7 @@ export default function DeviceSelectionScreen() {
     fetchDevices();
   }, []);
 
-  // Toggle selection of a device.
+  // Toggle selection of a device using its MAC as unique key.
   const toggleSelection = (device: { mac: string; name: string }) => {
     setSelectedDevices(prev => {
       const newSelection = { ...prev };
@@ -87,76 +98,83 @@ export default function DeviceSelectionScreen() {
     );
   };
 
-  // Pair the selected devices by sending them to your Pi's /pair endpoint.
-  const pairSelectedDevices = async () => {
-    if (Object.keys(selectedDevices).length === 0) {
-      Alert.alert('No Devices Selected', 'Please select at least one device to pair.');
-      return;
+  // Pair the selected devices by sending them to the Pi's /pair endpoint.
+const pairSelectedDevices = async () => {
+  if (Object.keys(selectedDevices).length === 0) {
+    Alert.alert('No Devices Selected', 'Please select at least one device to pair.');
+    return;
+  }
+  setPairing(true);
+  try {
+    // Build payload from the selectedDevices object.
+    const payload = {
+      devices: Object.values(selectedDevices).reduce((acc, device) => {
+        acc[device.mac] = device.name;
+        return acc;
+      }, {} as { [mac: string]: string })
+    };
+
+    const response = await fetch(`${PI_API_URL}/pair`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
     }
-    setPairing(true);
-    try {
-      const payload = {
-        devices: Object.values(selectedDevices).reduce((acc, device) => {
-          acc[device.mac] = device.name;
-          return acc;
-        }, {} as { [mac: string]: string })
-      };
+    const result = await response.json();
+    console.log('Pairing result:', result);
+    Alert.alert('Pairing Complete', 'Devices have been paired.');
 
-      const response = await fetch(`${PI_API_URL}/pair`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    // Convert configIDParam to a number
+    const configIDParsed = Number(configIDParam);
+    if (!isNaN(configIDParsed) && configIDParsed > 0) {
+      // Edit mode: update DB and navigate back to the edit configuration page.
+      updateConnectionStatus(configIDParsed, 1);
+    
+      // Retrieve current speakers from the database for this configuration.
+      const currentSpeakers = getSpeakers(configIDParsed);
+      // Extract an array of MAC addresses from the current speakers.
+      const existingMacs = currentSpeakers.map(speaker => speaker.mac);
+    
+      // Loop over the payload devices and add only unique speakers.
+      Object.entries(payload.devices).forEach(([mac, name]) => {
+        if (!existingMacs.includes(mac)) {
+          addSpeaker(configIDParsed, name, mac);
+        }
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-      const result = await response.json();
-      console.log('Pairing result:', result);
-      Alert.alert('Pairing Complete', 'Devices have been paired.');
-
-      // Update the database to mark the configuration as connected.
-      if (configIDParam) {
-        // If the configuration already exists, update its connection status.
-        updateConnectionStatus(Number(configIDParam), 1);
-        // Also add the speakers to the configuration.
+      router.push({
+        pathname: '/settings/config',
+        params: { 
+          configID: configIDParsed.toString(), 
+          configName: configName
+        }
+      });
+    } else {
+      // New configuration: create it, add speakers, update connection, then navigate.
+      addConfiguration(configName, (newConfigID: number) => {
         Object.entries(payload.devices).forEach(([mac, name]) => {
-          addSpeaker(Number(configIDParam), name, mac);
+          addSpeaker(newConfigID, name, mac);
         });
-        // Navigate to the speaker configuration screen with configID.
+        updateConnectionStatus(newConfigID, 1);
         router.push({
           pathname: '/SpeakerConfigScreen',
           params: { 
             speakers: JSON.stringify(payload.devices), 
             configName: configName,
-            configID: configIDParam 
+            configID: newConfigID.toString()
           }
         });
-      } else {
-        // If this is a new configuration, create it and mark as connected.
-        addConfiguration(configName, (newConfigID: number) => {
-          Object.entries(payload.devices).forEach(([mac, name]) => {
-            addSpeaker(newConfigID, name, mac);
-          });
-          // Now update the connection status.
-          updateConnectionStatus(newConfigID, 1);
-          // Navigate to the speaker configuration screen with the new configID.
-          router.push({
-            pathname: '/SpeakerConfigScreen',
-            params: { 
-              speakers: JSON.stringify(payload.devices), 
-              configName: configName,
-              configID: newConfigID.toString()
-            }
-          });
-        });
-      }
-    } catch (error) {
-      console.error('Error during pairing:', error);
-      Alert.alert('Pairing Error', 'There was an error pairing the devices.');
-    } finally {
-      setPairing(false);
+      });
     }
-  };
+  } catch (error) {
+    console.error('Error during pairing:', error);
+    Alert.alert('Pairing Error', 'There was an error pairing the devices.');
+  } finally {
+    setPairing(false);
+  }
+};
+
 
   return (
     <View style={{ flex: 1, padding: 20 }}>
