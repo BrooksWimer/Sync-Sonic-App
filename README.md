@@ -1,50 +1,132 @@
-# Welcome to your Expo app 👋
+# ![Logo](https://github.com/BrooksWimer/Sync-Sonic-App/blob/f6a550cdf0a6c3ca73bfe71b05a6d3c69bdbe043/assets/images/horizontalPinkLogo.png?raw=true) Sync-Sonic App ![Logo](https://github.com/BrooksWimer/Sync-Sonic-App/blob/f6a550cdf0a6c3ca73bfe71b05a6d3c69bdbe043/assets/images/horizontalPinkLogo.png?raw=true)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Overview
 
-## Get started
+The Sync-Sonic App provides an intuitive interface for:
+- Creating and managing speaker configurations
+- Discovering and pairing Bluetooth speakers
+- Controlling volume and latency for each speaker
+- Managing multiple audio zones
+- Connecting/disconnecting speaker configurations
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **Speaker Discovery**: Scan and find available Bluetooth speakers
+- **Configuration Management**: Create, edit, and delete speaker configurations
+- **Audio Control**: 
+  - Individual volume control for each speaker
+  - Latency adjustment for perfect synchronization
+  - Global configuration connection management
+- **Multi-Controller Support**: Utilize multiple Bluetooth adapters for expanded speaker support
+- **Real-time Status**: Monitor connection status and speaker health
 
-2. Start the app
+## Prerequisites
 
-   ```bash
-    npx expo start
-   ```
+- Node.js (LTS version recommended)
+- npm or yarn
+- Expo CLI
+- iOS/Android development environment (for native builds)
+- [SyncSonicPi](link-to-pi-repo) backend running on a Raspberry Pi
 
-In the output, you'll find options to open the app in a
+## Getting Started
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+1. **Clone the Repository**
 ```bash
-npm run reset-project
+git clone https://github.com/BrooksWimer/Sync-Sonic-App
+cd Sync-Sonic-App
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. **Install Dependencies**
+```bash
+npm install
+```
 
-## Learn more
+3. **Configure the App**
+- Update the Pi's IP address in `app/SpeakerConfigScreen.tsx`:
+```typescript
+const PI_API_URL = 'http://your.pi.ip.address:3000';
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+4. **Start the Development Server**
+```bash
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+5. **Run the App**
+- Press `a` for Android
+- Press `i` for iOS simulator
+- Scan QR code with Expo Go app
+- Press `d` for development build
 
-## Join the community
+## Project Structure
+app/
+├── SpeakerConfigScreen.tsx # Speaker configuration management
+├── DeviceSelectionScreen.tsx # Bluetooth device discovery and selection
+├── database.ts # Local SQLite database operations
+├── home.tsx # Main app screen
+└── settings/ # Configuration settings screens
+├── config.tsx # Configuration editor
+├── latency.tsx # Latency adjustment
+└── speakerSettings.tsx # Speaker-specific settings
 
-Join our community of developers creating universal apps.
+## Integration with SyncSonicPi
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The app communicates with the Raspberry Pi backend through a REST API:
+
+- **Device Discovery**
+  ```typescript
+  GET http://<pi-ip>:3000/scan
+  ```
+
+- **Speaker Configuration**
+  ```typescript
+  POST http://<pi-ip>:3000/connect
+  {
+    "configID": "string",
+    "configName": "string",
+    "speakers": {"mac": "name"},
+    "settings": {"mac": {"volume": number, "latency": number}}
+  }
+  ```
+
+- **Audio Control**
+  ```typescript
+  POST http://<pi-ip>:3000/volume
+  POST http://<pi-ip>:3000/latency
+  ```
+
+## Development
+
+### Building for Production
+
+1. **iOS**
+```bash
+eas build --platform ios
+```
+
+2. **Android**
+```bash
+eas build --platform android
+```
+
+### Testing
+
+```bash
+npm test
+```
+
+## Troubleshooting
+
+1. **Connection Issues**
+   - Ensure the Pi is running and accessible
+   - Verify the correct IP address in configuration
+   - Check that the Pi's API server is running
+
+2. **Speaker Discovery Problems**
+   - Ensure speakers are in pairing mode
+   - Verify Bluetooth adapters are properly connected to Pi
+   - Check Pi's Bluetooth service status
+
+3. **Database Issues**
+   - Clear app data and restart
+   - Check SQLite database integrity
