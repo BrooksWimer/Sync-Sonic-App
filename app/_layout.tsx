@@ -1,21 +1,18 @@
-import { createTamagui, TamaguiProvider, Theme, View } from 'tamagui';
+import { TamaguiProvider, Theme } from 'tamagui'
 import { config } from '@/tamagui.config'
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { Stack } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
+import { useColorScheme } from '@/hooks/useColorScheme'
 
 export default function RootLayout() {
-    const colorScheme = useColorScheme();
-    return (
-      <TamaguiProvider config={config}>
+  const colorScheme = useColorScheme() // should return 'light' or 'dark'
+
+  return (
+    <TamaguiProvider config={config} defaultTheme={colorScheme ?? 'light'}>
       <Theme name={colorScheme}>
-          {/* Ensure header is hidden on all screens */}
-          <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-          </Stack>
-          <StatusBar style="auto" />
+        <Stack screenOptions={{ headerShown: false }}/>
+        <StatusBar style="auto" />
       </Theme>
-  </TamaguiProvider>
-  );
+    </TamaguiProvider>
+  )
 }

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Button, H1, YStack, View, XStack, ScrollView, Text } from "tamagui";
-import { ActivityIndicator } from 'react-native';
+import { Button, H1, YStack, View, XStack, ScrollView, Text, useThemeName, useTheme } from "tamagui";
+import { ActivityIndicator, Pressable } from 'react-native';
 import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert } from "react-native";
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getConfigurations } from './database'; // getConfigurations should return { id, name, speakerCount, isConnected }
+import { getConfigurations, deleteConfiguration} from './database'; // getConfigurations should return { id, name, speakerCount, isConnected }
+import { TopBar } from '@/components/TopBar';
+import { AddButton } from '@/components/AddButton'
 
 const PI_API_URL = 'http://10.0.0.89:3000'; // Replace with your Pi's IP and port
 
@@ -100,21 +102,43 @@ export default function Home() {
     router.replace('/home');
   };
 
+  const handleDeleteConfig = (id: number) => {
+    Alert.alert(
+      'Delete Configuration',
+      'Are you sure you want to delete this configuration?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteConfiguration(id)
+            setConfigurations(prev => prev.filter(c => c.id !== id))
+          }
+        }
+      ]
+    )
+  }
+  
+
+   const themeName = useThemeName();
+    const theme = useTheme();
+  
+  
+    const imageSource = themeName === 'dark'
+      ? require('../assets/images/welcomeGraphicDark.png')
+      : require('../assets/images/welcomeGraphicLight.png')
+   
+    const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
+    const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
+    const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+    const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+  
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "$bg" }}>
+    <YStack flex={1} backgroundColor={bg}>
       {/* Top Bar */}
-      <View style={{
-          height: 80,
-          backgroundColor: "#3E0094",
-          justifyContent: "center",
-          alignItems: "center",
-          paddingTop: 20
-      }}>
-        <Image
-          source={require("@/assets/images/horizontalPinkLogo.png")}
-          style={{ width: 100, height: 40, resizeMode: "contain" }}
-        />
-      </View>
+      <TopBar/>      
 
       {/* Header */}
       <View style={{
@@ -122,26 +146,37 @@ export default function Home() {
           paddingBottom: 10,
           alignItems: "center",
       }}>
-        <H1 style={{ fontSize: 32, fontWeight: "bold" }}>Configurations</H1>
+        <H1
+          style={{ color: tc }}
+          fontFamily="Finlandica"
+          fontSize={36}
+          lineHeight={44}
+          fontWeight="700">
+          Configurations
+          </H1>
       </View>
 
       {/* Main Content: Display saved configurations */}
       <ScrollView style={{ paddingHorizontal: 20 }}>
         {configurations.length === 0 ? (
-          <H1 style={{ textAlign: "center", color: "#666", marginVertical: 10 }}>
+          <H1 style={{ textAlign: "center", color: stc, fontFamily: "Finlandica", marginVertical: 10 }}>
             No configurations found.
           </H1>
         ) : (
           configurations.map((config) => (
             // Touching the configuration takes you to the SpeakerConfigScreen
-            <XStack 
-              key={config.id} 
+            <Pressable
+            key={config.id}
+            onLongPress={() => handleDeleteConfig(config.id)}
+            delayLongPress={600}
+          >
+            <XStack
               alignItems="center"
               borderRadius={15}
               padding={15}
               marginBottom={10}
               borderWidth={1}
-              borderColor="#3E0094"
+              borderColor={stc}
               justifyContent="space-between"
               shadowColor="#93C7FF"
               shadowOffset={{ width: 0, height: 0 }}
@@ -160,15 +195,35 @@ export default function Home() {
                 pathname: "/SpeakerConfigScreen",
                 params: { configID: config.id.toString(), configName: config.name }
               })}
-            >
+              onLongPress={() => handleDeleteConfig(config.id)}
+              >
               <YStack>
-                <H1 color="#fff" style={{ fontSize: 18 }}>{config.name}</H1>
-                <H1 style={{ fontSize: 14, color: config.isConnected ? "#3E0094" : "#FF0055" }}>
+                <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
+
+                {/* Speaker dots */}
+                <XStack marginTop={4}>
+                  {Array.from({ length: config.speakerCount }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: '#00FF6A', // green
+                        marginRight: 6,
+                      }}
+                    />
+                  ))}
+                </XStack>
+
+                {/* Connection status */}
+                <H1 style={{ fontSize: 14, color: config.isConnected ? "#3E0094" : "#FF0055", marginTop: 6 }}>
                   {config.isConnected ? "Connected" : "Not Connected"}
                 </H1>
               </YStack>
+
               <Button
-                icon={<Pencil size={20} />}
+                icon={<Pencil size={20} color={tc}/>}
                 backgroundColor="transparent"
                 onPress={() => router.push({
                   pathname: "/settings/config",
@@ -176,26 +231,13 @@ export default function Home() {
                 })}
               />
             </XStack>
+            </Pressable>
           ))
         )}
       </ScrollView>
 
       {/* Plus Button (Floating) */}
-      <Button
-        icon={Plus}
-        onPress={addConfig}
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          right: 20,
-          width: 60,
-          height: 60,
-          borderRadius: 15,
-          backgroundColor: '#FF0055',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      />
+      <AddButton onPress={addConfig} />
       
       {/* Loading Indicators */}
       {scanning && (
@@ -210,6 +252,6 @@ export default function Home() {
           <Text>Pairing devices...</Text>
         </View>
       )}
-    </SafeAreaView>
+    </YStack>
   );
 }

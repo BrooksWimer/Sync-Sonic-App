@@ -15,8 +15,14 @@ import {
   updateConnectionStatus, 
   updateSpeakerSettings 
 } from './database';
+import { useTheme, useThemeName, YStack } from 'tamagui';
+import { TopBar } from '@/components/TopBar';
 
 const PI_API_URL = 'http://10.0.0.89:3000';
+
+
+  
+
 
 export default function SpeakerConfigScreen() {
   // Retrieve parameters from the URL
@@ -222,19 +228,33 @@ export default function SpeakerConfigScreen() {
     router.replace('/home');
   };
 
+  const themeName = useThemeName();
+  const theme = useTheme();
+  
+
+  const imageSource = themeName === 'dark'
+    ? require('../assets/images/welcomeGraphicDark.png')
+    : require('../assets/images/welcomeGraphicLight.png')
+
+  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
+  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
+  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+  const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+
   return (
-    <SafeAreaView style={styles.container}>
+    <YStack flex={1} backgroundColor={bg}>
+      <TopBar/>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <Text style={styles.header}>
+        <Text style={{ fontSize: 22, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginBottom: 15, marginTop: 15, alignSelf:'center' }}>
           Speaker Configuration: {configNameParam}
         </Text>
         {Object.keys(connectedSpeakers).length === 0 ? (
-          <Text>No connected speakers found.</Text>
+          <Text style={{color:stc, alignSelf: 'center'}}>No connected speakers found.</Text>
         ) : (
           Object.keys(connectedSpeakers).map(mac => (
-            <SafeAreaView key={mac} style={styles.speakerContainer}>
-              <Text style={styles.speakerName}>{connectedSpeakers[mac]}</Text>
-              <Text style={styles.label}>Volume: {settings[mac]?.volume || 50}%</Text>
+            <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, padding: 10, borderWidth: 1, borderColor: stc, borderRadius: 8}}>
+              <Text style={{ fontSize: 20, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:-15}}>{connectedSpeakers[mac]}</Text>
+              <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Volume: {settings[mac]?.volume || 50}%</Text>
               <Slider
                 style={styles.slider}
                 minimumValue={0}
@@ -245,7 +265,7 @@ export default function SpeakerConfigScreen() {
                 minimumTrackTintColor="#FF0055"
                 maximumTrackTintColor="#000000"
               />
-              <Text style={styles.label}>Latency: {settings[mac]?.latency || 100} ms</Text>
+              <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Latency: {settings[mac]?.latency || 100} ms</Text>
               <Slider
                 style={styles.slider}
                 minimumValue={0}
@@ -259,7 +279,7 @@ export default function SpeakerConfigScreen() {
             </SafeAreaView>
           ))
         )}
-        <Text style={styles.instructions}>
+        <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6, alignSelf:'center', marginBottom:-20}}>
           Adjust the sliders for each speaker as needed.
         </Text>
         <SafeAreaView style={styles.buttonContainer}>
@@ -269,7 +289,7 @@ export default function SpeakerConfigScreen() {
                 <Text style={styles.buttonText}>Disconnect Configuration</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.saveButton} onPress={handleConnect}>
+              <TouchableOpacity style={{backgroundColor:pc, padding: 15, borderRadius: 8, width: "90%", marginTop: -10 }} onPress={handleConnect}>
                 <Text style={styles.buttonText}>Connect Configuration</Text>
               </TouchableOpacity>
             )
@@ -278,25 +298,20 @@ export default function SpeakerConfigScreen() {
               <Text style={styles.buttonText}>Save Configuration</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.buttonText}>Delete Configuration</Text>
-          </TouchableOpacity>
+          
         </SafeAreaView>
       </ScrollView>
-      <TouchableOpacity style={styles.homeButton} onPress={() => router.replace('/home')}>
-        <Text style={styles.homeButtonText}>Home</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+    </YStack>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
   header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  speakerContainer: { marginBottom: 30, padding: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 8 },
+  speakerContainer: {},
   speakerName: { fontSize: 18, marginBottom: 10 },
   label: { fontSize: 16, marginTop: 10 },
-  slider: { width: '100%', height: 40 },
+  slider: { width: '100%', height: 40, marginBottom: -5},
   instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
   buttonContainer: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30 },
   saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },

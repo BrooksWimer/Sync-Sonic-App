@@ -1,31 +1,77 @@
 import { createTamagui, getConfig } from '@tamagui/core'
+import colors from './assets/colors/colors';
+
 
 export const config = createTamagui({
-  // act like CSS variables at your root
   tokens: {
-    // width="$sm"
-    size: { sm: 8, md: 12, lg: 20 },
-    // margin="$-sm"
-    space: { '-sm': 8 },
-    // radius="$none"
-    radius: { none: 0, sm: 3 },
-    color: { white: '#fff', black: '#000' },
+    size: {
+      // Add more if needed
+      0: 0,
+      1: 4,
+      2: 8,
+      3: 12,
+      4: 16,
+      5: 20,
+      6: 24,
+      7: 48
+    },
+    space: {
+      0: 0,
+      1: 4,
+      2: 8,
+      3: 12,
+      4: 16,
+      5: 20,
+      6: 24,
+      7: 48
+    },
+    radius: {
+      none: 0,
+      sm: 3,
+      md: 6,
+      lg: 12,
+    },
+    color: {
+      white: '#fff',
+      black: '#000',
+    },
   },
+  
+
 
   themes: {
     light: {
-      bg: '#f2f2f2',
-      color: '#000',
-      borderColor: '#e0e0e0',
+      bg: colors.backgroundLight,
+      textColor: colors.textLight,
+      popColor: colors.syncPurple,
+      borderColor: colors.subtextLight,
       shadowColor: 'rgba(0,0,0,0.1)',
     },
     dark: {
-      bg: '#111',
-      color: '#fff',
-      borderColor: '#333',
+      bg: colors.backgroundDark,
+      textColor: colors.textDark,
+      popColor: colors.syncPink,
+      borderColor: colors.subtextDark,
       shadowColor: 'rgba(0,0,0,0.3)',
     },
   },
+
+  font: {
+    body: {
+      family: 'Finlandica',
+      size: 16,
+      weight: '400',
+      lineHeight: 24,
+    },
+    heading: {
+      family: 'Finlandica',
+      size: 24,
+      weight: '700',
+      lineHeight: 32,
+    },
+  },
+  
+  
 
   // media query definitions can be used to style,
   // but also can be used with "groups" to do container queries by size:
@@ -53,6 +99,7 @@ console.log(`config is`, getConfig())
 
 // get typescript types on @tamagui/core imports:
 type AppConfig = typeof config
+
 declare module '@tamagui/core' {
   interface TamaguiCustomConfig extends AppConfig {}
 }

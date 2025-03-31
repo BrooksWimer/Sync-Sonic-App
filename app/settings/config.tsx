@@ -1,12 +1,13 @@
-import { SquareX, ArrowLeftSquare } from '@tamagui/lucide-icons'
+import { SquareX, ArrowLeftSquare, Wifi } from '@tamagui/lucide-icons'
 import { addSpeaker, getSpeakers, deleteSpeaker, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, deleteConfiguration } from '../database';
-import { Button, H1, YStack, View, Input, Label, ScrollView, XStack } from "tamagui";
+import { Button, H1, YStack, View, Input, Label, ScrollView, XStack, useThemeName, useTheme } from "tamagui";
 import { router } from "expo-router";
 import { useState, useEffect } from 'react';
 import { Alert, Image, Linking, PermissionsAndroid, Platform } from "react-native";
 import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { TopBar } from '@/components/TopBar';
 //import { BleManager } from 'react-native-ble-plx';
 
 
@@ -14,7 +15,7 @@ export default function Config() {
     const params = useLocalSearchParams();
     const configID: number = Number(params.configID)
     const initialConfigName = params.configName ? params.configName.toString() : "";
-    const editHeader: String = "Edit Configuration"; // change on function
+    const editHeader: String = "Add/Edit"; // change on function
     const createHeader: String = "Create Configuration";
     const [configName, setConfigName] = useState(initialConfigName);
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
@@ -84,6 +85,7 @@ export default function Config() {
         }
 
         logDatabaseContents();
+        console.log("where am i ....")
         router.replace('/home'); // send back
     };
 
@@ -111,35 +113,25 @@ export default function Config() {
 
     const isSaveDisabled = !configName.trim() || devices.length === 0;
 
+       const themeName = useThemeName();
+        const theme = useTheme();
+      
+      
+        //const imageSource = themeName === 'dark'
+          //? require('../assets/images/welcomeGraphicDark.png')
+          //: require('../assets/images/welcomeGraphicLight.png')
+      
+        const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
+        const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
+        const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+        const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+      
+    
+
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "$bg" }}>
+        <YStack flex={1} backgroundColor={bg}>
             {/* Top Bar with Back Button */}
-            <XStack 
-                height={80} 
-                backgroundColor="#3E0094" 
-                alignItems="center" 
-                paddingHorizontal={10} 
-                paddingTop={20} 
-                justifyContent="space-between"
-            >
-                {/* Back Button */}
-                <Button
-                    icon={<ArrowLeftSquare size={32} />}
-                    backgroundColor="transparent"
-                    color="white"
-                    onPress={goBack}
-                    padding={10}
-                />
-
-                {/* App Logo */}
-                <Image 
-                    source={require("@/assets/images/horizontalPinkLogo.png")}
-                    style={{ width: 100, height: 40, resizeMode: "contain" }}
-                />
-
-                {/* Spacer (To Center Logo Properly) */}
-                <View style={{ width: 40 }} />
-            </XStack>
+            <TopBar/>
 
             {/* Header */}
             <View style={{
@@ -147,22 +139,30 @@ export default function Config() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold" }}>{editHeader}</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc }}>{editHeader}</H1>
             </View>
 
             {/* Configuration Name Input Field */}
-            <YStack marginHorizontal={20} marginTop={10} gap={10}>
-                <Label htmlFor="configName" fontSize={18}>
-                    Configuration Name:
-                </Label>
+            <YStack marginHorizontal={20} marginTop={1} gap={10}>
+                <H1
+                          style={{ color: tc }}
+                          alignSelf='center'
+                          fontFamily="Finlandica"
+                          fontSize={15}
+                          lineHeight={44}
+                          fontWeight="400">
+                          Configuration Name
+                          </H1>
                 <Input
                     id="configName"
                     value={configName}
                     onChangeText={setConfigName}
-                    placeholder="Enter configuration name"
-                    placeholderTextColor='#888880'
+                    placeholder="Name"
+                    placeholderTextColor={stc}
+                    color={tc}
                     borderWidth={1}
-                    borderColor="#3E0094"
+                    borderColor={stc}
+                    borderRadius={12}
                     padding={10}
                     fontSize={16}
                 />
@@ -170,7 +170,8 @@ export default function Config() {
                 {/* Select Devices */}
                 <Button 
                     onPress={() => router.push({ pathname: '/DeviceSelectionScreen', params: { configName } })}
-                    backgroundColor="#3E0094"
+                    onLongPress={() => insertDummyData()}
+                    backgroundColor={pc}
                     color="white"
                     borderRadius={5}
                     padding={10}
@@ -180,37 +181,67 @@ export default function Config() {
             </YStack>
 
             {/* List of Found Bluetooth Devices */}
-            <ScrollView style={{ maxHeight: 200, marginTop: 10, paddingHorizontal: 20 }}>
-                {devices.length === 0 ? (
-                    <H1>
-                        No devices connected. Please connect devices
+            <ScrollView style={{ maxHeight: 300, marginTop: 10, paddingHorizontal: 20 }}>
+            {devices.length === 0 ? (
+                <H1 color={stc} alignSelf="center">
+                No devices connected. Please connect devices
+                </H1>
+            ) : (
+                devices.map((device) => (
+                <YStack
+                    key={device.id}
+                    borderWidth={1}
+                    borderColor={stc}
+                    borderRadius={12}
+                    padding={12}
+                    marginBottom={10}
+                    backgroundColor="transparent"
+                >
+                    <XStack justifyContent="space-between" alignItems="center">
+                    <H1 fontSize={16} fontWeight="600" color={tc}>
+                        {device.name}
                     </H1>
-                ) : (
-                    devices.map((device) => (
-                        <XStack 
-                            key={device.id} 
-                            alignItems="center"
-                            paddingVertical={10}
-                            borderBottomWidth={1}
-                            borderColor="#ddd"
-                            justifyContent="space-between"
-                        >
-                            <View>
-                                <H1 style={{ fontWeight: "bold" }} fontSize={16}>{device.name}</H1>
-                                <H1 fontSize={12}>{device.mac}</H1>
-                            </View>
-                            <Button
-                                icon={SquareX}
-                                backgroundColor="red"
-                                color="white"
-                                borderRadius={5}
-                                onPress={() => removeDevice(device.id)}
-                            >            
-                            </Button>
-                        </XStack>
-                    ))
-                )}
+                    <Button
+                        size="$2"
+                        backgroundColor="transparent"
+                        onPress={() => removeDevice(device.id)}
+                        padding={0}
+                        icon={<SquareX size={25} color="white" />}
+                    />
+                    </XStack>
+
+                    <XStack alignItems="center" marginTop={6}>
+                    <Wifi size={20} color={tc} style={{ marginRight: 8 }} />
+                    <H1 fontSize={12} color={tc} marginLeft={6}>
+                        {device.mac}
+                    </H1>
+                    </XStack>
+                </YStack>
+                ))
+            )}
             </ScrollView>
-        </SafeAreaView>
+
+        {/* Bottom Button */}
+        <Button
+        onPress={saveChanges}
+        disabled={isSaveDisabled}
+        style={{
+            backgroundColor: pc,
+            width: '90%',
+            height: 50,
+            borderRadius: 999,
+            marginBottom: 5,
+            marginTop: 50,
+            alignSelf: 'center',
+            opacity: !isSaveDisabled ? 1 : 0.5, // 👈 dim when invalid
+        }}
+        pressStyle={{ opacity: !isSaveDisabled ? 0.8 : 0.5 }} // keep it dim if disabled
+        >
+        <H1 color="white" fontSize={18}>
+            Save
+        </H1>
+</Button>
+
+        </YStack>
     );
 }

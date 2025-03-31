@@ -14,6 +14,8 @@ import {
   updateConnectionStatus, // NEW: update connection status in the DB
   addSpeaker 
 } from './database';
+import { useTheme, useThemeName } from 'tamagui';
+import { TopBar } from '@/components/TopBar';
 
 const PI_API_URL = 'http://10.0.0.89:3000'; // Your Pi's API URL
 
@@ -158,9 +160,23 @@ export default function DeviceSelectionScreen() {
     }
   };
 
+  const themeName = useThemeName();
+          const theme = useTheme();
+        
+        
+          //const imageSource = themeName === 'dark'
+            //? require('../assets/images/welcomeGraphicDark.png')
+            //: require('../assets/images/welcomeGraphicLight.png')
+        
+          const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
+          const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
+          const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+          const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 24, marginBottom: 10, marginTop: 20 }}>Select Speakers</Text>
+    <View style={{ flex: 1, padding: 0, backgroundColor: bg }}>
+      <TopBar/>
+      <Text style={{ fontSize: 24, marginBottom: 10, marginTop: 20, marginLeft: 10, color: tc, fontFamily:'Finlandica'}}>Select Speakers</Text>
       {loading ? (
         <ActivityIndicator size="large" color="#FF0055" />
       ) : (
@@ -174,6 +190,8 @@ export default function DeviceSelectionScreen() {
       <TouchableOpacity
         onPress={pairSelectedDevices}
         style={{
+          alignSelf: 'center',
+          width: "90%",
           backgroundColor: '#FF0055',
           padding: 16,
           borderRadius: 8,

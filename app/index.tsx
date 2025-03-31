@@ -1,44 +1,79 @@
-import { Button, H1, YStack, View, Image } from "tamagui";
+import { YStack, Button, H1, Image, useThemeName, useTheme } from "tamagui";
 import { router } from "expo-router";
 import { useEffect } from 'react';
-import { setupDatabase } from "./database"; // Import the setup function
+import { setupDatabase } from "./database";
+import { TopBar } from "../components/TopBar";
+import { TopBarStart } from "../components/TopBarStart";
+import colors from '../assets/colors/colors';
 
 export default function Index() {
   useEffect(() => {
-    // Initialize the database when the app starts
     setupDatabase();
   }, []);
 
   const handleConnect = () => {
     console.log('Connecting to RPi');
-    router.replace('./home');
+    router.push('./home');
   };
 
+  const themeName = useThemeName();
+  const theme = useTheme();
+
+  const imageSource = themeName === 'dark'
+    ? require('../assets/images/welcomeGraphicDark.png')
+    : require('../assets/images/welcomeGraphicLight.png')
+
+  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
+  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
+  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-      backgroundColor="$bg"
+    <YStack
+      flex={1}
+      style={{ backgroundColor: bg }}
+      justifyContent="space-between"
+      //padding="$4"
     >
-      <YStack
-        style={{
-          justifyContent: "center",
-          alignItems: "center"
-        }}
-      >
-        <Image source={require("@/assets/images/logo.png")} />
-        <H1>Welcome to Sync-Sonic</H1>
-        <Button 
-          variant="outlined"
-          onPress={handleConnect}
-          pressStyle={{ opacity: 0.8 }}
+      <TopBarStart />
+
+      {/* Middle Content */}
+      <YStack alignItems="center" paddingTop="$4">
+        <H1
+          style={{ color: tc }}
+          fontFamily="Finlandica"
+          fontSize={36}
+          lineHeight={44}
+          fontWeight="700"
         >
-          Connect to Box
-        </Button>
+          Welcome
+        </H1>
+
+        <Image
+          source={imageSource}
+          style={{ width: 250, height: 250, marginBottom: 40 }}
+          resizeMode="contain"
+        />
       </YStack>
-    </View>
-  );
+
+      {/* Bottom Button */}
+      <Button
+      
+        onPress={handleConnect}
+        style={{
+          
+          backgroundColor: pc,
+          width: '90%',
+          height: 50,
+          borderRadius: 999,
+          marginBottom: 10,
+          alignSelf: 'center',
+        }}
+        pressStyle={{ opacity: 0.8 }}
+      >
+        <H1 color="white" fontSize={18}>
+          Connect to Box
+        </H1>
+      </Button>
+    </YStack>
+  )
 }
