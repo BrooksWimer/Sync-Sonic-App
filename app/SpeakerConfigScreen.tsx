@@ -264,6 +264,7 @@ export default function SpeakerConfigScreen() {
                 onValueChange={(value: number) => handleVolumeChange(mac, value)}
                 minimumTrackTintColor="#FF0055"
                 maximumTrackTintColor="#000000"
+                thumbTintColor="white"
               />
               <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Latency: {settings[mac]?.latency || 100} ms</Text>
               <Slider
@@ -275,6 +276,7 @@ export default function SpeakerConfigScreen() {
                 onSlidingComplete={(value: number) => handleLatencyChange(mac, value)}
                 minimumTrackTintColor="#FF0055"
                 maximumTrackTintColor="#000000"
+                thumbTintColor="white"
               />
             </SafeAreaView>
           ))
@@ -317,7 +319,7 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
   disconnectButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
   deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
-  buttonText: { color: '#fff', fontSize: 16 },
+  buttonText: { color: '#fff', fontSize: 16, alignSelf: "center" },
   homeButton: {
     position: 'absolute',
     bottom: 20,
