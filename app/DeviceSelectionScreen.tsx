@@ -11,11 +11,22 @@ import { useRouter } from 'expo-router';
 import { useSearchParams } from 'expo-router/build/hooks';
 import { 
   addConfiguration, 
-  updateConnectionStatus, // Update connection status in the DB
-  addSpeaker, getSpeakers
+  updateConnectionStatus,
+  updateSpeakerConnectionStatus,
+  addSpeaker, 
+  getSpeakers
 } from './database';
 
-const PI_API_URL = 'http://10.0.0.89:3000'; // Your Pi's API URL
+// const PI_API_URL = 'http://10.193.147.160:3000'; // Your Pi's API URL
+const PI_API_URL = "http://10.0.0.89:3000"
+
+let scanInterval: NodeJS.Timeout | null = null;
+
+// Define the expected type for devices
+interface Device {
+  mac: string;
+  name: string;
+}
 
 export default function DeviceSelectionScreen() {
   const params = useSearchParams();
@@ -36,31 +47,84 @@ export default function DeviceSelectionScreen() {
   const [selectedDevices, setSelectedDevices] = useState<{ [mac: string]: { mac: string, name: string } }>(parsedExistingDevices);
   const [loading, setLoading] = useState(false);
   const [pairing, setPairing] = useState(false);
+  const [pairedDevices, setPairedDevices] = useState<{ [mac: string]: string }>({}); // State for paired devices
+  const [selectedPairedDevices, setSelectedPairedDevices] = useState<{ [mac: string]: { mac: string, name: string } }>({});
   const router = useRouter();
 
-  // Fetch devices from the Pi's API
-  const fetchDevices = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${PI_API_URL}/scan`);
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
+  // Start scanning and set up polling for device queue
+  useEffect(() => {
+    const initializeScanning = async () => {
+      try {
+        // Fetch paired devices first
+        await fetchPairedDevices(); 
+        
+        // Start scanning
+        await fetch(`${PI_API_URL}/start-scan`);
+        console.log("Started scanning");
+
+        // Start polling device queue
+        scanInterval = setInterval(fetchDeviceQueue, 1000);
+      } catch (err) {
+        console.error("Failed to initialize scanning:", err);
       }
-      const data = await response.json();
-      // data.devices is an object { "MAC": "DisplayName", ... }
-      const deviceArray = Object.keys(data.devices).map(mac => ({ mac, name: data.devices[mac] }));
+    };
+  
+    initializeScanning();
+  
+    return () => {
+      if (scanInterval) clearInterval(scanInterval);
+    };
+  }, []);
+  
+
+  // Poll the device queue
+  const fetchDeviceQueue = async () => {
+    try {
+      const response = await fetch(`${PI_API_URL}/device-queue`);
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      const data: Record<string, unknown> = await response.json(); // Use Record<string, unknown> for the response
+
+      // Use type assertion to ensure correct types
+      const deviceArray: Device[] = Object.entries(data).map(([mac, name]) => ({
+        mac,
+        name: name as string, // Assert name as string
+      }));
       setDevices(deviceArray);
-    } catch (error) {
-      console.error('Error fetching devices:', error);
-      Alert.alert('Error', 'Could not scan for devices on the Pi.');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching device queue:", err);
     }
   };
 
-  useEffect(() => {
-    fetchDevices();
-  }, []);
+  // Fetch paired devices from the API
+  const fetchPairedDevices = async () => {
+    try {
+      const response = await fetch(`${PI_API_URL}/paired-devices`);
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      const pairedDevicesData = await response.json();
+      setPairedDevices(pairedDevicesData);
+    } catch (error) {
+      console.error('Error fetching paired devices:', error);
+      Alert.alert('Error', 'Could not fetch paired devices.');
+    }
+  };
+
+  // Toggle selection of a paired device using its MAC as unique key.
+  const togglePairedSelection = (device: { mac: string; name: string }) => {
+    setSelectedPairedDevices(prev => {
+      const newSelection = { ...prev };
+      if (newSelection[device.mac]) {
+        delete newSelection[device.mac];
+      } else {
+        // Allow a maximum of three devices.
+        if (Object.keys(newSelection).length >= 3) {
+          Alert.alert('Selection Limit', 'You can select up to 3 devices.');
+          return prev;
+        }
+        newSelection[device.mac] = device;
+      }
+      return newSelection;
+    });
+  };
 
   // Toggle selection of a device using its MAC as unique key.
   const toggleSelection = (device: { mac: string; name: string }) => {
@@ -98,83 +162,119 @@ export default function DeviceSelectionScreen() {
     );
   };
 
+  // Render paired devices with selection capability
+  const renderPairedDevice = ({ item }: { item: { mac: string, name: string } }) => {
+    const isSelected = selectedPairedDevices[item.mac] !== undefined;
+    return (
+      <TouchableOpacity
+        onPress={() => togglePairedSelection(item)}
+        style={{
+          padding: 16,
+          backgroundColor: isSelected ? '#ddd' : '#fff',
+          borderBottomWidth: 1,
+          borderBottomColor: '#ccc'
+        }}
+      >
+        <Text style={{ fontSize: 18 }}>{item.name}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   // Pair the selected devices by sending them to the Pi's /pair endpoint.
-const pairSelectedDevices = async () => {
-  if (Object.keys(selectedDevices).length === 0) {
-    Alert.alert('No Devices Selected', 'Please select at least one device to pair.');
-    return;
-  }
-  setPairing(true);
-  try {
-    // Build payload from the selectedDevices object.
-    const payload = {
-      devices: Object.values(selectedDevices).reduce((acc, device) => {
-        acc[device.mac] = device.name;
-        return acc;
-      }, {} as { [mac: string]: string })
-    };
-
-    const response = await fetch(`${PI_API_URL}/pair`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}`);
+  const pairSelectedDevices = async () => {
+    const allSelectedDevices = { ...selectedDevices, ...selectedPairedDevices };
+    if (Object.keys(allSelectedDevices).length === 0) {
+      Alert.alert('No Devices Selected', 'Please select at least one device to pair.');
+      return;
     }
-    const result = await response.json();
-    console.log('Pairing result:', result);
-    Alert.alert('Pairing Complete', 'Devices have been paired.');
+    setPairing(true);
+    if (scanInterval) clearInterval(scanInterval); // Stop polling when pairing starts
+    try {
+      // Stop the scan on the server
+      await fetch(`${PI_API_URL}/stop-scan`);
+      // Build payload from the selectedDevices object.
+      const payload = {
+        devices: Object.values(allSelectedDevices).reduce((acc, device) => {
+          acc[device.mac] = device.name;
+          return acc;
+        }, {} as { [mac: string]: string })
+      };
 
-    // Convert configIDParam to a number
-    const configIDParsed = Number(configIDParam);
-    if (!isNaN(configIDParsed) && configIDParsed > 0) {
-      // Edit mode: update DB and navigate back to the edit configuration page.
-      updateConnectionStatus(configIDParsed, 1);
-    
-      // Retrieve current speakers from the database for this configuration.
-      const currentSpeakers = getSpeakers(configIDParsed);
-      // Extract an array of MAC addresses from the current speakers.
-      const existingMacs = currentSpeakers.map(speaker => speaker.mac);
-    
-      // Loop over the payload devices and add only unique speakers.
-      Object.entries(payload.devices).forEach(([mac, name]) => {
-        if (!existingMacs.includes(mac)) {
-          addSpeaker(configIDParsed, name, mac);
-        }
+      const response = await fetch(`${PI_API_URL}/pair`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-      router.push({
-        pathname: '/settings/config',
-        params: { 
-          configID: configIDParsed.toString(), 
-          configName: configName
-        }
-      });
-    } else {
-      // New configuration: create it, add speakers, update connection, then navigate.
-      addConfiguration(configName, (newConfigID: number) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      const result = await response.json();
+      console.log('Pairing result:', result);
+      Alert.alert('Pairing Complete', 'Devices have been paired.');
+
+      // Convert configIDParam to a number
+      const configIDParsed = Number(configIDParam);
+      if (!isNaN(configIDParsed) && configIDParsed > 0) {
+        // Edit mode: update DB and navigate back to the edit configuration page.
+        updateConnectionStatus(configIDParsed, 1);
+      
+        // Retrieve current speakers from the database for this configuration.
+        const currentSpeakers = getSpeakers(configIDParsed);
+        // Extract an array of MAC addresses from the current speakers.
+        const existingMacs = currentSpeakers.map(speaker => speaker.mac);
+      
+        // Loop over the payload devices and add only unique speakers.
         Object.entries(payload.devices).forEach(([mac, name]) => {
-          addSpeaker(newConfigID, name, mac);
-        });
-        updateConnectionStatus(newConfigID, 1);
-        router.push({
-          pathname: '/SpeakerConfigScreen',
-          params: { 
-            speakers: JSON.stringify(payload.devices), 
-            configName: configName,
-            configID: newConfigID.toString()
+          if (!existingMacs.includes(mac)) {
+            addSpeaker(configIDParsed, name, mac);
+            // Set initial connection status for new speakers
+            updateSpeakerConnectionStatus(configIDParsed, mac, true);
+          } else {
+            // Update connection status for existing speakers
+            updateSpeakerConnectionStatus(configIDParsed, mac, true);
           }
         });
-      });
-    }
-  } catch (error) {
-    console.error('Error during pairing:', error);
-    Alert.alert('Pairing Error', 'There was an error pairing the devices.');
-  } finally {
-    setPairing(false);
-  }
-};
 
+        // Update connection status to false for speakers that were removed
+        currentSpeakers.forEach(speaker => {
+          if (!Object.keys(payload.devices).includes(speaker.mac)) {
+            updateSpeakerConnectionStatus(configIDParsed, speaker.mac, false);
+          }
+        });
+
+        router.push({
+          pathname: '/settings/config',
+          params: { 
+            configID: configIDParsed.toString(), 
+            configName: configName
+          }
+        });
+      } else {
+        // New configuration: create it, add speakers, update connection, then navigate.
+        addConfiguration(configName, (newConfigID: number) => {
+          Object.entries(payload.devices).forEach(([mac, name]) => {
+            addSpeaker(newConfigID, name, mac);
+            // Set initial connection status for all speakers
+            updateSpeakerConnectionStatus(newConfigID, mac, true);
+          });
+          updateConnectionStatus(newConfigID, 1);
+          router.push({
+            pathname: '/SpeakerConfigScreen',
+            params: { 
+              speakers: JSON.stringify(payload.devices), 
+              configName: configName,
+              configID: newConfigID.toString()
+            }
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error during pairing:', error);
+      Alert.alert('Pairing Error', 'There was an error pairing the devices.');
+    } finally {
+      setPairing(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, padding: 20 }}>
@@ -189,6 +289,13 @@ const pairSelectedDevices = async () => {
           ListEmptyComponent={<Text>No devices found.</Text>}
         />
       )}
+      <Text style={{ fontSize: 24, marginBottom: 10, marginTop: 20 }}>Paired Devices</Text>
+      <FlatList
+        data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
+        keyExtractor={(item) => item.mac}
+        renderItem={renderPairedDevice}
+        ListEmptyComponent={<Text>No paired devices found.</Text>}
+      />
       <TouchableOpacity
         onPress={pairSelectedDevices}
         style={{

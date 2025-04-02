@@ -1,1 +1,0 @@
-// Adjust speaker latency/delay if they are not synced properly

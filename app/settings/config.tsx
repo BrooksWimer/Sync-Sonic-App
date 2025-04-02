@@ -253,15 +253,7 @@ export default function Config() {
                 </Button>
             )}
 
-            {/* Additional buttons for deleting configuration or opening system settings */}
-            <XStack justifyContent="space-around" marginTop={20}>
-                <Button onPress={confirmDelete} backgroundColor="red" color="white" borderRadius={5}>
-                    Delete Configuration
-                </Button>
-                <Button onPress={openSettings} backgroundColor="#3E0094" color="white" borderRadius={5}>
-                    Open Settings
-                </Button>
-            </XStack>
+        
         </SafeAreaView>
     );
 }

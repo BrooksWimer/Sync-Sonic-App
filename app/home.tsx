@@ -7,7 +7,8 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getConfigurations } from './database'; // getConfigurations should return { id, name, speakerCount, isConnected }
 
-const PI_API_URL = 'http://10.0.0.89:3000'; // Replace with your Pi's IP and port
+// const PI_API_URL = 'http://10.193.147.160:3000'; // Replace with your Pi's IP and port
+const PI_API_URL = "http://10.0.0.89:3000"
 
 export default function Home() {
   const router = useRouter(); // page changing
@@ -162,7 +163,7 @@ export default function Home() {
               })}
             >
               <YStack>
-                <H1 color="#fff" style={{ fontSize: 18 }}>{config.name}</H1>
+                <H1 color="#000000" style={{ fontSize: 18 }}>{config.name}</H1>
                 <H1 style={{ fontSize: 14, color: config.isConnected ? "#3E0094" : "#FF0055" }}>
                   {config.isConnected ? "Connected" : "Not Connected"}
                 </H1>
