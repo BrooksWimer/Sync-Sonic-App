@@ -256,7 +256,7 @@ export default function SpeakerConfigScreen() {
               <Text style={{ fontSize: 20, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:-15}}>{connectedSpeakers[mac]}</Text>
               <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Volume: {settings[mac]?.volume || 50}%</Text>
               <Slider
-                style={styles.slider}
+              style={{ width: '100%', height: 40, marginBottom: -5}}
                 minimumValue={0}
                 maximumValue={100}
                 step={1}
@@ -268,7 +268,8 @@ export default function SpeakerConfigScreen() {
               />
               <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Latency: {settings[mac]?.latency || 100} ms</Text>
               <Slider
-                style={styles.slider}
+              style={{ width: '100%', height: 40, marginBottom: -5}}
+                //style={styles.slider}
                 minimumValue={0}
                 maximumValue={500}
                 step={10}
