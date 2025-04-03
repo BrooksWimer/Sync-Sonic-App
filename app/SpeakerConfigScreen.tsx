@@ -1,6 +1,6 @@
 import { useSearchParams } from 'expo-router/build/hooks';
 import React, { useState, useEffect } from 'react';
-import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -236,9 +236,17 @@ export default function SpeakerConfigScreen() {
       const configIdNum = configIDParam ? Number(configIDParam) : 0;
       let anyConnected = false;
       const updatedSettings = { ...settings };
-    
+      
+      // Create a message showing the status of each speaker
+      let statusMessage = "Connection Status:\n\n";
+      
       Object.keys(result).forEach(mac => {
         const isConnected = result[mac].result === "Connected";
+        const speakerName = connectedSpeakers[mac] || result[mac].name || mac;
+        const status = isConnected ? "✅ Connected" : "❌ Not Connected";
+        
+        statusMessage += `${speakerName}: ${status}\n`;
+        
         // Update per-speaker status in the database.
         updateSpeakerConnectionStatus(configIdNum, mac, isConnected);
         // Update local settings for that speaker.
@@ -255,7 +263,7 @@ export default function SpeakerConfigScreen() {
       setSettings(updatedSettings);
       setIsConnected(anyConnected);
     
-      Alert.alert("Connected", "Configuration connected successfully.");
+      Alert.alert("Connection Status", statusMessage);
     } catch (error) {
       console.error("Error connecting configuration:", error);
       Alert.alert("Connection Error", "Failed to connect configuration.");
@@ -365,7 +373,15 @@ export default function SpeakerConfigScreen() {
         ) : (
           Object.keys(connectedSpeakers).map(mac => (
             <SafeAreaView key={mac} style={styles.speakerContainer}>
-              <Text style={styles.speakerName}>{connectedSpeakers[mac]}</Text>
+              <View style={styles.speakerHeader}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: settings[mac]?.isConnected ? '#00FF6A' : '#FF0055' }
+                  ]}
+                />
+                <Text style={styles.speakerName}>{connectedSpeakers[mac]}</Text>
+              </View>
               <Text style={styles.label}>Volume: {settings[mac]?.volume || 50}%</Text>
               <Slider
                 style={styles.slider}
@@ -388,21 +404,10 @@ export default function SpeakerConfigScreen() {
                 minimumTrackTintColor="#FF0055"
                 maximumTrackTintColor="#000000"
               />
-              {/* Display per-speaker connection status with conditional styling */}
-              <Text
-                style={[
-                  styles.label,
-                  { color: settings[mac]?.isConnected ? "#3E0094" : "#FF0055" }
-                ]}
-              >
-                {settings[mac]?.isConnected ? "Connected" : "Not Connected"}
-              </Text>
             </SafeAreaView>
           ))
         )}
-        <Text style={styles.instructions}>
-          Adjust the sliders for each speaker as needed.
-        </Text>
+
         <TouchableOpacity 
           style={[styles.checkButton, isCheckingPort && styles.disabledButton]} 
           onPress={handleCheckPort}
@@ -411,7 +416,7 @@ export default function SpeakerConfigScreen() {
           {isCheckingPort ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.checkButtonText}>Check Free Port</Text>
+            <Text style={styles.checkButtonText}>Connect Your Phone Here</Text>
           )}
         </TouchableOpacity>
         {freeController && (
@@ -450,7 +455,7 @@ export default function SpeakerConfigScreen() {
             {isDeleting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Delete Config</Text>
+              <Text style={styles.buttonText}>Delete</Text>
             )}
           </TouchableOpacity>
         </SafeAreaView>
@@ -463,40 +468,153 @@ export default function SpeakerConfigScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  speakerContainer: { marginBottom: 30, padding: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 8 },
-  speakerName: { fontSize: 18, marginBottom: 10 },
-  label: { fontSize: 16, marginTop: 10 },
-  slider: { width: '100%', height: 40 },
-  instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
-  phoneInstruction: { fontSize: 16, marginTop: 20, textAlign: 'center' },
-  highlight: { fontWeight: 'bold', color: '#3E0094' },
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#F2E8FF' 
+  },
+  header: { 
+    fontSize: 32, 
+    fontWeight: 'bold', 
+    marginBottom: 20, 
+    textAlign: 'center',
+    color: '#26004E',
+    fontFamily: "Finlandica"
+  },
+  speakerContainer: { 
+    marginBottom: 30, 
+    padding: 20, 
+    backgroundColor: '#9D9D9D',
+    borderRadius: 15,
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  speakerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15
+  },
+  speakerName: { 
+    fontSize: 24, 
+    marginLeft: 10,
+    color: '#26004E',
+    fontFamily: "Finlandica"
+  },
+  label: { 
+    fontSize: 16, 
+    marginTop: 10,
+    color: '#26004E',
+    fontFamily: "Finlandica"
+  },
+  slider: { 
+    width: '100%', 
+    height: 40,
+    marginVertical: 10
+  },
+  instructions: { 
+    fontSize: 16, 
+    marginTop: 10, 
+    textAlign: 'center',
+    color: '#26004E',
+    fontFamily: "Finlandica"
+  },
+  phoneInstruction: { 
+    fontSize: 18, 
+    marginTop: 20, 
+    textAlign: 'center',
+    color: '#26004E',
+    fontFamily: "Finlandica"
+  },
+  highlight: { 
+    fontWeight: 'bold', 
+    color: '#3E0094',
+    fontFamily: "Finlandica"
+  },
   checkButton: {
     backgroundColor: '#3E0094',
-    padding: 10,
+    padding: 15,
     marginVertical: 10,
-    borderRadius: 8,
-    alignSelf: 'center'
+    borderRadius: 15,
+    alignSelf: 'center',
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
-  checkButtonText: { color: '#fff', fontSize: 16 },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30 },
-  saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
-  disconnectButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
-  deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
-  buttonText: { color: '#fff', fontSize: 16 },
+  checkButtonText: { 
+    color: '#F2E8FF', 
+    fontSize: 18,
+    fontFamily: "Finlandica"
+  },
+  buttonContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginTop: 30,
+    gap: 8
+  },
+  saveButton: { 
+    backgroundColor: '#3E0094', 
+    padding: 12, 
+    borderRadius: 15,
+    flex: 1,
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  disconnectButton: { 
+    backgroundColor: '#3E0094', 
+    padding: 12, 
+    borderRadius: 15,
+    flex: 1,
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  deleteButton: { 
+    backgroundColor: '#FF0055', 
+    padding: 12, 
+    borderRadius: 15,
+    flex: 1,
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  buttonText: { 
+    color: '#F2E8FF', 
+    fontSize: 14,
+    fontFamily: "Finlandica",
+    textAlign: 'center'
+  },
   homeButton: {
     position: 'absolute',
     bottom: 20,
     left: 20,
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 15,
     backgroundColor: '#3E0094',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
-  homeButtonText: { color: '#fff', fontSize: 16 },
+  homeButtonText: { 
+    color: '#F2E8FF', 
+    fontSize: 16,
+    fontFamily: "Finlandica"
+  },
   disabledButton: {
     opacity: 0.7,
+  },
+  statusDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10
   },
 });

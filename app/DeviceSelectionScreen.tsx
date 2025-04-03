@@ -5,7 +5,9 @@ import {
   TouchableOpacity, 
   FlatList, 
   ActivityIndicator, 
-  Alert 
+  Alert,
+  StyleSheet,
+  SafeAreaView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSearchParams } from 'expo-router/build/hooks';
@@ -150,14 +152,12 @@ export default function DeviceSelectionScreen() {
     return (
       <TouchableOpacity
         onPress={() => toggleSelection(item)}
-        style={{
-          padding: 16,
-          backgroundColor: isSelected ? '#ddd' : '#fff',
-          borderBottomWidth: 1,
-          borderBottomColor: '#ccc'
-        }}
+        style={[
+          styles.deviceItem,
+          isSelected && styles.selectedDevice
+        ]}
       >
-        <Text style={{ fontSize: 18 }}>{item.name}</Text>
+        <Text style={styles.deviceName}>{item.name}</Text>
       </TouchableOpacity>
     );
   };
@@ -168,14 +168,12 @@ export default function DeviceSelectionScreen() {
     return (
       <TouchableOpacity
         onPress={() => togglePairedSelection(item)}
-        style={{
-          padding: 16,
-          backgroundColor: isSelected ? '#ddd' : '#fff',
-          borderBottomWidth: 1,
-          borderBottomColor: '#ccc'
-        }}
+        style={[
+          styles.deviceItem,
+          isSelected && styles.selectedDevice
+        ]}
       >
-        <Text style={{ fontSize: 18 }}>{item.name}</Text>
+        <Text style={styles.deviceName}>{item.name}</Text>
       </TouchableOpacity>
     );
   };
@@ -277,8 +275,8 @@ export default function DeviceSelectionScreen() {
   };
 
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 24, marginBottom: 10, marginTop: 20 }}>Select Speakers</Text>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>Select Speakers</Text>
       {loading ? (
         <ActivityIndicator size="large" color="#FF0055" />
       ) : (
@@ -286,31 +284,91 @@ export default function DeviceSelectionScreen() {
           data={devices}
           keyExtractor={(item) => item.mac}
           renderItem={renderItem}
-          ListEmptyComponent={<Text>No devices found.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>No devices found.</Text>}
+          style={styles.list}
         />
       )}
-      <Text style={{ fontSize: 24, marginBottom: 10, marginTop: 20 }}>Paired Devices</Text>
+      <Text style={styles.header}>Paired Devices</Text>
       <FlatList
         data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
         keyExtractor={(item) => item.mac}
         renderItem={renderPairedDevice}
-        ListEmptyComponent={<Text>No paired devices found.</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>No paired devices found.</Text>}
+        style={styles.list}
       />
       <TouchableOpacity
         onPress={pairSelectedDevices}
-        style={{
-          backgroundColor: '#FF0055',
-          padding: 16,
-          borderRadius: 8,
-          marginTop: 20,
-          alignItems: 'center'
-        }}
+        style={[styles.pairButton, pairing && styles.disabledButton]}
       >
-        <Text style={{ color: '#fff', fontSize: 18 }}>Pair Selected Devices</Text>
+        {pairing ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.pairButtonText}>Pair Selected Devices</Text>
+        )}
       </TouchableOpacity>
-      {pairing && (
-        <ActivityIndicator size="large" color="#FF0055" style={{ marginTop: 20 }} />
-      )}
-    </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#F2E8FF' 
+  },
+  header: { 
+    fontSize: 32, 
+    fontWeight: 'bold', 
+    marginBottom: 20, 
+    marginTop: 20,
+    textAlign: 'center',
+    color: '#26004E',
+    fontFamily: "Finlandica"
+  },
+  list: {
+    marginBottom: 20
+  },
+  deviceItem: {
+    padding: 16,
+    backgroundColor: '#9D9D9D',
+    borderRadius: 15,
+    marginBottom: 10,
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  selectedDevice: {
+    backgroundColor: '#3E0094',
+  },
+  deviceName: { 
+    fontSize: 18,
+    color: '#26004E',
+    fontFamily: "Finlandica"
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#26004E',
+    textAlign: 'center',
+    fontFamily: "Finlandica"
+  },
+  pairButton: {
+    backgroundColor: '#3E0094',
+    padding: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+    marginTop: 20,
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  pairButtonText: { 
+    color: '#F2E8FF', 
+    fontSize: 18,
+    fontFamily: "Finlandica"
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+});
