@@ -8,7 +8,6 @@ textLight: '#26004E',
 subtextDark: '#9D9D9D',
 subtextLight: '#9D9D9D',
 accentGreen: '#46A758'
-
 }
 
 export default colors

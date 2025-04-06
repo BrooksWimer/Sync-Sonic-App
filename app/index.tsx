@@ -5,14 +5,18 @@ import { setupDatabase } from "./database";
 import { TopBar } from "../components/TopBar";
 import { TopBarStart } from "../components/TopBarStart";
 import colors from '../assets/colors/colors';
+//import {} from '../utils/functions';
+import {PI_API_URL} from '../utils/consts';
+
 
 export default function Index() {
   useEffect(() => {
     setupDatabase();
   }, []);
 
-  const handleConnect = () => {
-    console.log('Connecting to RPi');
+
+  const sendHome = () => {
+    console.log('');
     router.push('./home');
   };
 
@@ -58,7 +62,7 @@ export default function Index() {
       {/* Bottom Button */}
       <Button
       
-        onPress={handleConnect}
+        onPress={sendHome}
         style={{
           
           backgroundColor: pc,
@@ -68,6 +72,8 @@ export default function Index() {
           marginBottom: 10,
           alignSelf: 'center',
         }}
+
+
         pressStyle={{ opacity: 0.8 }}
       >
         <H1 color="white" fontSize={18}>

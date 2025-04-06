@@ -39,6 +39,12 @@ export const setupDatabase = () => {
     db.execSync(`ALTER TABLE speakers ADD COLUMN latency INTEGER NOT NULL DEFAULT 100;`);
   }
 };
+// Migrate speakers: add is_connected if it doesn't exist.
+const speakerColumns = db.getAllSync(`PRAGMA table_info(speakers);`) as any[];
+const hasIsConnected = speakerColumns.some((col: any) => col.name === 'is_connected');
+if (!hasIsConnected) {
+  db.execSync(`ALTER TABLE speakers ADD COLUMN is_connected INTEGER NOT NULL DEFAULT 0;`);
+}
 
 // Insert new configuration with default isConnected flag set to 0 (not connected)
 export const addConfiguration = (name: string, callback: (id: number) => void) => {
@@ -129,6 +135,28 @@ export const updateSpeakerSettings = (configId: number, mac: string, volume: num
       [volume, latency, configId, mac]
     );
   };
+
+  export const updateSpeakerConnectionStatus = (configId: number, mac: string, isConnected: boolean) => {
+    db.runSync(
+      `UPDATE speakers SET is_connected = ? WHERE config_id = ? AND mac = ?;`,
+      [isConnected ? 1 : 0, configId, mac]
+    );
+  };
+  
+  export const getSpeakersFull = (configId: number) => {
+    return db.getAllSync(`
+      SELECT mac, name, volume, latency, is_connected
+      FROM speakers
+      WHERE config_id = ?;
+    `, [configId]) as {
+      mac: string;
+      name: string;
+      volume: number;
+      latency: number;
+      is_connected: number; // 0 or 1 in DB
+    }[];
+  };
+  
   
 
 // Get configuration settings for speakers (volume and latency)

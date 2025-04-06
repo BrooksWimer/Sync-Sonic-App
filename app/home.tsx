@@ -1,27 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { Button, H1, YStack, View, XStack, ScrollView, Text, useThemeName, useTheme } from "tamagui";
-import { ActivityIndicator, Pressable } from 'react-native';
+import { ActivityIndicator, Pressable, StatusBar } from 'react-native';
 import { Plus, Pencil } from '@tamagui/lucide-icons';
-import { Image, Alert } from "react-native";
+import { Image, Alert, StyleSheet } from "react-native";
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getConfigurations, deleteConfiguration} from './database'; // getConfigurations should return { id, name, speakerCount, isConnected }
+import { deleteConfiguration, getConfigurations, getSpeakersFull } from './database';
 import { TopBar } from '@/components/TopBar';
 import { AddButton } from '@/components/AddButton'
+import {PI_API_URL} from '../utils/consts'
 
-const PI_API_URL = 'http://10.0.0.89:3000'; // Replace with your Pi's IP and port
 
 export default function Home() {
   const router = useRouter(); // page changing
   const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
+  const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
   const [piDevices, setPiDevices] = useState<{ [mac: string]: string }>({});
   const [scanning, setScanning] = useState(false);
   const [pairingInProgress, setPairingInProgress] = useState(false);
 
-  // Fetch configurations from the database when the component mounts.
+
+  // Get status bar height for proper positioning
+  const statusBarHeight = StatusBar.currentHeight || 0;
+  // Make the top bar larger to accommodate the status bar
+  const topBarHeight = 120 + statusBarHeight;
+
+  // Fetch configurations and their speaker statuses
   useEffect(() => {
-    const configs = getConfigurations();
-    setConfigurations(configs);
+    const fetchData = async () => {
+      try {
+        const configs = await getConfigurations();
+        setConfigurations(configs);
+        
+        // Fetch speaker statuses for each configuration
+        const statuses: { [key: number]: boolean[] } = {};
+        for (const config of configs) {
+          const speakers = getSpeakersFull(config.id);
+          statuses[config.id] = speakers.map(speaker => speaker.is_connected === 1);
+        }
+        setSpeakerStatuses(statuses);
+      } catch (error) {
+        console.error('Error fetching configurations:', error);
+      }
+    };
+    
+    fetchData();
   }, []);
 
   // Function to call the /scan endpoint on your Pi.
@@ -202,22 +225,18 @@ export default function Home() {
 
                 {/* Speaker dots */}
                 <XStack marginTop={4}>
-                  {Array.from({ length: config.speakerCount }).map((_, i) => (
-                    <View
-                      key={i}
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: '#00FF6A', // green
-                        marginRight: 6,
-                      }}
-                    />
-                  ))}
-                </XStack>
+                    {Array.from({ length: config.speakerCount }).map((_, i) => (
+                      <View
+                        key={i}
+                        style={[styles.statusDot, {
+                          backgroundColor: speakerStatuses[config.id]?.[i] ? '#00FF6A' : '#FF0055'
+                        }]}
+                      />
+                    ))}
+                  </XStack>
 
                 {/* Connection status */}
-                <H1 style={{ fontSize: 14, color: config.isConnected ? "#3E0094" : "#FF0055", marginTop: 6 }}>
+                <H1 style={{ fontSize: 14, color: config.isConnected ? "#00FF6A" : "#FF0055", marginTop: 6 }}>
                   {config.isConnected ? "Connected" : "Not Connected"}
                 </H1>
               </YStack>
@@ -255,3 +274,12 @@ export default function Home() {
     </YStack>
   );
 }
+
+const styles = StyleSheet.create({
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 6,
+  }
+});

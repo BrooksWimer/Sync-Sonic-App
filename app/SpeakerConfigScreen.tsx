@@ -18,7 +18,7 @@ import {
 import { useTheme, useThemeName, YStack } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 
-const PI_API_URL = 'http://10.0.0.89:3000';
+const PI_API_URL = 'http://10.193.147.160:3000';
 
 
   
@@ -256,7 +256,7 @@ export default function SpeakerConfigScreen() {
               <Text style={{ fontSize: 20, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:-15}}>{connectedSpeakers[mac]}</Text>
               <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Volume: {settings[mac]?.volume || 50}%</Text>
               <Slider
-              style={{ width: '100%', height: 40, marginBottom: -5}}
+                style={styles.slider}
                 minimumValue={0}
                 maximumValue={100}
                 step={1}
@@ -264,12 +264,10 @@ export default function SpeakerConfigScreen() {
                 onValueChange={(value: number) => handleVolumeChange(mac, value)}
                 minimumTrackTintColor="#FF0055"
                 maximumTrackTintColor="#000000"
-                thumbTintColor="white"
               />
               <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Latency: {settings[mac]?.latency || 100} ms</Text>
               <Slider
-              style={{ width: '100%', height: 40, marginBottom: -5}}
-                //style={styles.slider}
+                style={styles.slider}
                 minimumValue={0}
                 maximumValue={500}
                 step={10}
@@ -277,7 +275,6 @@ export default function SpeakerConfigScreen() {
                 onSlidingComplete={(value: number) => handleLatencyChange(mac, value)}
                 minimumTrackTintColor="#FF0055"
                 maximumTrackTintColor="#000000"
-                thumbTintColor="white"
               />
             </SafeAreaView>
           ))
@@ -320,7 +317,7 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
   disconnectButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
   deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
-  buttonText: { color: '#fff', fontSize: 16, alignSelf: "center" },
+  buttonText: { color: '#fff', fontSize: 16 },
   homeButton: {
     position: 'absolute',
     bottom: 20,
