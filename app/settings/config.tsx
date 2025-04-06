@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '@/components/TopBar';
+import { PI_API_URL } from '@/utils/consts';
 
 
 export default function Config() {
@@ -67,7 +68,7 @@ export default function Config() {
             settings: {} // Assuming no settings needed for disconnecting a single speaker.
         };
         try {
-            const response = await fetch("http://10.0.0.89:3000/disconnect", {
+            const response = await fetch(PI_API_URL+"/disconnect", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -177,7 +178,7 @@ export default function Config() {
                           lineHeight={44}
                           fontWeight="400">
                           Configuration Name
-                          </H1>
+                </H1>
                 <Input
                     id="configName"
                     value={configName}

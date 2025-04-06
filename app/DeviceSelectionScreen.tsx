@@ -21,9 +21,8 @@ import {
 import { Button, H1, useTheme, useThemeName, YStack } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { AlignCenter } from '@tamagui/lucide-icons';
+import {PI_API_URL} from '../utils/consts'
 
-// const PI_API_URL = 'http://10.193.147.160:3000'; // Your Pi's API URL
-const PI_API_URL = "http://10.0.0.89:3000"
 
 let scanInterval: NodeJS.Timeout | null = null;
 
@@ -259,14 +258,7 @@ export default function DeviceSelectionScreen() {
             updateSpeakerConnectionStatus(newConfigID, mac, true);
           });
           updateConnectionStatus(newConfigID, 1);
-          router.push({
-            pathname: '/SpeakerConfigScreen',
-            params: { 
-              speakers: JSON.stringify(payload.devices), 
-              configName: configName,
-              configID: newConfigID.toString()
-            }
-          });
+          router.back();
         });
       }
     } catch (error) {
