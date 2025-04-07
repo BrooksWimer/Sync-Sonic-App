@@ -398,7 +398,7 @@ export default function SpeakerConfigScreen() {
                     maximumValue={100}
                     step={1}
                     value={settings[mac]?.volume || 50}
-                    onValueChange={(value: number) => handleVolumeChange(mac, value)}
+                    onSlidingComplete={(value: number) => handleVolumeChange(mac, value)}
                     minimumTrackTintColor="#FF0055"
                     maximumTrackTintColor="#000000"
                   />
