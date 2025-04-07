@@ -32,6 +32,11 @@ interface Device {
   name: string;
 }
 
+const testerDev: Device = {
+  mac: "test-mac",
+  name: "tester speaker"
+};
+
 export default function DeviceSelectionScreen() {
   const params = useSearchParams();
   const configName = params.get('configName') || 'Unnamed Configuration';
@@ -93,6 +98,12 @@ export default function DeviceSelectionScreen() {
         mac,
         name: name as string, // Assert name as string
       }));
+      deviceArray.concat([testerDev]);
+      const newArray = deviceArray.concat([testerDev]);
+      console.log("fire")
+      const now = new Date();
+      console.log(now.toTimeString() + ", found devices: " + deviceArray);
+      
       setDevices(deviceArray);
     } catch (err) {
       console.error("Error fetching device queue:", err);
@@ -216,7 +227,7 @@ export default function DeviceSelectionScreen() {
       const configIDParsed = Number(configIDParam);
       if (!isNaN(configIDParsed) && configIDParsed > 0) {
         // Edit mode: update DB and navigate back to the edit configuration page.
-        updateConnectionStatus(configIDParsed, 1);
+        //updateConnectionStatus(configIDParsed, 1);
       
         // Retrieve current speakers from the database for this configuration.
         const currentSpeakers = getSpeakers(configIDParsed);
@@ -228,21 +239,23 @@ export default function DeviceSelectionScreen() {
           if (!existingMacs.includes(mac)) {
             addSpeaker(configIDParsed, name, mac);
             // Set initial connection status for new speakers
-            updateSpeakerConnectionStatus(configIDParsed, mac, true);
+            //updateSpeakerConnectionStatus(configIDParsed, mac, true);
           } else {
             // Update connection status for existing speakers
-            updateSpeakerConnectionStatus(configIDParsed, mac, true);
+            //updateSpeakerConnectionStatus(configIDParsed, mac, true);
           }
         });
 
         // Update connection status to false for speakers that were removed
         currentSpeakers.forEach(speaker => {
           if (!Object.keys(payload.devices).includes(speaker.mac)) {
-            updateSpeakerConnectionStatus(configIDParsed, speaker.mac, false);
+            //updateSpeakerConnectionStatus(configIDParsed, speaker.mac, false);
           }
         });
+        setDevices([]);
 
         router.push({
+          
           pathname: '/settings/config',
           params: { 
             configID: configIDParsed.toString(), 
@@ -255,10 +268,16 @@ export default function DeviceSelectionScreen() {
           Object.entries(payload.devices).forEach(([mac, name]) => {
             addSpeaker(newConfigID, name, mac);
             // Set initial connection status for all speakers
-            updateSpeakerConnectionStatus(newConfigID, mac, true);
+            //updateSpeakerConnectionStatus(newConfigID, mac, true);
           });
-          updateConnectionStatus(newConfigID, 1);
-          router.back();
+          //updateConnectionStatus(newConfigID, 1);
+          router.push({
+            pathname: '/settings/config',
+          params: { 
+            configID: newConfigID, 
+            configName: configName
+            }
+          });
         });
       }
     } catch (error) {
@@ -314,7 +333,7 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc }}>Select Speaker</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc }}>Saved Speakers</H1>
             </View>
       <FlatList
         data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}

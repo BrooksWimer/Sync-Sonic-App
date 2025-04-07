@@ -1,8 +1,8 @@
 import { SquareX, ArrowLeftSquare, Wifi } from '@tamagui/lucide-icons'
-import { addSpeaker, getSpeakers, deleteSpeaker, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, deleteConfiguration } from '../database';
+import { addSpeaker, getSpeakers, deleteSpeaker, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, deleteConfiguration, updateSpeakerConnectionStatus } from '../database';
 import { Button, H1, YStack, View, Input, Label, ScrollView, XStack, useThemeName, useTheme } from "tamagui";
-import { router } from "expo-router";
-import { useState, useEffect } from 'react';
+import { router, useFocusEffect } from "expo-router";
+import { useState, useEffect, useCallback } from 'react';
 import { Alert, Image, Linking, PermissionsAndroid, Platform } from "react-native";
 import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from "expo-router";
@@ -21,10 +21,13 @@ export default function Config() {
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
     const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
 
-    useEffect(() => {
-        console.log("DB pull")
-        setDevices(getSpeakers(configID));
-    }, [configID]);
+    useFocusEffect(
+        useCallback(() => {
+          console.log("DB pull");
+          setDevices(getSpeakers(configID));
+        }, [configID])
+      );
+
 
     const openSettings = () => {
         console.log("opening app system settings")
@@ -97,8 +100,11 @@ export default function Config() {
             // Create new configuration
             addConfiguration(configName, (newConfigID) => {
                 devices.forEach(device => addSpeaker(newConfigID, device.name, device.mac));
+                devices.forEach(device => updateSpeakerConnectionStatus(newConfigID, device.mac, true))
                 console.log("New config: " + configName + ":" + newConfigID);
+                
             });
+            
         }
         logDatabaseContents();
         router.replace('/home'); // navigate back to home
@@ -131,7 +137,7 @@ export default function Config() {
     // When editing, it becomes "Add Bluetooth Devices".
     const onSelectDevicesPress = () => {
         // Pass along current devices (existing configuration speakers)
-        router.push({
+        router.replace({
             pathname: '/DeviceSelectionScreen',
             params: { 
                 configID: configID.toString(), 
@@ -141,7 +147,14 @@ export default function Config() {
         });
     };
 
-    const isSaveDisabled = !configName.trim() || devices.length === 0;
+    const [isSaveDisabled, setIsSaveDisabled] = useState(true);
+
+    useFocusEffect(
+    useCallback(() => {
+        const disabled = !configName.trim() || devices.length === 0;
+        setIsSaveDisabled(disabled);
+    }, [configName, devices])
+    );
 
     const themeName = useThemeName();
     const theme = useTheme();

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button, H1, YStack, View, XStack, ScrollView, Text, useThemeName, useTheme } from "tamagui";
 import { ActivityIndicator, Pressable, StatusBar } from 'react-native';
 import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert, StyleSheet } from "react-native";
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteConfiguration, getConfigurations, getSpeakersFull } from './database';
 import { TopBar } from '@/components/TopBar';
@@ -26,12 +26,14 @@ export default function Home() {
   const topBarHeight = 120 + statusBarHeight;
 
   // Fetch configurations and their speaker statuses
-  useEffect(() => {
+ 
+useFocusEffect(
+  useCallback(() => {
     const fetchData = async () => {
       try {
         const configs = await getConfigurations();
         setConfigurations(configs);
-        
+
         // Fetch speaker statuses for each configuration
         const statuses: { [key: number]: boolean[] } = {};
         for (const config of configs) {
@@ -43,9 +45,10 @@ export default function Home() {
         console.error('Error fetching configurations:', error);
       }
     };
-    
+
     fetchData();
-  }, []);
+  }, [])
+);
 
   // Function to call the /scan endpoint on your Pi.
   const scanForDevices = async () => {
@@ -116,7 +119,7 @@ export default function Home() {
 
   // Function to navigate to create a new configuration.
   const addConfig = () => {
-    router.replace('/settings/config');
+    router.push('/settings/config');
     console.log("creating new configuration . . .");
   };
 
