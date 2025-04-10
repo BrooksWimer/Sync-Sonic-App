@@ -1,7 +1,7 @@
 // components/TopBar.tsx
 import { useTheme, useThemeName, XStack, YStack } from 'tamagui'
 import { ArrowLeft } from '@tamagui/lucide-icons'
-import { Image } from 'react-native'
+import { Image, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 
 export const TopBar = () => {
@@ -22,24 +22,24 @@ export const TopBar = () => {
 
   return (
     <XStack
-      height={65}
+      height={95}
       style={{
-        backgroundColor: pc
+        backgroundColor: pc,
+        paddingTop: 45
       }}
       alignItems="center" ////////
       justifyContent="space-between"
       paddingHorizontal="$4"
     >
-      <YStack marginTop={15}>
-  <ArrowLeft
-    size={24}
-    color="white"
-    onPress={() => router.back()}
-  />
-</YStack>
+      <TouchableOpacity onPress={() => router.back()}>
+        <ArrowLeft
+          size={24}
+          color="white"
+        />
+      </TouchableOpacity>
       <Image
         source={logo}
-        style={{ height: 24, resizeMode: 'contain', marginTop: 15}}
+        style={{ height: 24, resizeMode: 'contain'}}
       />
       <YStack width={24} />
     </XStack>

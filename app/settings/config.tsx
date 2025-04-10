@@ -8,7 +8,8 @@ import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '@/components/TopBar';
-import { PI_API_URL } from '@/utils/consts';
+import { PI_API_URL } from '../../utils/constants';
+import { removeDevice, saveChanges } from '@/utils/ConfigurationFunctions';
 
 
 export default function Config() {
@@ -27,12 +28,6 @@ export default function Config() {
           setDevices(getSpeakers(configID));
         }, [configID])
       );
-
-
-    const openSettings = () => {
-        console.log("opening app system settings")
-        Linking.openSettings(); // Opens system settings 
-    };
 
     useEffect(() => {
         console.log("updating speaker for config: " + configID)
@@ -53,84 +48,6 @@ export default function Config() {
             { id: 2, name: "Sonos ghi", mac: "5D-8D-1C-30-BD-8C" }
         ];
         setDevices(dummyDevices);
-    };
-
-    // In edit mode, immediately remove a speaker:
-    // Update the DB, and call the backend disconnect endpoint for that speaker.
-    const removeDevice = async (device: { id: number, name: string, mac: string }) => {
-        console.log("Removing device " + device.id);
-        // If editing an existing configuration, update the DB immediately.
-        if (configID) {
-            deleteSpeakerById(device.id);
-        }
-        // Build payload to disconnect only this speaker.
-        const payload = {
-            configID: configID,
-            configName: configName,
-            speakers: { [device.mac]: device.name },
-            settings: {} // Assuming no settings needed for disconnecting a single speaker.
-        };
-        try {
-            const response = await fetch(PI_API_URL+"/disconnect", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            const result = await response.json();
-            console.log("Disconnect result:", result);
-        } catch (error) {
-            console.error("Error disconnecting device:", error);
-            Alert.alert("Error", "There was an error disconnecting the device.");
-        }
-        // Update the local state to remove the device.
-        setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
-    };
-
-    // updating the DB when creating a new configuration.
-    const saveChanges = () => {
-        if (!configName.trim() || devices.length === 0) return; // don't save without name or devices
-        if (configID) {
-            // In edit mode, configuration updates happen immediately on deletion.
-            console.log("Updating configuration name: " + configName);
-            updateConfiguration(configID, configName);
-        } else {
-            // Create new configuration
-            addConfiguration(configName, (newConfigID) => {
-                devices.forEach(device => addSpeaker(newConfigID, device.name, device.mac));
-                devices.forEach(device => updateSpeakerConnectionStatus(newConfigID, device.mac, true))
-                console.log("New config: " + configName + ":" + newConfigID);
-                
-            });
-            
-        }
-        logDatabaseContents();
-        router.replace('/home'); // navigate back to home
-    };
-
-
-    const confirmDelete = () => { // delete entire configuration
-        Alert.alert(
-            "Delete Configuration?",
-            "Are you sure you want to delete this configuration? This action cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "Delete", style: "destructive", onPress: deleteConfig },
-            ]
-        );
-    };
-
-    const deleteConfig = () => {
-        deleteConfiguration(configID);
-        console.log("deleting config " + configID)
-        logDatabaseContents();
-        router.replace('/home'); // go back to the home screen
-    };
-
-    const goBack = () => {
-        router.replace('/home');
     };
 
     // The "Find Bluetooth Devices" button is now conditionally labeled.
@@ -245,7 +162,7 @@ export default function Config() {
                     <Button
                         size="$2"
                         backgroundColor="transparent"
-                        onPress={() => removeDevice(device)}
+                        onPress={() => removeDevice(device, configID, configName, devices, setDevices)}
                         padding={0}
                         icon={<SquareX size={25} color="white" />}
                     />
@@ -264,7 +181,7 @@ export default function Config() {
 
         {/* Bottom Button */}
         <Button
-        onPress={saveChanges}
+        onPress={() => saveChanges(configID, configName, devices, router)}
         disabled={isSaveDisabled}
         style={{
             backgroundColor: pc,
