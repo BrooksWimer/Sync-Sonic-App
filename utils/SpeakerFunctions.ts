@@ -65,16 +65,22 @@ export const handleLatencyChange = async (
   settings: SpeakerSettings,
   setSettings: (settings: SpeakerSettings) => void,
   configIDParam: string | null,
-  updateSpeakerSettings: (configID: number, mac: string, volume: number, latency: number) => void
+  updateSpeakerSettings: (configID: number, mac: string, volume: number, latency: number) => void,
+  isSlidingComplete: boolean = false
 ): Promise<void> => {
+  // Always update local state for smooth UI
   const newSettings: SpeakerSettings = {
     ...settings,
     [mac]: { ...settings[mac], latency: newLatency }
   };
   setSettings(newSettings);
-  await adjustLatency(mac, newLatency);
-  if (configIDParam) {
-    updateSpeakerSettings(Number(configIDParam), mac, settings[mac]?.volume || 50, newLatency);
+
+  // Only update backend and database when sliding is complete
+  if (isSlidingComplete) {
+    await adjustLatency(mac, newLatency);
+    if (configIDParam) {
+      updateSpeakerSettings(Number(configIDParam), mac, settings[mac]?.volume || 50, newLatency);
+    }
   }
 };
 

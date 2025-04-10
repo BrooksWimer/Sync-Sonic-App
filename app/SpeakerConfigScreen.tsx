@@ -136,14 +136,15 @@ export default function SpeakerConfigScreen() {
     );
   };
 
-  const handleLatencyChangeWrapper = async (mac: string, newLatency: number) => {
+  const handleLatencyChangeWrapper = async (mac: string, newLatency: number, isSlidingComplete: boolean) => {
     await handleLatencyChange(
       mac,
       newLatency,
       settings,
       setSettings,
       configIDParam,
-      updateSpeakerSettings
+      updateSpeakerSettings,
+      isSlidingComplete
     );
   };
 
@@ -223,7 +224,8 @@ export default function SpeakerConfigScreen() {
                     maximumValue={500}
                     step={10}
                     value={settings[mac]?.latency || 100}
-                    onSlidingComplete={(value: number) => handleLatencyChangeWrapper(mac, value)}
+                    onValueChange={(value: number) => handleLatencyChangeWrapper(mac, value, false)}
+                    onSlidingComplete={(value: number) => handleLatencyChangeWrapper(mac, value, true)}
                     minimumTrackTintColor="#FF0055"
                     maximumTrackTintColor="#000000"
                   />
