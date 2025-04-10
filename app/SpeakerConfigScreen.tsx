@@ -124,14 +124,15 @@ export default function SpeakerConfigScreen() {
   
 
 
-  const handleVolumeChangeWrapper = async (mac: string, newVolume: number) => {
+  const handleVolumeChangeWrapper = async (mac: string, newVolume: number, isSlidingComplete: boolean) => {
     await handleVolumeChange(
       mac,
       newVolume,
       settings,
       setSettings,
       configIDParam,
-      updateSpeakerSettings
+      updateSpeakerSettings,
+      isSlidingComplete
     );
   };
 
@@ -210,7 +211,8 @@ export default function SpeakerConfigScreen() {
                     maximumValue={100}
                     step={1}
                     value={settings[mac]?.volume || 50}
-                    onValueChange={(value: number) => handleVolumeChangeWrapper(mac, value)}
+                    onValueChange={(value: number) => handleVolumeChangeWrapper(mac, value, false)}
+                    onSlidingComplete={(value: number) => handleVolumeChangeWrapper(mac, value, true)}
                     minimumTrackTintColor="#FF0055"
                     maximumTrackTintColor="#000000"
                   />
@@ -253,7 +255,7 @@ export default function SpeakerConfigScreen() {
                 )}
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.homeButton, isDeleting && styles.disabledButton]} 
+                style={[styles.deleteButton, isDeleting && styles.disabledButton]} 
                 onPress={() => handleDelete(configIDParam, router)}
                 disabled={isDeleting}
               >
@@ -266,7 +268,7 @@ export default function SpeakerConfigScreen() {
             </SafeAreaView>
           </ScrollView>
           <Link 
-            href="/"
+            href="/home"
             style={styles.homeButton}
             asChild
           >
@@ -328,7 +330,9 @@ export default function SpeakerConfigScreen() {
         flexDirection: 'row', 
         justifyContent: 'space-between', 
         marginTop: 30,
-        gap: 8
+        gap: 8,
+        paddingHorizontal: 20,
+        width: '100%'
       },
       saveButton: { 
         backgroundColor: '#3E0094', 
@@ -339,6 +343,8 @@ export default function SpeakerConfigScreen() {
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center'
       },
       disconnectButton: { 
         backgroundColor: '#3E0094', 
@@ -349,6 +355,8 @@ export default function SpeakerConfigScreen() {
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center'
       },
       deleteButton: { 
         backgroundColor: '#FF0055', 
@@ -359,6 +367,8 @@ export default function SpeakerConfigScreen() {
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center'
       },
       buttonText: { 
         color: '#F2E8FF', 

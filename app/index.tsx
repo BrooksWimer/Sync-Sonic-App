@@ -6,7 +6,7 @@ import { TopBar } from "../components/TopBar";
 import { TopBarStart } from "../components/TopBarStart";
 import colors from '../assets/colors/colors';
 //import {} from '../utils/functions';
-import {PI_API_URL} from '../utils/consts';
+import {PI_API_URL} from '../utils/constants';
 
 
 export default function Index() {
@@ -38,7 +38,7 @@ export default function Index() {
       justifyContent="space-between"
       //padding="$4"
     >
-      <TopBarStart />
+      <TopBar/>
 
       {/* Middle Content */}
       <YStack alignItems="center" paddingTop="$4">

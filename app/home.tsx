@@ -76,8 +76,7 @@ export default function Home() {
                 borderRadius={15}
                 padding={15}
                 marginBottom={10}
-                borderWidth={1}
-                borderColor={stc}
+                backgroundColor={stc}
                 justifyContent="space-between"
                 shadowColor="#93C7FF"
                 shadowOffset={{ width: 0, height: 0 }}
@@ -96,11 +95,10 @@ export default function Home() {
                   pathname: "/SpeakerConfigScreen",
                   params: { configID: config.id.toString(), configName: config.name }
                 })}
-                onLongPress={() => handleDeleteConfig(config.id, setConfigurations)}
               >
                 <YStack>
                   <H1 fontSize={18} color={tc}>{config.name}</H1>
-                  <Text style={{ color: stc }}>{config.speakerCount} speakers</Text>
+                  <Text style={{ color: tc }}>{config.speakerCount} speakers</Text>
                 </YStack>
                 <XStack gap={5}>
                   {speakerStatuses[config.id]?.map((isConnected, index) => (
