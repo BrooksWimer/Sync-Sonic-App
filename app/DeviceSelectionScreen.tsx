@@ -31,8 +31,6 @@ import {
   pairSelectedDevices
 } from '../utils/PairingFunctions';
 
-let scanInterval: NodeJS.Timeout | null = null;
-
 const testerDev: Device = {
   mac: "test-mac",
   name: "tester speaker"
@@ -42,6 +40,7 @@ export default function DeviceSelectionScreen() {
   const params = useSearchParams();
   const configName = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // might be undefined if new
+  const [scanInterval, setScanInterval] = useState<NodeJS.Timeout | null>(null);
 
   // Get existing devices (object mapping mac -> name) if provided
   const existingDevicesParam = params.get('existingDevices') || "{}";
@@ -74,10 +73,11 @@ export default function DeviceSelectionScreen() {
         console.log("Started scanning");
 
         // Start polling device queue
-        scanInterval = setInterval(async () => {
+        const interval = setInterval(async () => {
           const deviceArray = await fetchDeviceQueue();
           setDevices(deviceArray);
         }, 1000);
+        setScanInterval(interval);
       } catch (err) {
         console.error("Failed to initialize scanning:", err);
       }
@@ -86,7 +86,16 @@ export default function DeviceSelectionScreen() {
     initializeScanning();
   
     return () => {
-      if (scanInterval) clearInterval(scanInterval);
+      // Clean up the interval
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        setScanInterval(null);
+      }
+      
+      // Stop the scanning process
+      fetch(`${PI_API_URL}/stop-scan`).catch(err => {
+        console.error("Failed to stop scanning:", err);
+      });
     };
   }, []);
 
@@ -185,19 +194,31 @@ export default function DeviceSelectionScreen() {
         style={styles.list}
       />
       <Button
-        onPress={() => pairSelectedDevices(
-          selectedDevices,
-          selectedPairedDevices,
-          setPairing,
-          configIDParam,
-          configName,
-          updateConnectionStatus,
-          getSpeakers,
-          addSpeaker,
-          updateSpeakerConnectionStatus,
-          addConfiguration,
-          router
-        )}
+        onPress={async () => {
+          // Stop scanning immediately when pair button is clicked
+          if (scanInterval) {
+            clearInterval(scanInterval);
+            setScanInterval(null);
+          }
+          await fetch(`${PI_API_URL}/stop-scan`).catch(err => {
+            console.error("Failed to stop scanning:", err);
+          });
+          
+          // Then proceed with pairing
+          pairSelectedDevices(
+            selectedDevices,
+            selectedPairedDevices,
+            setPairing,
+            configIDParam,
+            configName,
+            updateConnectionStatus,
+            getSpeakers,
+            addSpeaker,
+            updateSpeakerConnectionStatus,
+            addConfiguration,
+            router
+          );
+        }}
         style={{
           backgroundColor: pc,
           width: '90%',

@@ -1,16 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { YStack, Text, Button, H1, Image, useThemeName, useTheme } from "tamagui"
 import * as Linking from "expo-linking"
 import { router } from "expo-router"
 import { PI_API_URL } from "../utils/constants"
 import { TopBar } from "../components/TopBar"
-import { setupDatabase } from "./database"
-import { TopBarStart } from "../components/TopBarStart"
-import colors from '../assets/colors/colors'
 
 export default function ConnectPhone() {
   const [connecting, setConnecting] = useState(false)
-  const [resetting, setResetting] = useState(false)
   const themeName = useThemeName();
   const theme = useTheme();
 
@@ -21,10 +17,6 @@ export default function ConnectPhone() {
   const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-
-  useEffect(() => {
-    setupDatabase();
-  }, []);
 
   const handleConnect = async () => {
     setConnecting(true)
@@ -45,16 +37,6 @@ export default function ConnectPhone() {
   const goHome = () => {
     router.push("/home")
   }
-
-  const handleResetAdapters = async () => {
-    setResetting(true);
-    try {
-      await fetch(`${PI_API_URL}/reset-adapters`, { method: "POST" });
-    } catch (err) {
-      console.error("⚠️ Failed to reset adapters:", err);
-    }
-    setResetting(false);
-  };
 
   return (
     <YStack
@@ -95,24 +77,6 @@ export default function ConnectPhone() {
 
       {/* Bottom Buttons */}
       <YStack space="$4" paddingBottom="$4">
-
-        <Button
-          onPress={handleResetAdapters}
-          disabled={resetting}
-          style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 999,
-            alignSelf: 'center',
-          }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <H1 color="white" fontSize={18}>
-            {resetting ? "Resetting..." : "Reset Adapters"}
-          </H1>
-        </Button>
-
         <Button
           onPress={handleConnect}
           disabled={connecting}

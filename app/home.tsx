@@ -69,32 +69,28 @@ export default function Home() {
             <Pressable
               key={config.id}
               onLongPress={() => handleDeleteConfig(config.id, setConfigurations)}
+              onPress={() => router.push({
+                pathname: "/SpeakerConfigScreen",
+                params: { configID: config.id.toString(), configName: config.name }
+              })}
               delayLongPress={600}
+              style={({ pressed }) => [
+                {
+                  opacity: pressed ? 0.7 : 1,
+                  marginBottom: 10,
+                }
+              ]}
             >
               <XStack
                 alignItems="center"
                 borderRadius={15}
                 padding={15}
-                marginBottom={10}
                 backgroundColor={stc}
                 justifyContent="space-between"
                 shadowColor="#93C7FF"
                 shadowOffset={{ width: 0, height: 0 }}
                 shadowOpacity={0.8}
                 shadowRadius={8}
-                hoverStyle={{
-                  shadowRadius: 15,
-                  shadowOpacity: 1,
-                  transform: [{ scale: 1.02 }]
-                }}
-                pressStyle={{
-                  shadowRadius: 20,
-                  transform: [{ scale: 1.04 }]
-                }}
-                onPress={() => router.push({
-                  pathname: "/SpeakerConfigScreen",
-                  params: { configID: config.id.toString(), configName: config.name }
-                })}
               >
                 <YStack>
                   <H1 fontSize={18} color={tc}>{config.name}</H1>

@@ -223,7 +223,7 @@ export default function SpeakerConfigScreen() {
                     minimumValue={0}
                     maximumValue={500}
                     step={10}
-                    value={settings[mac]?.latency || 100}
+                    value={settings[mac]?.latency ?? 100}
                     onValueChange={(value: number) => handleLatencyChangeWrapper(mac, value, false)}
                     onSlidingComplete={(value: number) => handleLatencyChangeWrapper(mac, value, true)}
                     minimumTrackTintColor="#FF0055"
