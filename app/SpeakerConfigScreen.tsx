@@ -64,62 +64,70 @@ export default function SpeakerConfigScreen() {
 
   // Load speakers either from the database (if configID exists) or from URL.
   useEffect(() => {
-    if (configIDParam) {
-      const configIdNum = Number(configIDParam);
-  
-      // Use the new getSpeakersFull to load *all* speaker data, including is_connected.
-      const fullRows = getSpeakersFull(configIdNum);
-  
-      // Build `connectedSpeakers` and `settings` from these rows.
-      const mapping: { [mac: string]: string } = {};
-      const loadedSettings: {
-        [mac: string]: { volume: number; latency: number; isConnected: boolean };
-      } = {};
-  
-      fullRows.forEach(row => {
-        mapping[row.mac] = row.name;
-        loadedSettings[row.mac] = {
-          volume: row.volume,
-          latency: row.latency,
-          isConnected: row.is_connected === 1 // Convert DB 0/1 to boolean
-        };
-      });
-  
-      setConnectedSpeakers(mapping);
-  
-      // For the overall config status:
-      try {
-        const status = getConfigurationStatus(configIdNum);
-        setIsConnected(status === 1);
-      } catch (err) {
-        console.error("Error fetching connection status:", err);
-      }
-  
-      // Now we have all speaker info, including isConnected, from the DB.
-      setSettings(loadedSettings);
-    } else {
-      // If configIDParam does not exist, we handle a new config or URL with speakers.
-      try {
-        const spk = speakersStr ? JSON.parse(speakersStr) : {};
-        setConnectedSpeakers(spk);
-  
-        const defaultSettings: {
-          [mac: string]: { volume: number; latency: number; isConnected: boolean }
+    const loadData = async () => {
+      if (configIDParam) {
+        const configIdNum = Number(configIDParam);
+        if (isNaN(configIdNum)) {
+          console.error("Invalid config ID:", configIDParam);
+          return;
+        }
+
+        // Use the new getSpeakersFull to load *all* speaker data, including is_connected.
+        const fullRows = await getSpeakersFull(configIdNum);
+
+        // Build `connectedSpeakers` and `settings` from these rows.
+        const mapping: { [mac: string]: string } = {};
+        const loadedSettings: {
+          [mac: string]: { volume: number; latency: number; isConnected: boolean };
         } = {};
-  
-        Object.keys(spk).forEach(mac => {
-          defaultSettings[mac] = {
-            volume: 50,
-            latency: 100,
-            isConnected: false
-          };
-        });
-        setSettings(defaultSettings);
-      } catch (e) {
-        console.error("Error parsing speakers param:", e);
-        setConnectedSpeakers({});
+
+        if (fullRows) {
+          fullRows.forEach(row => {
+            mapping[row.mac] = row.name;
+            loadedSettings[row.mac] = {
+              volume: row.volume,
+              latency: row.latency,
+              isConnected: row.is_connected
+            };
+          });
+        }
+
+        setConnectedSpeakers(mapping);
+        setSettings(loadedSettings);
+
+        // For the overall config status:
+        try {
+          const status = await getConfigurationStatus(configIdNum);
+          setIsConnected(status === 1);
+        } catch (err) {
+          console.error("Error fetching connection status:", err);
+        }
+      } else {
+        // If configIDParam does not exist, we handle a new config or URL with speakers.
+        try {
+          const spk = speakersStr ? JSON.parse(speakersStr) : {};
+          setConnectedSpeakers(spk);
+
+          const defaultSettings: {
+            [mac: string]: { volume: number; latency: number; isConnected: boolean }
+          } = {};
+
+          Object.keys(spk).forEach(mac => {
+            defaultSettings[mac] = {
+              volume: 50,
+              latency: 100,
+              isConnected: false
+            };
+          });
+          setSettings(defaultSettings);
+        } catch (e) {
+          console.error("Error parsing speakers param:", e);
+          setConnectedSpeakers({});
+        }
       }
-    }
+    };
+
+    loadData();
   }, [configIDParam, speakersStr]);
   
 

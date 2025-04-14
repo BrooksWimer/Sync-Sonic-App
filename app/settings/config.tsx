@@ -25,18 +25,29 @@ export default function Config() {
     useFocusEffect(
         useCallback(() => {
           console.log("DB pull");
-          setDevices(getSpeakers(configID));
+          const fetchDevices = async () => {
+            const speakers = await getSpeakers(configID);
+            setDevices(speakers);
+          };
+          fetchDevices();
         }, [configID])
       );
 
     useEffect(() => {
         console.log("updating speaker for config: " + configID)
-        setDevices(getSpeakers(configID));
+        const fetchDevices = async () => {
+            const speakers = await getSpeakers(configID);
+            setDevices(speakers);
+        };
+        fetchDevices();
     }, [configID]);
 
     useEffect(() => {
         console.log("fetching speakers")
-        getSpeakers(configID);
+        const fetchDevices = async () => {
+            await getSpeakers(configID);
+        };
+        fetchDevices();
     }, [configID]);
 
     // Function to insert dummy data

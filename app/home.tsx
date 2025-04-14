@@ -5,18 +5,17 @@ import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert, StyleSheet } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { deleteConfiguration, getConfigurations, getSpeakersFull } from './database';
+import { deleteConfiguration, getConfigurations, getSpeakersFull, Configuration } from './database';
 import { TopBar } from '@/components/TopBar';
 import { AddButton } from '@/components/AddButton'
 import { PI_API_URL } from '../utils/constants'
 import { handleDeleteConfig } from '@/utils/ConfigurationFunctions'
 
 export default function Home() {
-  const router = useRouter(); // page changing
-  const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
+  const router = useRouter();
+  const [configurations, setConfigurations] = useState<Configuration[]>([]);
   const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
 
-  // Fetch configurations and their speaker statuses
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
@@ -27,8 +26,8 @@ export default function Home() {
           // Fetch speaker statuses for each configuration
           const statuses: { [key: number]: boolean[] } = {};
           for (const config of configs) {
-            const speakers = getSpeakersFull(config.id);
-            statuses[config.id] = speakers.map(speaker => speaker.is_connected === 1);
+            const speakers = await getSpeakersFull(config.id);
+            statuses[config.id] = speakers.map(speaker => speaker.is_connected);
           }
           setSpeakerStatuses(statuses);
         } catch (error) {
@@ -39,12 +38,6 @@ export default function Home() {
       fetchData();
     }, [])
   );
-
-  // Function to navigate to create a new configuration.
-  const addConfig = () => {
-    router.push('/settings/config');
-    console.log("creating new configuration . . .");
-  };
 
   const themeName = useThemeName();
   const theme = useTheme();
@@ -87,44 +80,41 @@ export default function Home() {
           </H1>
         ) : (
           configurations.map((config) => (
-            // Touching the configuration takes you to the SpeakerConfigScreen
             <Pressable
-            key={config.id}
-            //onLongPress={() => handleDeleteConfig(config.id)}
-            delayLongPress={600}
-          >
-            <XStack
-              alignItems="center"
-              borderRadius={15}
-              padding={15}
-              marginBottom={10}
-              borderWidth={1}
-              borderColor={stc}
-              justifyContent="space-between"
-              shadowColor="#93C7FF"
-              shadowOffset={{ width: 0, height: 0 }}
-              shadowOpacity={0.8}
-              shadowRadius={8}
-              hoverStyle={{
-                shadowRadius: 15,
-                shadowOpacity: 1,
-                transform: [{ scale: 1.02 }]
-              }}
-              pressStyle={{
-                shadowRadius: 20,
-                transform: [{ scale: 1.04 }]
-              }}
-              onPress={() => router.push({
-                pathname: "/SpeakerConfigScreen",
-                params: { configID: config.id.toString(), configName: config.name }
-              })}
-              //onLongPress={() => handleDeleteConfig(config.id)}
+              key={config.id}
+              delayLongPress={600}
+            >
+              <XStack
+                alignItems="center"
+                borderRadius={15}
+                padding={15}
+                marginBottom={10}
+                borderWidth={1}
+                borderColor={stc}
+                justifyContent="space-between"
+                shadowColor="#93C7FF"
+                shadowOffset={{ width: 0, height: 0 }}
+                shadowOpacity={0.8}
+                shadowRadius={8}
+                hoverStyle={{
+                  shadowRadius: 15,
+                  shadowOpacity: 1,
+                  transform: [{ scale: 1.02 }]
+                }}
+                pressStyle={{
+                  shadowRadius: 20,
+                  transform: [{ scale: 1.04 }]
+                }}
+                onPress={() => router.push({
+                  pathname: "/SpeakerConfigScreen",
+                  params: { configID: config.id.toString(), configName: config.name }
+                })}
               >
-              <YStack>
-                <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
+                <YStack>
+                  <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
 
-                {/* Speaker dots */}
-                <XStack marginTop={4}>
+                  {/* Speaker dots */}
+                  <XStack marginTop={4}>
                     {Array.from({ length: config.speakerCount }).map((_, i) => (
                       <View
                         key={i}
@@ -135,27 +125,26 @@ export default function Home() {
                     ))}
                   </XStack>
 
-                {/* Connection status */}
-                <H1 style={{ fontSize: 14, color: config.isConnected ? "#00FF6A" : "#FF0055", marginTop: 6 }}>
-                  {config.isConnected ? "Connected" : "Not Connected"}
-                </H1>
-              </YStack>
+                  {/* Connection status */}
+                  <H1 style={{ fontSize: 14, color: config.isConnected ? "#00FF6A" : "#FF0055", marginTop: 6 }}>
+                    {config.isConnected ? "Connected" : "Not Connected"}
+                  </H1>
+                </YStack>
 
-              <Button
-                icon={<Pencil size={20} color={tc}/>}
-                backgroundColor="transparent"
-                onPress={() => router.push({
-                  pathname: "/settings/config",
-                  params: { configID: config.id.toString(), configName: config.name }
-                })}
-              />
-            </XStack>
+                <Button
+                  icon={<Pencil size={20} color={tc}/>}
+                  backgroundColor="transparent"
+                  onPress={() => router.push({
+                    pathname: "/settings/config",
+                    params: { configID: config.id.toString(), configName: config.name }
+                  })}
+                />
+              </XStack>
             </Pressable>
           ))
         )}
       </ScrollView>
-
-      <AddButton onPress={addConfig} />
+      <AddButton onPress={() => router.push('/settings/config')} />
     </YStack>
   );
 }

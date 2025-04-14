@@ -1,172 +1,251 @@
-import * as SQLite from 'expo-sqlite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Open the database
-const db = SQLite.openDatabaseSync("syncsonic.db");
-
-export const setupDatabase = () => {
-  // Create configurations table if it doesn't exist (without isConnected column)
-  db.execSync(
-    `CREATE TABLE IF NOT EXISTS configurations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, 
-      name TEXT NOT NULL
-    );`
-  );
-  // Migrate configurations: add isConnected if it doesn't exist.
-  const configColumns = db.getAllSync(`PRAGMA table_info(configurations);`) as any[];
-  const hasIsConnected = configColumns.some((col: any) => col.name === 'isConnected');
-  if (!hasIsConnected) {
-    db.execSync(`ALTER TABLE configurations ADD COLUMN isConnected INTEGER NOT NULL DEFAULT 0;`);
-  }
-
-  // Create speakers table if it doesn't exist (initially without volume and latency)
-  db.execSync(
-    `CREATE TABLE IF NOT EXISTS speakers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      config_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      mac TEXT NOT NULL,
-      FOREIGN KEY (config_id) REFERENCES configurations(id) ON DELETE CASCADE
-    );`
-  );
-  // Migrate speakers: add volume and latency if they don't exist.
-  const speakerColumns = db.getAllSync(`PRAGMA table_info(speakers);`) as any[];
-  const hasVolume = speakerColumns.some((col: any) => col.name === 'volume');
-  const hasLatency = speakerColumns.some((col: any) => col.name === 'latency');
-  if (!hasVolume) {
-    db.execSync(`ALTER TABLE speakers ADD COLUMN volume INTEGER NOT NULL DEFAULT 50;`);
-  }
-  if (!hasLatency) {
-    db.execSync(`ALTER TABLE speakers ADD COLUMN latency INTEGER NOT NULL DEFAULT 100;`);
-  }
-};
-// Migrate speakers: add is_connected if it doesn't exist.
-const speakerColumns = db.getAllSync(`PRAGMA table_info(speakers);`) as any[];
-const hasIsConnected = speakerColumns.some((col: any) => col.name === 'is_connected');
-if (!hasIsConnected) {
-  db.execSync(`ALTER TABLE speakers ADD COLUMN is_connected INTEGER NOT NULL DEFAULT 0;`);
+// Types
+export interface Configuration {
+  id: number;
+  name: string;
+  isConnected: boolean;
+  speakerCount: number;
 }
 
-// Insert new configuration with default isConnected flag set to 0 (not connected)
-export const addConfiguration = (name: string, callback: (id: number) => void) => {
-  const result = db.runSync(
-    `INSERT INTO configurations (name, isConnected) VALUES (?, 0);`,
-    [name]
-  );
-  callback(result.lastInsertRowId);
+export interface Speaker {
+  id: number;
+  config_id: number;
+  name: string;
+  mac: string;
+  volume: number;
+  latency: number;
+  is_connected: boolean;
+}
+
+// Keys
+const CONFIGURATIONS_KEY = '@syncsonic/configurations';
+const SPEAKERS_KEY = '@syncsonic/speakers';
+
+// Helper functions
+const getNextId = (items: any[]): number => {
+  return items.length > 0 ? Math.max(...items.map(item => item.id)) + 1 : 1;
 };
 
-// Insert new speaker (associated with a configuration)
-// New speakers will have default volume 50 and latency 100 unless specified.
-export const addSpeaker = (configId: number, name: string, mac: string, volume: number = 50, latency: number = 100) => {
-  db.runSync(
-    `INSERT INTO speakers (config_id, name, mac, volume, latency) VALUES (?, ?, ?, ?, ?);`,
-    [configId, name, mac, volume, latency]
-  );
+// Initialize storage
+export const setupDatabase = async () => {
+  try {
+    const configs = await AsyncStorage.getItem(CONFIGURATIONS_KEY);
+    const speakers = await AsyncStorage.getItem(SPEAKERS_KEY);
+    
+    if (!configs) {
+      await AsyncStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify([]));
+    }
+    if (!speakers) {
+      await AsyncStorage.setItem(SPEAKERS_KEY, JSON.stringify([]));
+    }
+  } catch (error) {
+    console.error('Error setting up database:', error);
+  }
 };
 
-export const getConfigurations = (): any[] => {
-  return db.getAllSync(`
-    SELECT c.id, c.name, c.isConnected,
-      (SELECT COUNT(*) FROM speakers WHERE config_id = c.id) AS speakerCount
-    FROM configurations c;
-  `);
+// Configuration functions
+export const addConfiguration = async (name: string): Promise<number> => {
+  try {
+    const configs = JSON.parse(await AsyncStorage.getItem(CONFIGURATIONS_KEY) || '[]');
+    const newConfig: Configuration = {
+      id: getNextId(configs),
+      name,
+      isConnected: false,
+      speakerCount: 0
+    };
+    configs.push(newConfig);
+    await AsyncStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify(configs));
+    return newConfig.id;
+  } catch (error) {
+    console.error('Error adding configuration:', error);
+    throw error;
+  }
 };
 
-// Get speakers for a given configuration.
-export const getSpeakers = (configId: number): any[] => {
-  return db.getAllSync(`SELECT * FROM speakers WHERE config_id = ?;`, [configId]);
+export const getConfigurations = async (): Promise<Configuration[]> => {
+  try {
+    const configs = JSON.parse(await AsyncStorage.getItem(CONFIGURATIONS_KEY) || '[]');
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    
+    return configs.map((config: Configuration) => ({
+      ...config,
+      speakerCount: speakers.filter((s: Speaker) => s.config_id === config.id).length
+    }));
+  } catch (error) {
+    console.error('Error getting configurations:', error);
+    return [];
+  }
 };
 
-// Delete a speaker by id
-export const deleteSpeaker = (id: number) => {
-  db.runSync(`DELETE FROM speakers WHERE id = ?;`, [id]);
+export const updateConfiguration = async (id: number, name: string) => {
+  try {
+    const configs = JSON.parse(await AsyncStorage.getItem(CONFIGURATIONS_KEY) || '[]');
+    const index = configs.findIndex((c: Configuration) => c.id === id);
+    if (index !== -1) {
+      configs[index].name = name;
+      await AsyncStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify(configs));
+    }
+  } catch (error) {
+    console.error('Error updating configuration:', error);
+  }
 };
 
-export const updateConfiguration = (id: number, name: string) => {
-  db.runSync(
-    `UPDATE configurations SET name = ? WHERE id = ?;`,
-    [name, id]
-  );
+export const deleteConfiguration = async (id: number) => {
+  try {
+    const configs = JSON.parse(await AsyncStorage.getItem(CONFIGURATIONS_KEY) || '[]');
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    
+    // Delete configuration
+    const newConfigs = configs.filter((c: Configuration) => c.id !== id);
+    await AsyncStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify(newConfigs));
+    
+    // Delete associated speakers
+    const newSpeakers = speakers.filter((s: Speaker) => s.config_id !== id);
+    await AsyncStorage.setItem(SPEAKERS_KEY, JSON.stringify(newSpeakers));
+  } catch (error) {
+    console.error('Error deleting configuration:', error);
+  }
 };
 
-export const updateConnectionStatus = (id: number, status: number) => {
-  db.runSync(
-    `UPDATE configurations SET isConnected = ? WHERE id = ?;`,
-    [status, id]
-  );
+// Speaker functions
+export const addSpeaker = async (configId: number, name: string, mac: string, volume: number = 50, latency: number = 100) => {
+  try {
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    const newSpeaker: Speaker = {
+      id: getNextId(speakers),
+      config_id: configId,
+      name,
+      mac,
+      volume,
+      latency,
+      is_connected: false
+    };
+    speakers.push(newSpeaker);
+    await AsyncStorage.setItem(SPEAKERS_KEY, JSON.stringify(speakers));
+  } catch (error) {
+    console.error('Error adding speaker:', error);
+  }
 };
 
-// Delete a speaker by id (duplicate function for now)
-export const deleteSpeakerById = (id: number) => {
-  db.runSync(`DELETE FROM speakers WHERE id = ?;`, [id]);
+export const getSpeakers = async (configId: number): Promise<Speaker[]> => {
+  try {
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    return speakers.filter((s: Speaker) => s.config_id === configId);
+  } catch (error) {
+    console.error('Error getting speakers:', error);
+    return [];
+  }
 };
 
-// Delete a configuration and its associated speakers
-export const deleteConfiguration = (id: number) => {
-  db.runSync(`DELETE FROM speakers WHERE config_id = ?;`, [id]); // delete speakers in config
-  db.runSync(`DELETE FROM configurations WHERE id = ?;`, [id]); // delete config
+export const getSpeakersFull = async (configId: number): Promise<Speaker[]> => {
+  try {
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    return speakers.filter((s: Speaker) => s.config_id === configId);
+  } catch (error) {
+    console.error('Error getting speakers:', error);
+    return [];
+  }
 };
 
-// For debugging: Reset the database
-export const resetDatabase = () => {
-  db.execSync(`DROP TABLE IF EXISTS speakers;`);
-  db.execSync(`DROP TABLE IF EXISTS configurations;`);
-  setupDatabase(); // recreate tables
+export const deleteSpeaker = async (id: number) => {
+  try {
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    const newSpeakers = speakers.filter((s: Speaker) => s.id !== id);
+    await AsyncStorage.setItem(SPEAKERS_KEY, JSON.stringify(newSpeakers));
+  } catch (error) {
+    console.error('Error deleting speaker:', error);
+  }
 };
 
-// For debugging: Log the database contents
-export const logDatabaseContents = () => {
-  console.log("Fetching database contents...");
-  db.getAllSync(`SELECT * FROM configurations;`)
-    .forEach(config => console.log("Config:", config));
-  db.getAllSync(`SELECT * FROM speakers;`)
-    .forEach(speaker => console.log("Speaker:", speaker));
+export const deleteSpeakerById = async (id: number) => {
+  await deleteSpeaker(id);
 };
 
-// Get configuration status (isConnected flag)
-export const getConfigurationStatus = (configId: number): number => {
-  const rows = db.getAllSync(`SELECT isConnected FROM configurations WHERE id = ?;`, [configId]) as any[];
-  return rows.length > 0 ? rows[0].isConnected : 0;
+export const updateSpeakerSettings = async (configId: number, mac: string, volume: number, latency: number) => {
+  try {
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    const index = speakers.findIndex((s: Speaker) => s.config_id === configId && s.mac === mac);
+    if (index !== -1) {
+      speakers[index].volume = volume;
+      speakers[index].latency = latency;
+      await AsyncStorage.setItem(SPEAKERS_KEY, JSON.stringify(speakers));
+    }
+  } catch (error) {
+    console.error('Error updating speaker settings:', error);
+  }
 };
 
-export const updateSpeakerSettings = (configId: number, mac: string, volume: number, latency: number) => {
-    db.runSync(
-      `UPDATE speakers SET volume = ?, latency = ? WHERE config_id = ? AND mac = ?;`,
-      [volume, latency, configId, mac]
-    );
-  };
-
-  export const updateSpeakerConnectionStatus = (configId: number, mac: string, isConnected: boolean) => {
-    db.runSync(
-      `UPDATE speakers SET is_connected = ? WHERE config_id = ? AND mac = ?;`,
-      [isConnected ? 1 : 0, configId, mac]
-    );
-  };
-  
-  export const getSpeakersFull = (configId: number) => {
-    return db.getAllSync(`
-      SELECT mac, name, volume, latency, is_connected
-      FROM speakers
-      WHERE config_id = ?;
-    `, [configId]) as {
-      mac: string;
-      name: string;
-      volume: number;
-      latency: number;
-      is_connected: number; // 0 or 1 in DB
-    }[];
-  };
-  
-  
-
-// Get configuration settings for speakers (volume and latency)
-export const getConfigurationSettings = (configId: number): { [mac: string]: { volume: number, latency: number } } => {
-  const rows = db.getAllSync(`SELECT mac, volume, latency FROM speakers WHERE config_id = ?;`, [configId]) as any[];
-  const settings: { [mac: string]: { volume: number, latency: number } } = {};
-  rows.forEach(row => {
-    settings[row.mac] = { volume: row.volume, latency: row.latency };
-  });
-  return settings;
+export const updateSpeakerConnectionStatus = async (configId: number, mac: string, isConnected: boolean) => {
+  try {
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    const index = speakers.findIndex((s: Speaker) => s.config_id === configId && s.mac === mac);
+    if (index !== -1) {
+      speakers[index].is_connected = isConnected;
+      await AsyncStorage.setItem(SPEAKERS_KEY, JSON.stringify(speakers));
+    }
+  } catch (error) {
+    console.error('Error updating speaker connection status:', error);
+  }
 };
 
-export default db;
+export const updateConnectionStatus = async (id: number, status: number) => {
+  try {
+    const configs = JSON.parse(await AsyncStorage.getItem(CONFIGURATIONS_KEY) || '[]');
+    const index = configs.findIndex((c: Configuration) => c.id === id);
+    if (index !== -1) {
+      configs[index].isConnected = status === 1;
+      await AsyncStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify(configs));
+    }
+  } catch (error) {
+    console.error('Error updating connection status:', error);
+  }
+};
+
+export const getConfigurationStatus = async (configId: number): Promise<number> => {
+  try {
+    const configs = JSON.parse(await AsyncStorage.getItem(CONFIGURATIONS_KEY) || '[]');
+    const config = configs.find((c: Configuration) => c.id === configId);
+    return config ? (config.isConnected ? 1 : 0) : 0;
+  } catch (error) {
+    console.error('Error getting configuration status:', error);
+    return 0;
+  }
+};
+
+export const getConfigurationSettings = async (configId: number): Promise<{ [mac: string]: { volume: number, latency: number } }> => {
+  try {
+    const speakers = JSON.parse(await AsyncStorage.getItem(SPEAKERS_KEY) || '[]');
+    const settings: { [mac: string]: { volume: number, latency: number } } = {};
+    speakers
+      .filter((s: Speaker) => s.config_id === configId)
+      .forEach((s: Speaker) => {
+        settings[s.mac] = { volume: s.volume, latency: s.latency };
+      });
+    return settings;
+  } catch (error) {
+    console.error('Error getting configuration settings:', error);
+    return {};
+  }
+};
+
+// Debug functions
+export const logDatabaseContents = async () => {
+  try {
+    const configs = await AsyncStorage.getItem(CONFIGURATIONS_KEY);
+    const speakers = await AsyncStorage.getItem(SPEAKERS_KEY);
+    console.log("Configurations:", configs);
+    console.log("Speakers:", speakers);
+  } catch (error) {
+    console.error('Error logging database contents:', error);
+  }
+};
+
+export const resetDatabase = async () => {
+  try {
+    await AsyncStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify([]));
+    await AsyncStorage.setItem(SPEAKERS_KEY, JSON.stringify([]));
+  } catch (error) {
+    console.error('Error resetting database:', error);
+  }
+};
