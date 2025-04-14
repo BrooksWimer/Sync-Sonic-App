@@ -61,59 +61,100 @@ export default function Home() {
   return (
     <YStack flex={1} backgroundColor={bg}>
       <TopBar/>
-      <ScrollView>
-        <YStack padding={20} gap={20}>
-          <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc }}>Configurations</H1>
-          
-          {configurations.map((config) => (
+      {/* Header */}
+      <View style={{
+          paddingTop: 20,
+          paddingBottom: 10,
+          alignItems: "center",
+          backgroundColor: bg
+      }}>
+        <H1
+          style={{ color: tc }}
+          fontFamily="Finlandica"
+          fontSize={36}
+          lineHeight={44}
+          fontWeight="700"
+          marginBottom={20}
+          marginTop={15}
+          >
+          Configurations
+          </H1>
+      </View>
+      <ScrollView style={{ paddingHorizontal: 20 }}>
+        {configurations.length === 0 ? (
+          <H1 style={{ textAlign: "center", color: stc, fontFamily: "Finlandica", marginVertical: 10 }}>
+            No configurations found.
+          </H1>
+        ) : (
+          configurations.map((config) => (
+            // Touching the configuration takes you to the SpeakerConfigScreen
             <Pressable
-              key={config.id}
-              onLongPress={() => handleDeleteConfig(config.id, setConfigurations)}
+            key={config.id}
+            //onLongPress={() => handleDeleteConfig(config.id)}
+            delayLongPress={600}
+          >
+            <XStack
+              alignItems="center"
+              borderRadius={15}
+              padding={15}
+              marginBottom={10}
+              borderWidth={1}
+              borderColor={stc}
+              justifyContent="space-between"
+              shadowColor="#93C7FF"
+              shadowOffset={{ width: 0, height: 0 }}
+              shadowOpacity={0.8}
+              shadowRadius={8}
+              hoverStyle={{
+                shadowRadius: 15,
+                shadowOpacity: 1,
+                transform: [{ scale: 1.02 }]
+              }}
+              pressStyle={{
+                shadowRadius: 20,
+                transform: [{ scale: 1.04 }]
+              }}
               onPress={() => router.push({
                 pathname: "/SpeakerConfigScreen",
                 params: { configID: config.id.toString(), configName: config.name }
               })}
-              delayLongPress={600}
-              style={({ pressed }) => [
-                {
-                  opacity: pressed ? 0.7 : 1,
-                  marginBottom: 10,
-                }
-              ]}
-            >
-              <XStack
-                alignItems="center"
-                borderRadius={15}
-                padding={15}
-                backgroundColor={stc}
-                justifyContent="space-between"
-                shadowColor="#93C7FF"
-                shadowOffset={{ width: 0, height: 0 }}
-                shadowOpacity={0.8}
-                shadowRadius={8}
+              //onLongPress={() => handleDeleteConfig(config.id)}
               >
-                <YStack>
-                  <H1 fontSize={18} color={tc}>{config.name}</H1>
-                  <Text style={{ color: tc }}>{config.speakerCount} speakers</Text>
-                </YStack>
-                <XStack gap={5}>
-                  {speakerStatuses[config.id]?.map((isConnected, index) => (
-                    <View
-                      key={index}
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: isConnected ? '#4CAF50' : '#FF5252'
-                      }}
-                    />
-                  ))}
-                </XStack>
-              </XStack>
+              <YStack>
+                <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
+
+                {/* Speaker dots */}
+                <XStack marginTop={4}>
+                    {Array.from({ length: config.speakerCount }).map((_, i) => (
+                      <View
+                        key={i}
+                        style={[styles.statusDot, {
+                          backgroundColor: speakerStatuses[config.id]?.[i] ? '#00FF6A' : '#FF0055'
+                        }]}
+                      />
+                    ))}
+                  </XStack>
+
+                {/* Connection status */}
+                <H1 style={{ fontSize: 14, color: config.isConnected ? "#00FF6A" : "#FF0055", marginTop: 6 }}>
+                  {config.isConnected ? "Connected" : "Not Connected"}
+                </H1>
+              </YStack>
+
+              <Button
+                icon={<Pencil size={20} color={tc}/>}
+                backgroundColor="transparent"
+                onPress={() => router.push({
+                  pathname: "/settings/config",
+                  params: { configID: config.id.toString(), configName: config.name }
+                })}
+              />
+            </XStack>
             </Pressable>
-          ))}
-        </YStack>
+          ))
+        )}
       </ScrollView>
+
       <AddButton onPress={addConfig} />
     </YStack>
   );

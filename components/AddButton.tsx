@@ -21,9 +21,9 @@ export const AddButton = ({ onPress }: AddButtonProps) => {
         style={{
           width: 60,
           height: 60,
-          borderRadius: 30,
-          borderWidth: 2,
-          borderColor: '#34A853',
+          //borderRadius: 30,
+          //borderWidth: 2,
+          //borderColor: '#34A853',
           justifyContent: 'center',
           alignItems: 'center',
         }}
@@ -31,7 +31,7 @@ export const AddButton = ({ onPress }: AddButtonProps) => {
       >
         <Image
           source={require('../assets/images/greenAdd.png')}
-          style={{ width: 28, height: 28, tintColor: '#34A853' }}
+          style={{ width: 50, height: 50, tintColor: '#34A853' }}
           resizeMode="contain"
         />
       </TouchableOpacity>
