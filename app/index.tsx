@@ -23,6 +23,11 @@ export default function ConnectPhone() {
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
 
+  const loaderSource = themeName === 'dark'
+  ? require('../assets/animations/SyncSonic_Loading_Light.json')
+  : require('../assets/animations/SyncSonic_Loading_Dark.json');
+
+
   useEffect(() => {
     setupDatabase();
   }, []);
@@ -63,7 +68,7 @@ export default function ConnectPhone() {
       style={{ backgroundColor: bg }}
       justifyContent="space-between"
     >
-      <TopBar/>
+      <TopBarStart/>
 
       {/* Middle Content */}
       <YStack alignItems="center" paddingTop="$4">
@@ -118,7 +123,7 @@ export default function ConnectPhone() {
 
           {resetting && (
             <LottieView
-              source={require('../assets/animations/temp-loader.json')}
+              source={loaderSource}
               autoPlay
               loop
               style={{
