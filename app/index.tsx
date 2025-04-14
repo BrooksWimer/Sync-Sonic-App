@@ -7,6 +7,7 @@ import { TopBar } from "../components/TopBar"
 import { setupDatabase } from "./database"
 import { TopBarStart } from "../components/TopBarStart"
 import colors from '../assets/colors/colors'
+import LottieView from "lottie-react-native"
 
 export default function ConnectPhone() {
   const [connecting, setConnecting] = useState(false)
@@ -96,7 +97,7 @@ export default function ConnectPhone() {
       {/* Bottom Buttons */}
       <YStack space="$4" paddingBottom="$4">
 
-        <Button
+              <Button
           onPress={handleResetAdapters}
           disabled={resetting}
           style={{
@@ -105,13 +106,31 @@ export default function ConnectPhone() {
             height: 50,
             borderRadius: 999,
             alignSelf: 'center',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative', // <- KEY for absolute child
           }}
           pressStyle={{ opacity: 0.8 }}
         >
           <H1 color="white" fontSize={18}>
             {resetting ? "Resetting..." : "Reset Adapters"}
           </H1>
+
+          {resetting && (
+            <LottieView
+              source={require('../assets/animations/temp-loader.json')}
+              autoPlay
+              loop
+              style={{
+                width: 28,
+                height: 28,
+                position: 'absolute',
+                right: 20, // spacing from the edge
+              }}
+            />
+          )}
         </Button>
+
 
         <Button
           onPress={handleConnect}
@@ -122,13 +141,31 @@ export default function ConnectPhone() {
             height: 50,
             borderRadius: 999,
             alignSelf: 'center',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative', // <- KEY for absolute child
           }}
           pressStyle={{ opacity: 0.8 }}
         >
           <H1 color="white" fontSize={18}>
             {connecting ? "Connecting..." : "Connect Phone"}
           </H1>
+
+          {connecting && (
+            <LottieView
+              source={require('../assets/animations/temp-loader.json')}
+              autoPlay
+              loop
+              style={{
+                width: 28,
+                height: 28,
+                position: 'absolute',
+                right: 20, // spacing from the edge
+              }}
+            />
+          )}
         </Button>
+
 
         <Button
           onPress={goHome}

@@ -4,6 +4,7 @@ import * as Linking from "expo-linking"
 import { router } from "expo-router"
 import { PI_API_URL } from "../utils/constants"
 import { TopBar } from "../components/TopBar"
+import LottieView from 'lottie-react-native';
 
 export default function ConnectPhone() {
   const [connecting, setConnecting] = useState(false)
@@ -77,22 +78,40 @@ export default function ConnectPhone() {
 
       {/* Bottom Buttons */}
       <YStack space="$4" paddingBottom="$4">
-        <Button
-          onPress={handleConnect}
-          disabled={connecting}
+      <Button
+      onPress={handleConnect}
+      disabled={connecting}
+      style={{
+        backgroundColor: pc,
+        width: '90%',
+        height: 50,
+        borderRadius: 999,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+      }}
+      pressStyle={{ opacity: 0.8 }}
+    >
+      <H1 color="white" fontSize={18}>
+        {connecting ? "Connecting..." : "Connect Phone"}
+      </H1>
+
+      {connecting && (
+        <LottieView
+          source={require('../assets/animations/temp-loader.json')}
+          autoPlay
+          loop
           style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 999,
-            alignSelf: 'center',
+            width: 30,
+            height: 30,
+            marginLeft: 8,
           }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <H1 color="white" fontSize={18}>
-            {connecting ? "Connecting..." : "Connect Phone"}
-          </H1>
-        </Button>
+        />
+      )}
+    </Button>
+
 
         <Button
           onPress={goHome}
@@ -109,6 +128,13 @@ export default function ConnectPhone() {
             Continue to Home
           </H1>
         </Button>
+        <LottieView
+  source={require('../assets/animations/temp-loader.json')}
+  autoPlay
+  loop
+  style={{ width: 100, height: 100 }}
+/>
+
       </YStack>
     </YStack>
   )
