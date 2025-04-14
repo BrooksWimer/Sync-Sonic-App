@@ -1,6 +1,6 @@
 import { useSearchParams } from 'expo-router/build/hooks';
 import React, { useState, useEffect } from 'react';
-import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View } from 'react-native';
+import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -378,19 +378,33 @@ export default function SpeakerConfigScreen() {
       const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
       const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
 
+      const { width: screenWidth } = Dimensions.get('window');
+
+    // Estimate the font size based on screen width and expected text length
+    // You can tweak the divisor (e.g., 0.05 * screenWidth) to find the best fit
+    const estimatedFontSize = Math.min(40, screenWidth / (configNameParam.length + 12));
+
+
       return (
         <YStack flex={1} backgroundColor={bg}>
           <TopBar/>
-          <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-            <Text style={{ fontSize: 22, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginBottom: 15, marginTop: 15, alignSelf:'center' }}>
+          <Text style={{ fontSize: 25, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginBottom: 10, marginTop: 20, alignSelf:'center' }}>
               Speaker Configuration: {configNameParam}
             </Text>
+            
+            <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:0, alignSelf:'center', marginBottom:5}}>
+              Adjust the sliders for each speaker as needed.
+            </Text>
+            <Text>  </Text>
+          <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
+            
+            
             {Object.keys(connectedSpeakers).length === 0 ? (
               <Text style={{color:stc, alignSelf: 'center'}}>No connected speakers found.</Text>
             ) : (
               Object.keys(connectedSpeakers).map(mac => (
                 <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, padding: 10, borderWidth: 1, borderColor: stc, borderRadius: 8}}>
-                  <Text style={{ fontSize: 20, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:-15}}>{connectedSpeakers[mac]}</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:-15, alignSelf:"center"}}>{connectedSpeakers[mac]}</Text>
                   <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Volume: {settings[mac]?.volume || 50}%</Text>
                   <Slider
                     style={styles.slider}
@@ -401,6 +415,7 @@ export default function SpeakerConfigScreen() {
                     onSlidingComplete={(value: number) => handleVolumeChange(mac, value)}
                     minimumTrackTintColor="#FF0055"
                     maximumTrackTintColor="#000000"
+                    thumbTintColor="white" 
                   />
                   <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Latency: {settings[mac]?.latency || 100} ms</Text>
                   <Slider
@@ -412,21 +427,23 @@ export default function SpeakerConfigScreen() {
                     onSlidingComplete={(value: number) => handleLatencyChange(mac, value)}
                     minimumTrackTintColor="#FF0055"
                     maximumTrackTintColor="#000000"
+                    thumbTintColor="white" 
                   />
                 </SafeAreaView>
               ))
             )}
-            <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6, alignSelf:'center', marginBottom:-20}}>
-              Adjust the sliders for each speaker as needed.
-            </Text>
-            <SafeAreaView style={styles.buttonContainer}>
+            
+           
+          </ScrollView>
+
+           <SafeAreaView style={styles.buttonContainer}>
               {configIDParam ? (
                 isConnected ? (
-                  <TouchableOpacity style={styles.disconnectButton} onPress={handleDisconnect}>
+                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={handleDisconnect}>
                     <Text style={styles.buttonText}>Disconnect Configuration</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={{backgroundColor:pc, padding: 15, borderRadius: 8, width: "90%", marginTop: -10 }} onPress={handleConnect}>
+                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={handleConnect}>
                     <Text style={styles.buttonText}>Connect Configuration</Text>
                   </TouchableOpacity>
                 )
@@ -437,7 +454,6 @@ export default function SpeakerConfigScreen() {
               )}
               
             </SafeAreaView>
-          </ScrollView>
         </YStack>
       );
     }
@@ -450,11 +466,11 @@ export default function SpeakerConfigScreen() {
       label: { fontSize: 16, marginTop: 10 },
       slider: { width: '100%', height: 40, marginBottom: -5},
       instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
-      buttonContainer: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 30 },
+      buttonContainer: { alignItems: "center", flexDirection: 'row', justifyContent: 'space-around', marginTop: 50 },
       saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
-      disconnectButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
+      disconnectButton: { backgroundColor: "#FFFFFF", padding: 15, borderRadius: 8 },
       deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
-      buttonText: { color: '#fff', fontSize: 16 },
+      buttonText: { color: '#fff', fontSize: 16,alignSelf: 'center', },
       homeButton: {
         position: 'absolute',
         bottom: 20,
@@ -464,6 +480,7 @@ export default function SpeakerConfigScreen() {
         backgroundColor: '#3E0094',
         justifyContent: 'center',
         alignItems: 'center',
+        
       },
       homeButtonText: { color: '#fff', fontSize: 16 },
     });

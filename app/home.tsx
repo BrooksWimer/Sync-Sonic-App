@@ -171,13 +171,17 @@ useFocusEffect(
           paddingTop: 20,
           paddingBottom: 10,
           alignItems: "center",
+          backgroundColor: bg
       }}>
         <H1
           style={{ color: tc }}
           fontFamily="Finlandica"
           fontSize={36}
           lineHeight={44}
-          fontWeight="700">
+          fontWeight="700"
+          marginBottom={20}
+          marginTop={15}
+          >
           Configurations
           </H1>
       </View>
