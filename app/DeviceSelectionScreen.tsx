@@ -107,6 +107,7 @@ export default function DeviceSelectionScreen() {
         onPress={() => toggleSelection(item, selectedDevices, setSelectedDevices)}
         style={[
           styles.deviceItem,
+          { backgroundColor: "white" },
           isSelected && styles.selectedDevice
         ]}
       >
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
   },
   deviceItem: {
     padding: 16,
-    backgroundColor: '#9D9D9D',
+    
     borderRadius: 15,
     marginBottom: 10,
     shadowColor: "#93C7FF",
