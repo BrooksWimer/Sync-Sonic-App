@@ -24,8 +24,8 @@ export default function ConnectPhone() {
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
 
   const loaderSource = themeName === 'dark'
-  ? require('../assets/animations/SyncSonic_Loading_Light.json')
-  : require('../assets/animations/SyncSonic_Loading_Dark.json');
+  ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
+  : require('../assets/animations/SyncSonic_Loading_Dark_nbg.json');
 
 
   useEffect(() => {
@@ -127,10 +127,10 @@ export default function ConnectPhone() {
               autoPlay
               loop
               style={{
-                width: 28,
-                height: 28,
+                width: 100,
+                height: 100,
                 position: 'absolute',
-                right: 20, // spacing from the edge
+                right: -10, // spacing from the edge
               }}
             />
           )}
@@ -158,14 +158,14 @@ export default function ConnectPhone() {
 
           {connecting && (
             <LottieView
-              source={require('../assets/animations/temp-loader.json')}
+              source={loaderSource}
               autoPlay
               loop
               style={{
-                width: 28,
-                height: 28,
+                width: 100,
+                height: 100,
                 position: 'absolute',
-                right: 20, // spacing from the edge
+                right: -10, // spacing from the edge
               }}
             />
           )}
