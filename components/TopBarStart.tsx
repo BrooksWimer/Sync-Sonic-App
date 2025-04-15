@@ -23,13 +23,17 @@ export const TopBarStart = () => {
   return (
     <XStack
       height={95}
-      paddingLeft={73} //this is wrong on any other phone fsfs
       style={{
-        backgroundColor: pc
-      }}>
+        backgroundColor: pc,
+        paddingTop: 45
+      }}
+      alignItems="center"
+      justifyContent="center"
+      paddingHorizontal="$4"
+      >
       <Image
         source={logo}
-        style={{ height: 24, resizeMode: 'contain', marginTop: 15, alignSelf: 'center'}}
+        style={{ height: 24, resizeMode: 'contain', alignSelf: 'center'}}
         
       />
     </XStack>
