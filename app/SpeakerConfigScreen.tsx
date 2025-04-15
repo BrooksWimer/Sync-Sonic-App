@@ -1,6 +1,6 @@
 import { useSearchParams } from 'expo-router/build/hooks';
 import React, { useState, useEffect } from 'react';
-import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View } from 'react-native';
+import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter, useNavigation, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -185,27 +185,34 @@ export default function SpeakerConfigScreen() {
       const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
       const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
 
+      const { width: screenWidth } = Dimensions.get('window');
+
+    // Estimate the font size based on screen width and expected text length
+    // You can tweak the divisor (e.g., 0.05 * screenWidth) to find the best fit
+    const estimatedFontSize = Math.min(40, screenWidth / (configNameParam.length + 12));
+
+
       return (
-        <SafeAreaView style={styles.container}>
-          <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-            <Text style={styles.header}>
+        <YStack flex={1} backgroundColor={bg}>
+          <TopBar/>
+          <Text style={{ fontSize: 25, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginBottom: 10, marginTop: 20, alignSelf:'center' }}>
               Speaker Configuration: {configNameParam}
             </Text>
+            
+            <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:0, alignSelf:'center', marginBottom:5}}>
+              Adjust the sliders for each speaker as needed.
+            </Text>
+            <Text>  </Text>
+          <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
+            
+            
             {Object.keys(connectedSpeakers).length === 0 ? (
               <Text>No connected speakers found.</Text>
             ) : (
               Object.keys(connectedSpeakers).map(mac => (
-                <SafeAreaView key={mac} style={styles.speakerContainer}>
-                  <View style={styles.speakerHeader}>
-                    <View
-                      style={[
-                        styles.statusDot,
-                        { backgroundColor: settings[mac]?.isConnected ? '#00FF6A' : '#FF0055' }
-                      ]}
-                    />
-                    <Text style={styles.speakerName}>{connectedSpeakers[mac]}</Text>
-                  </View>
-                  <Text style={styles.label}>Volume: {settings[mac]?.volume || 50}%</Text>
+                <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, padding: 10, borderWidth: 1, borderColor: stc, borderRadius: 8}}>
+                  <Text style={{ fontSize: 20, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:-15, alignSelf:"center"}}>{connectedSpeakers[mac]}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Volume: {settings[mac]?.volume || 50}%</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -216,6 +223,7 @@ export default function SpeakerConfigScreen() {
                     onSlidingComplete={(value: number) => handleVolumeChangeWrapper(mac, value, true)}
                     minimumTrackTintColor="#FF0055"
                     maximumTrackTintColor="#000000"
+                    thumbTintColor="white" 
                   />
                   <Text style={styles.label}>Latency: {settings[mac]?.latency || 100} ms</Text>
                   <Slider
@@ -223,161 +231,55 @@ export default function SpeakerConfigScreen() {
                     minimumValue={0}
                     maximumValue={500}
                     step={10}
-                    value={settings[mac]?.latency || 100}
+                    value={settings[mac]?.latency ?? 100}
                     onValueChange={(value: number) => handleLatencyChangeWrapper(mac, value, false)}
                     onSlidingComplete={(value: number) => handleLatencyChangeWrapper(mac, value, true)}
                     minimumTrackTintColor="#FF0055"
                     maximumTrackTintColor="#000000"
+                    thumbTintColor="white" 
                   />
                 </SafeAreaView>
               ))
             )}
-    
-            <SafeAreaView style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={[styles.disconnectButton, isDisconnecting && styles.disabledButton]} 
-                onPress={handleDisconnectWrapper}
-                disabled={isDisconnecting || !isConnected}
-              >
-                {isDisconnecting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Disconnect</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.saveButton, isConnecting && styles.disabledButton]} 
-                onPress={handleConnectWrapper}
-                disabled={isConnecting}
-              >
-                {isConnecting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Connect</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.deleteButton, isDeleting && styles.disabledButton]} 
-                onPress={() => handleDelete(configIDParam, router)}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Delete</Text>
-                )}
-              </TouchableOpacity>
-            </SafeAreaView>
+            
+           
           </ScrollView>
-          <Link 
-            href="/home"
-            style={styles.homeButton}
-            asChild
-          >
-            <TouchableOpacity>
-              <Text style={styles.homeButtonText}>Home</Text>
-            </TouchableOpacity>
-          </Link>
-        </SafeAreaView>
+
+           <SafeAreaView style={styles.buttonContainer}>
+              {configIDParam ? (
+                isConnected ? (
+                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={handleDisconnect}>
+                    <Text style={styles.buttonText}>Disconnect Configuration</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={handleConnect}>
+                    <Text style={styles.buttonText}>Connect Configuration</Text>
+                  </TouchableOpacity>
+                )
+              ) : (
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                  <Text style={styles.buttonText}>Save Configuration</Text>
+                </TouchableOpacity>
+              )}
+              
+            </SafeAreaView>
+        </YStack>
       );
     }
     
     const styles = StyleSheet.create({
-      container: { 
-        flex: 1, 
-        padding: 20, 
-        backgroundColor: '#F2E8FF' 
-      },
-      header: { 
-        fontSize: 32, 
-        fontWeight: 'bold', 
-        marginBottom: 20, 
-        textAlign: 'center',
-        color: '#26004E',
-        fontFamily: "Finlandica"
-      },
-      speakerContainer: { 
-        marginBottom: 30, 
-        padding: 20, 
-        backgroundColor: '#9D9D9D',
-        borderRadius: 15,
-        shadowColor: "#93C7FF",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 8,
-      },
-      speakerHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15
-      },
-      speakerName: { 
-        fontSize: 24, 
-        marginLeft: 10,
-        color: '#26004E',
-        fontFamily: "Finlandica"
-      },
-      label: { 
-        fontSize: 16, 
-        marginTop: 10,
-        color: '#26004E',
-        fontFamily: "Finlandica"
-      },
-      slider: { 
-        width: '100%', 
-        height: 40,
-        marginVertical: 10
-      },
-      buttonContainer: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
-        marginTop: 30,
-        gap: 8,
-        paddingHorizontal: 20,
-        width: '100%'
-      },
-      saveButton: { 
-        backgroundColor: '#3E0094', 
-        padding: 12, 
-        borderRadius: 15,
-        flex: 1,
-        shadowColor: "#93C7FF",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center'
-      },
-      disconnectButton: { 
-        backgroundColor: '#3E0094', 
-        padding: 12, 
-        borderRadius: 15,
-        flex: 1,
-        shadowColor: "#93C7FF",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center'
-      },
-      deleteButton: { 
-        backgroundColor: '#FF0055', 
-        padding: 12, 
-        borderRadius: 15,
-        flex: 1,
-        shadowColor: "#93C7FF",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center'
-      },
-      buttonText: { 
-        color: '#F2E8FF', 
-        fontSize: 14,
-        fontFamily: "Finlandica",
-        textAlign: 'center'
-      },
+      container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+      header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+      speakerContainer: {},
+      speakerName: { fontSize: 18, marginBottom: 10 },
+      label: { fontSize: 16, marginTop: 10 },
+      slider: { width: '100%', height: 40, marginBottom: -5},
+      instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
+      buttonContainer: { alignItems: "center", flexDirection: 'row', justifyContent: 'space-around', marginTop: 50 },
+      saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
+      disconnectButton: { backgroundColor: "#FFFFFF", padding: 15, borderRadius: 8 },
+      deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
+      buttonText: { color: '#fff', fontSize: 16,alignSelf: 'center', },
       homeButton: {
         position: 'absolute',
         bottom: 20,
@@ -387,10 +289,7 @@ export default function SpeakerConfigScreen() {
         backgroundColor: '#3E0094',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#93C7FF",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 8,
+        
       },
       homeButtonText: { 
         color: '#F2E8FF', 

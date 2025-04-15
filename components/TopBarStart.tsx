@@ -22,7 +22,7 @@ export const TopBarStart = () => {
 
   return (
     <XStack
-      height={65}
+      height={95}
       paddingLeft={73} //this is wrong on any other phone fsfs
       style={{
         backgroundColor: pc
