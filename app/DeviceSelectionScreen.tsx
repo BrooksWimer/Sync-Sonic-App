@@ -234,7 +234,9 @@ export default function DeviceSelectionScreen() {
                   zIndex: 1001
                 }}>
                   <LottieView
-                    source={require('../assets/animations/SyncSonic_Loading_Light_nbg.json')}
+                    source={themeName === 'dark' 
+                      ? require('../assets/animations/SyncSonic_Loading_Dark_nbg.json')
+                      : require('../assets/animations/SyncSonic_Loading_Light_nbg.json')}
                     autoPlay
                     loop
                     style={{ 
