@@ -68,17 +68,9 @@ export default function Home() {
           alignItems: "center",
           backgroundColor: bg
       }}>
-        <H1
-          style={{ color: tc }}
-          fontFamily="Finlandica"
-          fontSize={36}
-          lineHeight={44}
-          fontWeight="700"
-          marginBottom={20}
-          marginTop={15}
-          >
+        <H1 style={{ color: tc, fontFamily: "Finlandica", fontSize: 36, lineHeight: 44, fontWeight: "700", marginBottom: 20, marginTop: 15 }}>
           Configurations
-          </H1>
+        </H1>
       </View>
       <ScrollView style={{ paddingHorizontal: 20 }}>
         {configurations.length === 0 ? (
@@ -136,7 +128,7 @@ export default function Home() {
                   </XStack>
 
                 {/* Connection status */}
-                <H1 style={{ fontSize: 14, color: config.isConnected ? "#00FF6A" : "#FF0055", marginTop: 6 }}>
+                <H1 style={{ fontSize: 14, color: config.isConnected ? "#00FF6A" : "#FF0055", marginTop: 6, fontFamily: "Finlandica" }}>
                   {config.isConnected ? "Connected" : "Not Connected"}
                 </H1>
               </YStack>

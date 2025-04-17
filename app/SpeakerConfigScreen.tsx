@@ -1,6 +1,6 @@
 import { useSearchParams } from 'expo-router/build/hooks';
 import React, { useState, useEffect } from 'react';
-import { Text, StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
+import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter, useNavigation, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +18,7 @@ import {
   getSpeakersFull
 } from './database';
 import {PI_API_URL, KNOWN_CONTROLLERS} from '../utils/constants'
-import { useTheme, useThemeName, YStack } from 'tamagui';
+import { useTheme, useThemeName, YStack, Text } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { 
   handleVolumeChange,
@@ -27,7 +27,8 @@ import {
 import { 
   handleDelete, 
   handleDisconnect, 
-  handleConnect
+  handleConnect,
+  handleSave
 } from '../utils/ConfigurationFunctions';
 
 
@@ -195,24 +196,24 @@ export default function SpeakerConfigScreen() {
       return (
         <YStack flex={1} backgroundColor={bg}>
           <TopBar/>
-          <Text style={{ fontSize: 25, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginBottom: 10, marginTop: 20, alignSelf:'center' }}>
-              Speaker Configuration: {configNameParam}
-            </Text>
-            
-            <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:0, alignSelf:'center', marginBottom:5}}>
-              Adjust the sliders for each speaker as needed.
-            </Text>
-            <Text>  </Text>
+          <Text style={{ fontFamily: 'Finlandica', fontSize: 25, fontWeight: "bold", color: tc, marginBottom: 10, marginTop: 20, alignSelf: 'center' }}>
+            Speaker Configuration: {configNameParam}
+          </Text>
+          
+          <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "bold", color: tc, marginTop: 0, alignSelf: 'center', marginBottom: 5 }}>
+            Adjust the sliders for each speaker as needed.
+          </Text>
+          <Text>  </Text>
           <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
             
             
             {Object.keys(connectedSpeakers).length === 0 ? (
-              <Text>No connected speakers found.</Text>
+              <Text style={{ fontFamily: 'Finlandica' }}>No connected speakers found.</Text>
             ) : (
               Object.keys(connectedSpeakers).map(mac => (
                 <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, padding: 10, borderWidth: 1, borderColor: stc, borderRadius: 8}}>
-                  <Text style={{ fontSize: 20, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:-15, alignSelf:"center"}}>{connectedSpeakers[mac]}</Text>
-                  <Text style={{ fontSize: 15, fontWeight: "bold", color: tc, fontFamily: "Finlandica", marginTop:6}}>Volume: {settings[mac]?.volume || 50}%</Text>
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 20, fontWeight: "bold", color: tc, marginTop: -15, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "bold", color: tc, marginTop: 6 }}>Volume: {settings[mac]?.volume || 50}%</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -225,7 +226,7 @@ export default function SpeakerConfigScreen() {
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
-                  <Text style={styles.label}>Latency: {settings[mac]?.latency || 100} ms</Text>
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "bold", color: tc, marginTop: 6 }}>Latency: {settings[mac]?.latency || 100} ms</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -248,16 +249,16 @@ export default function SpeakerConfigScreen() {
            <SafeAreaView style={styles.buttonContainer}>
               {configIDParam ? (
                 isConnected ? (
-                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={handleDisconnect}>
+                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={() => handleDisconnectWrapper()}>
                     <Text style={styles.buttonText}>Disconnect Configuration</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={handleConnect}>
+                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={() => handleConnectWrapper()}>
                     <Text style={styles.buttonText}>Connect Configuration</Text>
                   </TouchableOpacity>
                 )
               ) : (
-                <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <TouchableOpacity style={styles.saveButton} onPress={() => handleSave(configIDParam, configNameParam, connectedSpeakers, setIsSaving)}>
                   <Text style={styles.buttonText}>Save Configuration</Text>
                 </TouchableOpacity>
               )}
@@ -272,7 +273,7 @@ export default function SpeakerConfigScreen() {
       header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
       speakerContainer: {},
       speakerName: { fontSize: 18, marginBottom: 10 },
-      label: { fontSize: 16, marginTop: 10 },
+      label: { fontSize: 15, marginTop: 10, fontWeight: "bold"},
       slider: { width: '100%', height: 40, marginBottom: -5},
       instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
       buttonContainer: { alignItems: "center", flexDirection: 'row', justifyContent: 'space-around', marginTop: 50 },

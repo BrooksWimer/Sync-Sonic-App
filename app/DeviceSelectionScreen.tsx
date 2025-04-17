@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, 
   Text, 
   TouchableOpacity, 
   FlatList, 
@@ -18,7 +17,7 @@ import {
   addSpeaker, 
   getSpeakers
 } from './database';
-import { Button, H1, useTheme, useThemeName, YStack } from 'tamagui';
+import { Button, H1, useTheme, useThemeName, YStack, View } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { AlignCenter } from '@tamagui/lucide-icons';
 import { PI_API_URL } from '../utils/constants';
@@ -150,7 +149,7 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc }}>Select Speaker</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>Select Speaker</H1>
             </View>
       {loading ? (
         <ActivityIndicator size="large" color="#FF0055" />
@@ -160,14 +159,13 @@ export default function DeviceSelectionScreen() {
           keyExtractor={(item) => item.mac}
           renderItem={renderItem}
           ListEmptyComponent={<H1
-            style={{ color: tc }}
+            style={{ color: tc, fontFamily: "Finlandica" }}
             alignSelf='center'
-            fontFamily="Finlandica"
             fontSize={15}
             lineHeight={44}
             fontWeight="400">
             No devices found
-  </H1>}
+          </H1>}
           style={styles.list}
         />
       )}
@@ -177,21 +175,20 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc }}>Saved Speakers</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>Saved Speakers</H1>
             </View>
       <FlatList
         data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
         keyExtractor={(item) => item.mac}
         renderItem={renderPairedDevice}
         ListEmptyComponent={<H1
-          style={{ color: tc }}
+          style={{ color: tc, fontFamily: "Finlandica" }}
           alignSelf='center'
-          fontFamily="Finlandica"
           fontSize={15}
           lineHeight={44}
           fontWeight="400">
           No paired devices found
-</H1>}
+        </H1>}
         style={styles.list}
       />
       <Button
@@ -232,9 +229,9 @@ export default function DeviceSelectionScreen() {
         {pairing ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <H1 color="white" fontSize={18} alignSelf='center'>
-          Pair selected devices
-        </H1>
+          <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica">
+            Pair selected devices
+          </H1>
         )}
       </Button>
     </YStack>

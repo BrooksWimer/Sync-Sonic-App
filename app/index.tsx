@@ -3,7 +3,6 @@ import { YStack, Text, Button, H1, Image, useThemeName, useTheme } from "tamagui
 import * as Linking from "expo-linking"
 import { router } from "expo-router"
 import { PI_API_URL } from "../utils/constants"
-import { TopBar } from "../components/TopBar"
 import { setupDatabase } from "./database"
 import { TopBarStart } from "../components/TopBarStart"
 import colors from '../assets/colors/colors'
@@ -73,8 +72,7 @@ export default function ConnectPhone() {
       {/* Middle Content */}
       <YStack alignItems="center" paddingTop="$4">
         <H1
-          style={{ color: tc }}
-          fontFamily="Finlandica"
+          style={{ color: tc, fontFamily: "Finlandica" }}
           fontSize={36}
           lineHeight={44}
           fontWeight="700"
@@ -83,11 +81,12 @@ export default function ConnectPhone() {
         </H1>
 
         <Text
-          style={{ color: tc }}
+          style={{ color: tc, fontFamily: "Finlandica" }}
           fontSize={16}
           textAlign="center"
           marginTop={16}
           marginBottom={32}
+          paddingHorizontal={20}
         >
           To stream music from your phone, please turn on Bluetooth and pair it with the box.
         </Text>
@@ -101,8 +100,7 @@ export default function ConnectPhone() {
 
       {/* Bottom Buttons */}
       <YStack space="$4" paddingBottom="$4">
-
-              <Button
+        <Button
           onPress={handleResetAdapters}
           disabled={resetting}
           style={{
@@ -113,13 +111,13 @@ export default function ConnectPhone() {
             alignSelf: 'center',
             justifyContent: 'center',
             alignItems: 'center',
-            position: 'relative', // <- KEY for absolute child
+            position: 'relative',
           }}
           pressStyle={{ opacity: 0.8 }}
         >
-          <H1 color="white" fontSize={18}>
+          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Finlandica" }}>
             {resetting ? "Resetting..." : "Reset Adapters"}
-          </H1>
+          </Text>
 
           {resetting && (
             <LottieView
@@ -152,9 +150,9 @@ export default function ConnectPhone() {
           }}
           pressStyle={{ opacity: 0.8 }}
         >
-          <H1 color="white" fontSize={18}>
+          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Finlandica" }}>
             {connecting ? "Connecting..." : "Connect Phone"}
-          </H1>
+          </Text>
 
           {connecting && (
             <LottieView
@@ -183,9 +181,9 @@ export default function ConnectPhone() {
           }}
           pressStyle={{ opacity: 0.8 }}
         >
-          <H1 color="white" fontSize={18}>
+          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Finlandica" }}>
             Continue to Home
-          </H1>
+          </Text>
         </Button>
       </YStack>
     </YStack>

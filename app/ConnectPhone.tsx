@@ -50,17 +50,15 @@ export default function ConnectPhone() {
       {/* Middle Content */}
       <YStack alignItems="center" paddingTop="$4">
         <H1
-          style={{ color: tc }}
-          fontFamily="Finlandica"
-          fontSize={36}
-          lineHeight={44}
-          fontWeight="700"
+          style={{ color: tc, fontFamily: "Finlandica" }}
+          fontSize={32}
+          fontWeight="bold"
         >
           Connect Your Phone
         </H1>
 
         <Text
-          style={{ color: tc }}
+          style={{ color: tc, fontFamily: "Finlandica" }}
           fontSize={16}
           textAlign="center"
           marginTop={16}
@@ -78,40 +76,39 @@ export default function ConnectPhone() {
 
       {/* Bottom Buttons */}
       <YStack space="$4" paddingBottom="$4">
-      <Button
-      onPress={handleConnect}
-      disabled={connecting}
-      style={{
-        backgroundColor: pc,
-        width: '90%',
-        height: 50,
-        borderRadius: 999,
-        alignSelf: 'center',
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 8,
-      }}
-      pressStyle={{ opacity: 0.8 }}
-    >
-      <H1 color="white" fontSize={18}>
-        {connecting ? "Connecting..." : "Connect Phone"}
-      </H1>
-
-      {connecting && (
-        <LottieView
-          source={require('../assets/animations/temp-loader.json')}
-          autoPlay
-          loop
+        <Button
+          onPress={handleConnect}
+          disabled={connecting}
           style={{
-            width: 30,
-            height: 30,
-            marginLeft: 8,
+            backgroundColor: pc,
+            width: '90%',
+            height: 50,
+            borderRadius: 999,
+            alignSelf: 'center',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 8,
           }}
-        />
-      )}
-    </Button>
+          pressStyle={{ opacity: 0.8 }}
+        >
+          <H1 color="white" fontSize={18} fontFamily="Finlandica">
+            {connecting ? "Connecting..." : "Connect Phone"}
+          </H1>
 
+          {connecting && (
+            <LottieView
+              source={require('../assets/animations/temp-loader.json')}
+              autoPlay
+              loop
+              style={{
+                width: 30,
+                height: 30,
+                marginLeft: 8,
+              }}
+            />
+          )}
+        </Button>
 
         <Button
           onPress={goHome}
@@ -124,17 +121,10 @@ export default function ConnectPhone() {
           }}
           pressStyle={{ opacity: 0.8 }}
         >
-          <H1 color="white" fontSize={18}>
+          <H1 color="white" fontSize={18} fontFamily="Finlandica">
             Continue to Home
           </H1>
         </Button>
-        <LottieView
-  source={require('../assets/animations/temp-loader.json')}
-  autoPlay
-  loop
-  style={{ width: 100, height: 100 }}
-/>
-
       </YStack>
     </YStack>
   )
