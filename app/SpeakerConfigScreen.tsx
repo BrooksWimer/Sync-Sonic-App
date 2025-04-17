@@ -211,9 +211,9 @@ export default function SpeakerConfigScreen() {
               <Text style={{ fontFamily: 'Finlandica' }}>No connected speakers found.</Text>
             ) : (
               Object.keys(connectedSpeakers).map(mac => (
-                <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, padding: 10, borderWidth: 1, borderColor: stc, borderRadius: 8}}>
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 20, fontWeight: "bold", color: tc, marginTop: -15, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "bold", color: tc, marginTop: 6 }}>Volume: {settings[mac]?.volume || 50}%</Text>
+                <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, paddingLeft: 20, paddingRight: 20, borderWidth: 1, borderColor: stc, borderRadius: 8}}>
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 24, fontWeight: "bold", color: tc, marginTop: -25, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Volume: {settings[mac]?.volume || 50}%</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -226,7 +226,7 @@ export default function SpeakerConfigScreen() {
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "bold", color: tc, marginTop: 6 }}>Latency: {settings[mac]?.latency || 100} ms</Text>
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Latency: {settings[mac]?.latency || 100} ms</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}

@@ -95,19 +95,18 @@ export default function Config() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc }}>{editHeader}</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>{editHeader}</H1>
             </View>
 
             {/* Configuration Name Input Field */}
             <YStack marginHorizontal={20} marginTop={1} gap={10}>
                 <H1
-                          style={{ color: tc }}
-                          alignSelf='center'
-                          fontFamily="Finlandica"
-                          fontSize={15}
-                          lineHeight={44}
-                          fontWeight="400">
-                          Configuration Name
+                    style={{ color: tc, fontFamily: "Finlandica" }}
+                    alignSelf='center'
+                    fontSize={15}
+                    lineHeight={44}
+                    fontWeight="400">
+                    Configuration Name
                 </H1>
                 <Input
                     id="configName"
@@ -121,6 +120,7 @@ export default function Config() {
                     borderRadius={12}
                     padding={10}
                     fontSize={16}
+                    fontFamily="Finlandica"
                 />
 
                 {/* Select Devices */}
@@ -132,7 +132,7 @@ export default function Config() {
                     borderRadius={5}
                     padding={10}
                 >
-                    <H1>
+                    <H1 style={{ fontFamily: "Finlandica", color: "white" }}>
                         {configID ? "Add Bluetooth Devices" : "Find Bluetooth Devices"}
                     </H1>
                 </Button>
@@ -141,8 +141,8 @@ export default function Config() {
             {/* List of Found Bluetooth Devices */}
             <ScrollView style={{ maxHeight: 300, marginTop: 10, paddingHorizontal: 20 }}>
             {devices.length === 0 ? (
-                <H1 color={stc} alignSelf="center">
-                No devices connected. Please connect devices
+                <H1 style={{ color: stc, fontFamily: "Finlandica" }} alignSelf="center">
+                    No devices connected. Please connect devices
                 </H1>
             ) : (
                 devices.map((device) => (
@@ -156,7 +156,7 @@ export default function Config() {
                     backgroundColor="transparent"
                 >
                     <XStack justifyContent="space-between" alignItems="center">
-                    <H1 fontSize={16} fontWeight="600" color={tc}>
+                    <H1 style={{ fontSize: 16, fontWeight: "600", color: tc, fontFamily: "Finlandica" }}>
                         {device.name}
                     </H1>
                     <Button
@@ -170,7 +170,7 @@ export default function Config() {
 
                     <XStack alignItems="center" marginTop={6}>
                     <Wifi size={20} color={tc} style={{ marginRight: 8 }} />
-                    <H1 fontSize={12} color={tc} marginLeft={6}>
+                    <H1 style={{ fontSize: 12, color: tc, marginLeft: 6, fontFamily: "Finlandica" }}>
                         {device.mac}
                     </H1>
                     </XStack>
@@ -179,26 +179,26 @@ export default function Config() {
             )}
             </ScrollView>
 
-        {/* Bottom Button */}
-        <Button
-        onPress={() => saveChanges(configID, configName, devices, router)}
-        disabled={isSaveDisabled}
-        style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 999,
-            marginBottom: 5,
-            marginTop: 50,
-            alignSelf: 'center',
-            opacity: !isSaveDisabled ? 1 : 0.5, // 👈 dim when invalid
-        }}
-        pressStyle={{ opacity: !isSaveDisabled ? 0.8 : 0.5 }} // keep it dim if disabled
-        >
-        <H1 color="white" fontSize={18}>
-            Save
-        </H1>
-</Button>
+            {/* Bottom Button */}
+            <Button
+                onPress={() => saveChanges(configID, configName, devices, router)}
+                disabled={isSaveDisabled}
+                style={{
+                    backgroundColor: pc,
+                    width: '90%',
+                    height: 50,
+                    borderRadius: 999,
+                    marginBottom: 5,
+                    marginTop: 50,
+                    alignSelf: 'center',
+                    opacity: !isSaveDisabled ? 1 : 0.5,
+                }}
+                pressStyle={{ opacity: !isSaveDisabled ? 0.8 : 0.5 }}
+            >
+                <H1 style={{ color: "white", fontSize: 18, fontFamily: "Finlandica" }}>
+                    Save
+                </H1>
+            </Button>
 
         </YStack>
     );
