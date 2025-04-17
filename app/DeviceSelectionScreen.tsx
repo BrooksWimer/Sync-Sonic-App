@@ -29,6 +29,7 @@ import {
   toggleSelection,
   pairSelectedDevices
 } from '../utils/PairingFunctions';
+import LottieView from 'lottie-react-native';
 
 const testerDev: Device = {
   mac: "test-mac",
@@ -58,6 +59,9 @@ export default function DeviceSelectionScreen() {
   const [pairedDevices, setPairedDevices] = useState<Record<string, string>>({}); // State for paired devices
   const [selectedPairedDevices, setSelectedPairedDevices] = useState<Record<string, Device>>({});
   const router = useRouter();
+  const [isPairing, setIsPairing] = useState(false);
+  const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
+  const [isDebouncing, setIsDebouncing] = useState(false);
 
   // Start scanning and set up polling for device queue
   useEffect(() => {
@@ -112,11 +116,10 @@ export default function DeviceSelectionScreen() {
         onPress={() => toggleSelection(item, selectedDevices, setSelectedDevices)}
         style={[
           styles.deviceItem,
-          { backgroundColor: "white" },
           isSelected && styles.selectedDevice
         ]}
       >
-        <Text style={styles.deviceName}>{item.name}</Text>
+        <Text style={[styles.deviceName, isSelected && styles.selectedDeviceText]}>{item.name}</Text>
       </TouchableOpacity>
     );
   };
@@ -132,7 +135,7 @@ export default function DeviceSelectionScreen() {
           isSelected && styles.selectedDevice
         ]}
       >
-        <Text style={styles.deviceName}>{item.name}</Text>
+        <Text style={[styles.deviceName, isSelected && styles.selectedDeviceText]}>{item.name}</Text>
       </TouchableOpacity>
     );
   };
@@ -143,6 +146,56 @@ export default function DeviceSelectionScreen() {
   const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+
+  // Debounce function with state tracking
+  const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: any[]) => {
+      if (isDebouncing) return;
+      setIsDebouncing(true);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        func(...args);
+        setIsDebouncing(false);
+      }, wait);
+    };
+  };
+
+  const handlePairDevices = debounce(async () => {
+    if (isPairing || isDebouncing) return;
+    
+    setIsPairing(true);
+    setShowLoadingAnimation(true);
+    
+    try {
+      // Stop scanning immediately when pair button is clicked
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        setScanInterval(null);
+      }
+      await fetch(`${PI_API_URL}/stop-scan`).catch(err => {
+        console.error("Failed to stop scanning:", err);
+      });
+      
+      // Then proceed with pairing
+      await pairSelectedDevices(
+        selectedDevices,
+        selectedPairedDevices,
+        setPairing,
+        configIDParam,
+        configName,
+        updateConnectionStatus,
+        getSpeakers,
+        addSpeaker,
+        updateSpeakerConnectionStatus,
+        addConfiguration,
+        router
+      );
+    } finally {
+      setIsPairing(false);
+      setShowLoadingAnimation(false);
+    }
+  }, 1000); // 1 second debounce
 
   return (
      <YStack flex={1} backgroundColor={bg}>
@@ -157,91 +210,112 @@ export default function DeviceSelectionScreen() {
             }}>
                 <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>Select Speaker</H1>
             </View>
-      {loading ? (
-        <ActivityIndicator size="large" color="#FF0055" />
-      ) : (
-        <FlatList
-          data={devices}
-          keyExtractor={(item) => item.mac}
-          renderItem={renderItem}
-          ListEmptyComponent={<H1
-            style={{ color: tc, fontFamily: "Finlandica" }}
-            alignSelf='center'
-            fontSize={15}
-            lineHeight={44}
-            fontWeight="400">
-            No devices found
-          </H1>}
-          style={styles.list}
-        />
-      )}
-      {/* Header */}
-      <View style={{
-                paddingTop: 20,
-                paddingBottom: 10,
+
+            {showLoadingAnimation && (
+              <View style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                zIndex: 1000
+              }}>
+                <View style={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 1001
+                }}>
+                  <LottieView
+                    source={require('../assets/animations/SyncSonic_Loading_Light_nbg.json')}
+                    autoPlay
+                    loop
+                    style={{ 
+                      width: 600, 
+                      height: 600,
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: [{ translateX: -300 }, { translateY: -300 }]
+                    }}
+                  />
+                </View>
+              </View>
+            )}
+
+            {loading ? (
+              <ActivityIndicator size="large" color="#FF0055" />
+            ) : (
+              <FlatList
+                data={devices}
+                keyExtractor={(item) => item.mac}
+                renderItem={renderItem}
+                showsVerticalScrollIndicator={true}
+                indicatorStyle="black"
+                ListEmptyComponent={<H1
+                  style={{ color: tc, fontFamily: "Finlandica" }}
+                  alignSelf='center'
+                  fontSize={15}
+                  lineHeight={44}
+                  fontWeight="400">
+                  No devices found
+                </H1>}
+                style={styles.list}
+              />
+            )}
+
+            {/* Header */}
+            <View style={{
+                paddingTop: 10,
+                paddingBottom: 5,
                 alignItems: "center",
             }}>
                 <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>Saved Speakers</H1>
             </View>
-      <FlatList
-        data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
-        keyExtractor={(item) => item.mac}
-        renderItem={renderPairedDevice}
-        ListEmptyComponent={<H1
-          style={{ color: tc, fontFamily: "Finlandica" }}
-          alignSelf='center'
-          fontSize={15}
-          lineHeight={44}
-          fontWeight="400">
-          No paired devices found
-        </H1>}
-        style={styles.list}
-      />
-      <Button
-        onPress={async () => {
-          // Stop scanning immediately when pair button is clicked
-          if (scanInterval) {
-            clearInterval(scanInterval);
-            setScanInterval(null);
-          }
-          await fetch(`${PI_API_URL}/stop-scan`).catch(err => {
-            console.error("Failed to stop scanning:", err);
-          });
-          
-          // Then proceed with pairing
-          pairSelectedDevices(
-            selectedDevices,
-            selectedPairedDevices,
-            setPairing,
-            configIDParam,
-            configName,
-            updateConnectionStatus,
-            getSpeakers,
-            addSpeaker,
-            updateSpeakerConnectionStatus,
-            addConfiguration,
-            router
-          );
-        }}
-        style={{
-          backgroundColor: pc,
-          width: '90%',
-          height: 50,
-          borderRadius: 999,
-          marginBottom: 10,
-          alignSelf: 'center',
-        }}
-      >
-        {pairing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica">
-            Pair selected devices
-          </H1>
-        )}
-      </Button>
-    </YStack>
-  );
+            <FlatList
+              data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
+              keyExtractor={(item) => item.mac}
+              renderItem={renderPairedDevice}
+              showsVerticalScrollIndicator={true}
+              indicatorStyle="black"
+              ListEmptyComponent={<H1
+                style={{ color: tc, fontFamily: "Finlandica" }}
+                alignSelf='center'
+                fontSize={15}
+                lineHeight={44}
+                fontWeight="400">
+                No paired devices found
+              </H1>}
+              style={[styles.list, { marginTop: 0 }]}
+            />
+            <Button
+              onPress={handlePairDevices}
+              style={{
+                backgroundColor: pc,
+                width: '90%',
+                height: 50,
+                borderRadius: 999,
+                marginBottom: 20,
+                alignSelf: 'center',
+              }}
+            >
+              {pairing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica">
+                  Pair selected devices
+                </H1>
+              )}
+            </Button>
+          </YStack>
+        );
 }
 
 const styles = StyleSheet.create({
@@ -260,13 +334,21 @@ const styles = StyleSheet.create({
     fontFamily: "Finlandica"
   },
   list: {
-    marginBottom: 20
+    height: 200,
+    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 10,
+    shadowColor: "#93C7FF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
   deviceItem: {
     padding: 16,
-    
     borderRadius: 15,
     marginBottom: 10,
+    backgroundColor: 'white',
     shadowColor: "#93C7FF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
@@ -279,6 +361,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#26004E',
     fontFamily: "Finlandica"
+  },
+  selectedDeviceText: {
+    color: 'white'
   },
   emptyText: {
     fontSize: 16,
