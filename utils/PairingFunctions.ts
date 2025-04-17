@@ -19,7 +19,6 @@ export const fetchDeviceQueue = async (): Promise<Device[]> => {
       name: name as string,
     }));
 
-    console.log("fire");
     const now = new Date();
     console.log(now.toTimeString() + ", found devices: " + deviceArray);
     
@@ -156,7 +155,7 @@ export const pairSelectedDevices = async (
         }
       });
 
-      router.push({
+      router.replace({
         pathname: '/settings/config',
         params: { 
           configID: configIDParsed.toString(), 
@@ -173,7 +172,7 @@ export const pairSelectedDevices = async (
           updateSpeakerConnectionStatus(newConfigID, mac, isConnected);
         });
         updateConnectionStatus(newConfigID, 1);
-        router.push({
+        router.replace({
           pathname: '/settings/config',
           params: { 
             configID: newConfigID.toString(), 
