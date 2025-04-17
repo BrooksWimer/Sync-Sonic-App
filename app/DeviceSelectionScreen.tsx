@@ -61,11 +61,14 @@ export default function DeviceSelectionScreen() {
 
   // Start scanning and set up polling for device queue
   useEffect(() => {
+    let mounted = true;
     const initializeScanning = async () => {
       try {
         // Fetch paired devices first
         const pairedDevicesData = await fetchPairedDevices();
-        setPairedDevices(pairedDevicesData);
+        if (mounted) {
+          setPairedDevices(pairedDevicesData);
+        }
         
         // Start scanning
         await fetch(`${PI_API_URL}/start-scan`);
@@ -73,8 +76,10 @@ export default function DeviceSelectionScreen() {
 
         // Start polling device queue
         const interval = setInterval(async () => {
-          const deviceArray = await fetchDeviceQueue();
-          setDevices(deviceArray);
+          if (mounted) {
+            const deviceArray = await fetchDeviceQueue();
+            setDevices(deviceArray);
+          }
         }, 1000);
         setScanInterval(interval);
       } catch (err) {
@@ -85,6 +90,7 @@ export default function DeviceSelectionScreen() {
     initializeScanning();
   
     return () => {
+      mounted = false;
       // Clean up the interval
       if (scanInterval) {
         clearInterval(scanInterval);
