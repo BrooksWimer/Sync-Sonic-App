@@ -22,6 +22,7 @@ export default function ConnectPhone() {
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
 
+
   const loaderSource = themeName === 'dark'
   ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
   : require('../assets/animations/SyncSonic_Loading_Dark_nbg.json');
@@ -76,6 +77,7 @@ export default function ConnectPhone() {
           fontSize={36}
           lineHeight={44}
           fontWeight="700"
+          letterSpacing={1}
         >
           Connect Your Phone
         </H1>
@@ -87,6 +89,7 @@ export default function ConnectPhone() {
           marginTop={16}
           marginBottom={32}
           paddingHorizontal={20}
+          letterSpacing={1}
         >
           To stream music from your phone, please turn on Bluetooth and pair it with the box.
         </Text>
@@ -115,7 +118,7 @@ export default function ConnectPhone() {
           }}
           pressStyle={{ opacity: 0.8 }}
         >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Finlandica" }}>
+          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
             {resetting ? "Resetting..." : "Reset Adapters"}
           </Text>
 
@@ -150,7 +153,7 @@ export default function ConnectPhone() {
           }}
           pressStyle={{ opacity: 0.8 }}
         >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Finlandica" }}>
+          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
             {connecting ? "Connecting..." : "Connect Phone"}
           </Text>
 
@@ -181,7 +184,7 @@ export default function ConnectPhone() {
           }}
           pressStyle={{ opacity: 0.8 }}
         >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Finlandica" }}>
+          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter"}}>
             Continue to Home
           </Text>
         </Button>

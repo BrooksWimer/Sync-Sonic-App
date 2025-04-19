@@ -1,4 +1,5 @@
 import { useSearchParams } from 'expo-router/build/hooks';
+import {Wifi, WifiOff, Bluetooth, BluetoothOff } from '@tamagui/lucide-icons'
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
@@ -30,6 +31,7 @@ import {
   handleConnect,
   handleSave
 } from '../utils/ConfigurationFunctions';
+import LottieView from 'lottie-react-native';
 
 
 
@@ -185,6 +187,8 @@ export default function SpeakerConfigScreen() {
       const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
       const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
       const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+      const green = themeName === 'dark' ? '#00FF6A' : '#34A853'
+      const red = themeName === 'dark' ? 'black' : '#E8004D'
 
       const { width: screenWidth } = Dimensions.get('window');
 
@@ -197,10 +201,10 @@ export default function SpeakerConfigScreen() {
         <YStack flex={1} backgroundColor={bg}>
           <TopBar/>
           <Text style={{ fontFamily: 'Finlandica', fontSize: 25, fontWeight: "bold", color: tc, marginBottom: 10, marginTop: 20, alignSelf: 'center' }}>
-            Speaker Configuration: {configNameParam}
+            Configuration: {configNameParam}
           </Text>
           
-          <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "bold", color: tc, marginTop: 0, alignSelf: 'center', marginBottom: 5 }}>
+          <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "medium", color: tc, marginTop: 0, alignSelf: 'center', marginBottom: 5 }}>
             Adjust the sliders for each speaker as needed.
           </Text>
           <Text>  </Text>
@@ -211,7 +215,7 @@ export default function SpeakerConfigScreen() {
               <Text style={{ fontFamily: 'Finlandica' }}>No connected speakers found.</Text>
             ) : (
               Object.keys(connectedSpeakers).map(mac => (
-                <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, paddingLeft: 20, paddingRight: 20, borderWidth: 1, borderColor: stc, borderRadius: 8}}>
+                <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, paddingLeft: 20, paddingRight: 20, paddingBottom: 5, paddingTop: 5,borderWidth: 1, borderColor: stc, borderRadius: 8}}>
                   <Text style={{ fontFamily: 'Finlandica', fontSize: 24, fontWeight: "bold", color: tc, marginTop: -25, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
                   <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Volume: {settings[mac]?.volume || 50}%</Text>
                   <Slider
@@ -249,17 +253,45 @@ export default function SpeakerConfigScreen() {
            <SafeAreaView style={styles.buttonContainer}>
               {configIDParam ? (
                 isConnected ? (
-                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={() => handleDisconnectWrapper()}>
-                    <Text style={styles.buttonText}>Disconnect Configuration</Text>
+                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: red, borderWidth: 2}} onPress={() => handleDisconnectWrapper()}>
+                    <View
+                      style={{
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                      }}
+                    >
+                      <Text style={styles.buttonText}>Disconnect Configuration</Text>
+
+                      {/* Icon floating on the right */}
+                      <View style={{ position: 'absolute', right: 0 }}>
+                        <BluetoothOff size={20} color="white" />
+                      </View>
+                    </View>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%"}} onPress={() => handleConnectWrapper()}>
-                    <Text style={styles.buttonText}>Connect Configuration</Text>
+                  
+                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: green, borderWidth: 2}} onPress={() => handleConnectWrapper()}>
+                   <View
+                      style={{
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                      }}
+                    >
+                      <Text style={styles.buttonText}>Connect Configuration</Text>
+
+                      {/* Icon floating on the right */}
+                      <View style={{ position: 'absolute', right: 0 }}>
+                        <Bluetooth size={20} color="white" />
+                      </View>
+                    </View>
                   </TouchableOpacity>
                 )
               ) : (
                 <TouchableOpacity style={styles.saveButton} onPress={() => handleSave(configIDParam, configNameParam, connectedSpeakers, setIsSaving)}>
                   <Text style={styles.buttonText}>Save Configuration</Text>
+          
                 </TouchableOpacity>
               )}
               

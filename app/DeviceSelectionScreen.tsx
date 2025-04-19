@@ -146,6 +146,7 @@ export default function DeviceSelectionScreen() {
   const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+  const svbg = themeName === 'dark' ? '#350066' : '#F9F5FF'
 
   // Debounce function with state tracking
   const debounce = (func: Function, wait: number) => {
@@ -208,7 +209,7 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>Select Speaker</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing:1 }}>Select Speaker</H1>
             </View>
 
             {showLoadingAnimation && (
@@ -261,15 +262,16 @@ export default function DeviceSelectionScreen() {
                 renderItem={renderItem}
                 showsVerticalScrollIndicator={true}
                 indicatorStyle="black"
+                
                 ListEmptyComponent={<H1
-                  style={{ color: tc, fontFamily: "Finlandica" }}
+                  style={{ color: tc, fontFamily: "Finlandica", letterSpacing:1 }}
                   alignSelf='center'
                   fontSize={15}
                   lineHeight={44}
                   fontWeight="400">
                   No devices found
                 </H1>}
-                style={styles.list}
+                style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
               />
             )}
 
@@ -279,7 +281,7 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 5,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>Saved Speakers</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing: 1 }}>Saved Speakers</H1>
             </View>
             <FlatList
               data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
@@ -288,14 +290,14 @@ export default function DeviceSelectionScreen() {
               showsVerticalScrollIndicator={true}
               indicatorStyle="black"
               ListEmptyComponent={<H1
-                style={{ color: tc, fontFamily: "Finlandica" }}
+                style={{ color: tc, fontFamily: "Finlandica", letterSpacing: 1 }}
                 alignSelf='center'
                 fontSize={15}
                 lineHeight={44}
                 fontWeight="400">
                 No paired devices found
               </H1>}
-              style={[styles.list, { marginTop: 0 }]}
+              style={[styles.list, { backgroundColor: svbg, borderColor: tc}]}
             />
             <Button
               onPress={handlePairDevices}
@@ -311,7 +313,7 @@ export default function DeviceSelectionScreen() {
               {pairing ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica">
+                <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica" letterSpacing={1}>
                   Pair selected devices
                 </H1>
               )}
@@ -333,13 +335,17 @@ const styles = StyleSheet.create({
     marginTop: 20,
     textAlign: 'center',
     color: '#26004E',
-    fontFamily: "Finlandica"
+    fontFamily: "Finlandica",
+    letterSpacing: 1
   },
   list: {
     height: 200,
+    alignSelf: "center",
+    width: "95%",
     marginBottom: 20,
     backgroundColor: 'white',
     borderRadius: 15,
+    borderWidth: 1,
     padding: 10,
     shadowColor: "#93C7FF",
     shadowOffset: { width: 0, height: 0 },
@@ -362,7 +368,8 @@ const styles = StyleSheet.create({
   deviceName: { 
     fontSize: 18,
     color: '#26004E',
-    fontFamily: "Finlandica"
+    fontFamily: "Finlandica",
+    letterSpacing: 1
   },
   selectedDeviceText: {
     color: 'white'
@@ -371,7 +378,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#26004E',
     textAlign: 'center',
-    fontFamily: "Finlandica"
+    fontFamily: "Finlandica",
+    letterSpacing:1
   },
   pairButton: {
     backgroundColor: '#3E0094',
@@ -387,7 +395,8 @@ const styles = StyleSheet.create({
   pairButtonText: { 
     color: '#F2E8FF', 
     fontSize: 18,
-    fontFamily: "Finlandica"
+    fontFamily: "Finlandica",
+    letterSpacing:1
   },
   disabledButton: {
     opacity: 0.7,

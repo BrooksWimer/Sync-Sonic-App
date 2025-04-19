@@ -81,6 +81,7 @@ export default function Config() {
         const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
         const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
         const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+        const dc = themeName === 'dark' ? 'white' : '#26004E'
       
     
 
@@ -103,8 +104,9 @@ export default function Config() {
                 <H1
                     style={{ color: tc, fontFamily: "Finlandica" }}
                     alignSelf='center'
-                    fontSize={15}
+                    fontSize={18}
                     lineHeight={44}
+                    letterSpacing={1}
                     fontWeight="400">
                     Configuration Name
                 </H1>
@@ -121,6 +123,7 @@ export default function Config() {
                     padding={10}
                     fontSize={16}
                     fontFamily="Finlandica"
+                    letterSpacing={1}
                 />
 
                 {/* Select Devices */}
@@ -132,7 +135,7 @@ export default function Config() {
                     borderRadius={5}
                     padding={10}
                 >
-                    <H1 style={{ fontFamily: "Finlandica", color: "white" }}>
+                    <H1 style={{ fontFamily: "Inter", color: "white" }}>
                         {configID ? "Add Bluetooth Devices" : "Find Bluetooth Devices"}
                     </H1>
                 </Button>
@@ -141,7 +144,7 @@ export default function Config() {
             {/* List of Found Bluetooth Devices */}
             <ScrollView style={{ maxHeight: 300, marginTop: 10, paddingHorizontal: 20 }}>
             {devices.length === 0 ? (
-                <H1 style={{ color: stc, fontFamily: "Finlandica" }} alignSelf="center">
+                <H1 style={{ color: stc, fontFamily: "Finlandica", letterSpacing:1 }} alignSelf="center">
                     No devices connected. Please connect devices
                 </H1>
             ) : (
@@ -156,24 +159,50 @@ export default function Config() {
                     backgroundColor="transparent"
                 >
                     <XStack justifyContent="space-between" alignItems="center">
-                    <H1 style={{ fontSize: 16, fontWeight: "600", color: tc, fontFamily: "Finlandica" }}>
-                        {device.name}
-                    </H1>
-                    <Button
-                        size="$2"
-                        backgroundColor="transparent"
-                        onPress={() => removeDevice(device, configID, configName, devices, setDevices)}
-                        padding={0}
-                        icon={<SquareX size={25} color="white" />}
-                    />
-                    </XStack>
+                        {/* Left block: text lines stacked vertically */}
+                        <YStack flex={1}>
+                            <H1
+                            style={{
+                                fontSize: 16,
+                                fontWeight: "600",
+                                color: tc,
+                                fontFamily: "Finlandica",
+                            }}
+                            >
+                            {device.name}
+                            </H1>
+                            <XStack alignItems="center" marginTop={6}>
+                            <Wifi size={20} color={tc} style={{ marginRight: 8 }} />
+                            <H1
+                                style={{
+                                fontSize: 12,
+                                color: tc,
+                                marginLeft: 6,
+                                fontFamily: "Finlandica",
+                                }}
+                            >
+                                {device.mac}
+                            </H1>
+                            </XStack>
+                        </YStack>
 
-                    <XStack alignItems="center" marginTop={6}>
-                    <Wifi size={20} color={tc} style={{ marginRight: 8 }} />
-                    <H1 style={{ fontSize: 12, color: tc, marginLeft: 6, fontFamily: "Finlandica" }}>
-                        {device.mac}
-                    </H1>
-                    </XStack>
+                        {/* Right side: Delete button vertically centered */}
+                        <Button
+                            size={50}
+                            backgroundColor="transparent"
+                            onPress={() => {
+                                removeDevice(device, configID, configName, devices, setDevices);
+                                setDevices(prev => prev.filter(d => d.id !== device.id));
+                              }}
+                            padding={0}
+                            height={50} // match visual height of the text block
+                            minWidth={40}
+                            alignItems="center"
+                            justifyContent="center"
+                            icon={<SquareX size={24} strokeWidth={1} color={dc} />}
+                        />
+                        </XStack>
+
                 </YStack>
                 ))
             )}

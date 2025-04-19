@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import {CirclePlus} from '@tamagui/lucide-icons'
 import { Button, H1, YStack, View, XStack, ScrollView, Text, useThemeName, useTheme } from "tamagui";
-import { ActivityIndicator, Pressable, StatusBar } from 'react-native';
+import { ActivityIndicator, Pressable, StatusBar, TouchableOpacity } from 'react-native';
 import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert, StyleSheet } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,6 +11,7 @@ import { TopBar } from '@/components/TopBar';
 import { AddButton } from '@/components/AddButton'
 import { PI_API_URL } from '../utils/constants'
 import { handleDeleteConfig } from '@/utils/ConfigurationFunctions'
+
 
 export default function Home() {
   const router = useRouter(); // page changing
@@ -57,6 +59,7 @@ export default function Home() {
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
   const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+  const green = themeName === 'dark' ? '#00FF6A' : '#34A853'
 
   return (
     <YStack flex={1} backgroundColor={bg}>
@@ -104,7 +107,7 @@ export default function Home() {
               }}
               pressStyle={{
                 shadowRadius: 20,
-                transform: [{ scale: 1.04 }]
+                transform: [{ scale: 1.03 }]
               }}
               onPress={() => router.push({
                 pathname: "/SpeakerConfigScreen",
@@ -121,14 +124,14 @@ export default function Home() {
                       <View
                         key={i}
                         style={[styles.statusDot, {
-                          backgroundColor: speakerStatuses[config.id]?.[i] ? '#00FF6A' : '#FF0055'
+                          backgroundColor: speakerStatuses[config.id]?.[i] ? green : '#FF0055'
                         }]}
                       />
                     ))}
                   </XStack>
 
                 {/* Connection status */}
-                <H1 style={{ fontSize: 14, color: config.isConnected ? "#00FF6A" : "#FF0055", marginTop: 6, fontFamily: "Finlandica" }}>
+                <H1 style={{ fontSize: 14, color: config.isConnected ? green : "#FF0055", marginTop: 6, fontFamily: "Finlandica", letterSpacing: 1}}>
                   {config.isConnected ? "Connected" : "Not Connected"}
                 </H1>
               </YStack>
@@ -147,7 +150,34 @@ export default function Home() {
         )}
       </ScrollView>
 
-      <AddButton onPress={addConfig} />
+      {/* Add Button */}
+
+
+
+      <View
+            style={{
+              position: 'absolute',
+              bottom: 32,
+              left: 0,
+              right: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <TouchableOpacity
+              style={{
+                width: 60,
+                height: 60,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onPress={addConfig} // 👈 use the passed-in handler
+            >
+              icon={<CirclePlus size={60} strokeWidth={1} color={green} />}
+            </TouchableOpacity>
+          </View>
+
+
     </YStack>
   );
 }

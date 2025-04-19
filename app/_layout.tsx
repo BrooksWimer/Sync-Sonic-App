@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/useColorScheme'
 import { useFonts } from 'expo-font'
 import { FontProvider } from '../utils/fonts'
 
+
 export default function RootLayout() {
   const colorScheme = useColorScheme() // 'light' or 'dark'
 
