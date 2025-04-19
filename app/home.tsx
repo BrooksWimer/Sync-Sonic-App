@@ -11,12 +11,24 @@ import { TopBar } from '@/components/TopBar';
 import { AddButton } from '@/components/AddButton'
 import { PI_API_URL } from '../utils/constants'
 import { handleDeleteConfig } from '@/utils/ConfigurationFunctions'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated'
+import { LinearGradient } from 'expo-linear-gradient'
+
+
+
+
 
 
 export default function Home() {
   const router = useRouter(); // page changing
   const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
   const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
+  const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient)
 
   // Fetch configurations and their speaker statuses
   useFocusEffect(
@@ -54,6 +66,10 @@ export default function Home() {
   const imageSource = themeName === 'dark'
     ? require('../assets/images/welcomeGraphicDark.png')
     : require('../assets/images/welcomeGraphicLight.png')
+
+  const logo = themeName === 'dark'
+    ? require('../assets/images/horizontalLogoDark.png')
+    : require('../assets/images/horizontalLogoLight.png')
    
   const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
@@ -61,9 +77,27 @@ export default function Home() {
   const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
   const green = themeName === 'dark' ? '#00FF6A' : '#34A853'
 
+  const pulseOpacity = useSharedValue(0.3)
+
+  useEffect(() => {
+    pulseOpacity.value = withRepeat(
+      withTiming(0.8, { duration: 1500 }),
+      -1,
+      true // reverse = pulse in and out
+    )
+  }, [])
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: pulseOpacity.value,
+  }))
+
+
+  
+
   return (
     <YStack flex={1} backgroundColor={bg}>
-      <TopBar/>
+     <TopBar/>
+
       {/* Header */}
       <View style={{
           paddingTop: 20,
@@ -71,9 +105,10 @@ export default function Home() {
           alignItems: "center",
           backgroundColor: bg
       }}>
-        <H1 style={{ color: tc, fontFamily: "Finlandica", fontSize: 36, lineHeight: 44, fontWeight: "700", marginBottom: 20, marginTop: 15 }}>
+        <H1 style={{ color: tc, fontFamily: "Finlandica", fontSize: 36, lineHeight: 44, fontWeight: "700", marginBottom: 5, marginTop: 15 }}>
           Configurations
         </H1>
+        
       </View>
       <ScrollView style={{ paddingHorizontal: 20 }}>
         {configurations.length === 0 ? (
@@ -81,7 +116,7 @@ export default function Home() {
             No configurations found.
           </H1>
         ) : (
-          configurations.map((config) => (
+          configurations.map((config, index) => (
             // Touching the configuration takes you to the SpeakerConfigScreen
             <Pressable
             key={config.id}
@@ -92,14 +127,20 @@ export default function Home() {
               alignItems="center"
               borderRadius={15}
               padding={15}
-              marginBottom={10}
+              marginBottom="5%"
               borderWidth={1}
-              borderColor={stc}
+              borderColor={tc}
+              backgroundColor={bg}
               justifyContent="space-between"
-              shadowColor="#93C7FF"
-              shadowOffset={{ width: 0, height: 0 }}
-              shadowOpacity={0.8}
-              shadowRadius={8}
+              style={{marginTop: index === 0 ? 15 : 0,
+                shadowColor: index === 0 ? green : tc,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.8,
+                shadowRadius: 8,
+                elevation: 5,
+                position: 'relative', // needed for absolute children
+                overflow: 'hidden',   // rounds the gradient background
+              }}
               hoverStyle={{
                 shadowRadius: 15,
                 shadowOpacity: 1,
@@ -113,8 +154,47 @@ export default function Home() {
                 pathname: "/SpeakerConfigScreen",
                 params: { configID: config.id.toString(), configName: config.name }
               })}
-              //onLongPress={() => handleDeleteConfig(config.id)}
+              onLongPress={() => {
+                Alert.alert(
+                  "Delete Configuration?",
+                  `Are you sure you want to delete "${config.name}"?`,
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          await deleteConfiguration(config.id)
+                          setConfigurations(prev => prev.filter(c => c.id !== config.id))
+                        } catch (err) {
+                          console.error("Failed to delete configuration:", err)
+                        }
+                      },
+                    },
+                  ],
+                  { cancelable: true }
+                )
+              }}
+              
+              
               >
+                            {/* Gradient background – if want to remove, just remove this section*/}
+                            {index === 0 && (
+                              <AnimatedGradient
+                              colors={[pc + '50', green + '99']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={[
+                                StyleSheet.absoluteFillObject,
+                                { zIndex: -1 },
+                                animatedStyle, 
+                              ]}
+                            />
+                          )}
               <YStack>
                 <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
 
@@ -124,7 +204,9 @@ export default function Home() {
                       <View
                         key={i}
                         style={[styles.statusDot, {
-                          backgroundColor: speakerStatuses[config.id]?.[i] ? green : '#FF0055'
+                          backgroundColor: speakerStatuses[config.id]?.[i] ? green : '#FF0055',
+                          shadowColor: tc,
+                          elevation: 8,
                         }]}
                       />
                     ))}
@@ -155,26 +237,27 @@ export default function Home() {
 
 
       <View
-            style={{
-              position: 'absolute',
-              bottom: 32,
-              left: 0,
-              right: 0,
-              alignItems: 'center',
+        style={{
+          position: 'absolute',
+          bottom: 32,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <TouchableOpacity
+          style={{
+              width: 60,
+              height: 60,
               justifyContent: 'center',
-            }}
-          >
-            <TouchableOpacity
-              style={{
-                width: 60,
-                height: 60,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-              onPress={addConfig} // 👈 use the passed-in handler
-            >
-              icon={<CirclePlus size={60} strokeWidth={1} color={green} />}
-            </TouchableOpacity>
+              alignItems: 'center',
+          }}
+          onPress={addConfig}
+        >
+          <CirclePlus size={60} strokeWidth={1} color={green} />
+        </TouchableOpacity>
+
+
           </View>
 
 
@@ -188,5 +271,8 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     marginRight: 6,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   }
 });

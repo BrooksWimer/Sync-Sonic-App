@@ -3,6 +3,8 @@ import { useTheme, useThemeName, XStack, YStack } from 'tamagui'
 import { ArrowLeft } from '@tamagui/lucide-icons'
 import { Image, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useNavigation } from '@react-navigation/native'
+
 
 export const TopBar = () => {
   const router = useRouter()
@@ -22,10 +24,10 @@ export const TopBar = () => {
 
   return (
     <XStack
-      height={95}
+      height={70}
       style={{
         backgroundColor: pc,
-        paddingTop: 45
+        paddingTop: 0
       }}
       alignItems="center" ////////
       justifyContent="space-between"

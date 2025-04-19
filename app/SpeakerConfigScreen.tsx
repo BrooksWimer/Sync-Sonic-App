@@ -204,9 +204,10 @@ export default function SpeakerConfigScreen() {
             Configuration: {configNameParam}
           </Text>
           
-          <Text style={{ fontFamily: 'Finlandica', fontSize: 15, fontWeight: "medium", color: tc, marginTop: 0, alignSelf: 'center', marginBottom: 5 }}>
+          <Text style={{ fontFamily: 'Finlandica', fontSize: 17, fontWeight: "medium", color: tc, marginTop: 0, alignSelf: 'center', marginBottom: 0 }}>
             Adjust the sliders for each speaker as needed.
           </Text>
+          {/* LEAVE THIS EMPTY */}
           <Text>  </Text>
           <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
             
@@ -214,9 +215,27 @@ export default function SpeakerConfigScreen() {
             {Object.keys(connectedSpeakers).length === 0 ? (
               <Text style={{ fontFamily: 'Finlandica' }}>No connected speakers found.</Text>
             ) : (
-              Object.keys(connectedSpeakers).map(mac => (
-                <SafeAreaView key={mac} style={{ width:"90%" ,alignSelf:"center", marginBottom: 15, paddingLeft: 20, paddingRight: 20, paddingBottom: 5, paddingTop: 5,borderWidth: 1, borderColor: stc, borderRadius: 8}}>
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 24, fontWeight: "bold", color: tc, marginTop: -25, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
+              Object.keys(connectedSpeakers).map((mac, index) => (
+                <SafeAreaView key={mac} style={{ width:"90%",
+                                                alignSelf:"center", 
+                                                marginTop: index === 0 ? 7 : 0, // 👈 only the first item gets top margin
+                                                marginBottom: 15, 
+                                                paddingLeft: 20, 
+                                                paddingRight: 20, 
+                                                paddingBottom: 5, 
+                                                paddingTop: 5,
+                                                backgroundColor: bg,
+                                                borderWidth: 1, 
+                                                borderColor: stc,
+                                                borderRadius: 8, 
+                                                shadowColor: tc,
+                                                shadowOffset: { width: 0, height: 0 },
+                                                shadowOpacity: 0.8,
+                                                shadowRadius: 8,
+                                                //height: 300,
+                                                elevation: 10}}>
+                  
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 24, fontWeight: "bold", color: tc, marginTop: 0, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
                   <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Volume: {settings[mac]?.volume || 50}%</Text>
                   <Slider
                     style={styles.slider}
@@ -226,7 +245,7 @@ export default function SpeakerConfigScreen() {
                     value={settings[mac]?.volume || 50}
                     onValueChange={(value: number) => handleVolumeChangeWrapper(mac, value, false)}
                     onSlidingComplete={(value: number) => handleVolumeChangeWrapper(mac, value, true)}
-                    minimumTrackTintColor="#FF0055"
+                    minimumTrackTintColor={pc}
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
@@ -239,7 +258,7 @@ export default function SpeakerConfigScreen() {
                     value={settings[mac]?.latency ?? 100}
                     onValueChange={(value: number) => handleLatencyChangeWrapper(mac, value, false)}
                     onSlidingComplete={(value: number) => handleLatencyChangeWrapper(mac, value, true)}
-                    minimumTrackTintColor="#FF0055"
+                    minimumTrackTintColor={pc}
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
@@ -308,7 +327,7 @@ export default function SpeakerConfigScreen() {
       label: { fontSize: 15, marginTop: 10, fontWeight: "bold"},
       slider: { width: '100%', height: 40, marginBottom: -5},
       instructions: { fontSize: 14, marginTop: 10, textAlign: 'center' },
-      buttonContainer: { alignItems: "center", flexDirection: 'row', justifyContent: 'space-around', marginTop: 50 },
+      buttonContainer: { alignItems: "center", flexDirection: 'row', justifyContent: 'space-around', marginTop: 75 },
       saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
       disconnectButton: { backgroundColor: "#FFFFFF", padding: 15, borderRadius: 8 },
       deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },

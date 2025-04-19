@@ -22,10 +22,10 @@ export const TopBarStart = () => {
 
   return (
     <XStack
-      height={95}
+      height={70}
       style={{
         backgroundColor: pc,
-        paddingTop: 45
+        paddingTop: 0
       }}
       alignItems="center"
       justifyContent="center"

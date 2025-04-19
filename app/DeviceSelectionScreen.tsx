@@ -30,6 +30,7 @@ import {
   pairSelectedDevices
 } from '../utils/PairingFunctions';
 import LottieView from 'lottie-react-native';
+import { Shadow } from 'react-native-shadow-2'
 
 const testerDev: Device = {
   mac: "test-mac",
@@ -116,7 +117,8 @@ export default function DeviceSelectionScreen() {
         onPress={() => toggleSelection(item, selectedDevices, setSelectedDevices)}
         style={[
           styles.deviceItem,
-          isSelected && styles.selectedDevice
+          {shadowColor: tc, borderColor: tc, },
+          isSelected && {backgroundColor: pc}
         ]}
       >
         <Text style={[styles.deviceName, isSelected && styles.selectedDeviceText]}>{item.name}</Text>
@@ -132,7 +134,8 @@ export default function DeviceSelectionScreen() {
         onPress={() => togglePairedSelection(item, selectedPairedDevices, setSelectedPairedDevices)}
         style={[
           styles.deviceItem,
-          isSelected && styles.selectedDevice
+          {shadowColor: tc, borderColor: tc, },
+          isSelected && {backgroundColor:pc}
         ]}
       >
         <Text style={[styles.deviceName, isSelected && styles.selectedDeviceText]}>{item.name}</Text>
@@ -205,11 +208,11 @@ export default function DeviceSelectionScreen() {
 
             {/* Header */}
             <View style={{
-                paddingTop: 20,
+                paddingTop: 10,
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing:1 }}>Select Speaker</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing:1}}>Select Speaker</H1>
             </View>
 
             {showLoadingAnimation && (
@@ -256,6 +259,7 @@ export default function DeviceSelectionScreen() {
             {loading ? (
               <ActivityIndicator size="large" color="#FF0055" />
             ) : (
+              
               <FlatList
                 data={devices}
                 keyExtractor={(item) => item.mac}
@@ -271,7 +275,11 @@ export default function DeviceSelectionScreen() {
                   fontWeight="400">
                   No devices found
                 </H1>}
-                style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
+                style={[styles.list, { 
+                  backgroundColor: svbg,
+                  shadowColor: tc,
+                  borderColor: tc 
+                  }]}
               />
             )}
 
@@ -281,34 +289,40 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 5,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing: 1 }}>Saved Speakers</H1>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing: 1}}>Saved Speakers</H1>
             </View>
             <FlatList
+              style={[styles.list, 
+                { borderColor: tc, 
+                  backgroundColor: svbg,
+                  shadowColor: tc
+                }]}
+                  
               data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
               keyExtractor={(item) => item.mac}
               renderItem={renderPairedDevice}
               showsVerticalScrollIndicator={true}
               indicatorStyle="black"
               ListEmptyComponent={<H1
-                style={{ color: tc, fontFamily: "Finlandica", letterSpacing: 1 }}
+                style={{ color: tc,    
+                        fontFamily: "Finlandica", 
+                        letterSpacing: 1 }}
                 alignSelf='center'
                 fontSize={15}
                 lineHeight={44}
                 fontWeight="400">
                 No paired devices found
               </H1>}
-              style={[styles.list, { backgroundColor: svbg, borderColor: tc}]}
             />
+
+
             <Button
               onPress={handlePairDevices}
-              style={{
+              style={[styles.pairButton,
+                {
                 backgroundColor: pc,
-                width: '90%',
-                height: 50,
-                borderRadius: 999,
-                marginBottom: 20,
-                alignSelf: 'center',
-              }}
+                
+              }]}
             >
               {pairing ? (
                 <ActivityIndicator color="#fff" />
@@ -331,36 +345,34 @@ const styles = StyleSheet.create({
   header: { 
     fontSize: 32, 
     fontWeight: 'bold', 
-    marginBottom: 20, 
-    marginTop: 20,
     textAlign: 'center',
     color: '#26004E',
     fontFamily: "Finlandica",
     letterSpacing: 1
   },
   list: {
-    height: 200,
+    maxHeight: "30%",
     alignSelf: "center",
     width: "95%",
-    marginBottom: 20,
-    backgroundColor: 'white',
+    marginBottom: 0,
     borderRadius: 15,
     borderWidth: 1,
     padding: 10,
-    shadowColor: "#93C7FF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 8,
+    elevation: 5
   },
   deviceItem: {
     padding: 16,
     borderRadius: 15,
     marginBottom: 10,
-    backgroundColor: 'white',
-    shadowColor: "#93C7FF",
+    backgroundColor: "white",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 8,
+    elevation: 5
+    
   },
   selectedDevice: {
     backgroundColor: '#3E0094',
@@ -383,14 +395,15 @@ const styles = StyleSheet.create({
   },
   pairButton: {
     backgroundColor: '#3E0094',
-    padding: 15,
-    borderRadius: 15,
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: "#93C7FF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
+    //padding: 15,
+    justifyContent: 'center',
+    borderRadius: 99,
+    alignItems: 'center', 
+    width: '90%',
+    height: 50,
+    marginBottom: "5%",
+    marginTop: "7%",
+    alignSelf: 'center',
   },
   pairButtonText: { 
     color: '#F2E8FF', 
