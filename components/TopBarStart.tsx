@@ -26,12 +26,12 @@ export const TopBarStart = () => {
 
 
     //if android
-    const h = 70
-    const pt = 0
+    let h = 70
+    let pt = 0
     //else, 
     if (Platform.OS === 'ios') {
-      const h = 80;
-      const pt = 25
+      h = 80;
+      pt = 25
     }
 
   return (
