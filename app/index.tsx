@@ -18,9 +18,9 @@ export default function ConnectPhone() {
     ? require('../assets/images/welcomeGraphicDark.png')
     : require('../assets/images/welcomeGraphicLight.png')
 
-  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF' //background
+  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094' //primary color
+  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E' //text color
 
   const loaderSource = themeName === 'dark'
   ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')

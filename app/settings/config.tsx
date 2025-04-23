@@ -108,7 +108,7 @@ export default function Config() {
                     lineHeight={44}
                     letterSpacing={1}
                     fontWeight="400">
-                    Configuration Name
+                    Configuration Name:
                 </H1>
                 <Input
                     id="configName"
@@ -124,6 +124,7 @@ export default function Config() {
                     fontSize={16}
                     fontFamily="Finlandica"
                     letterSpacing={1}
+                    maxLength={20}
                 />
 
                 {/* Select Devices */}

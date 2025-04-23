@@ -151,6 +151,8 @@ export default function DeviceSelectionScreen() {
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
   const svbg = themeName === 'dark' ? '#350066' : '#F9F5FF'
 
+  
+
   // Debounce function with state tracking
   const debounce = (func: Function, wait: number) => {
     let timeout: NodeJS.Timeout;

@@ -18,6 +18,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
+import LottieView from 'lottie-react-native';
 
 
 
@@ -71,11 +72,11 @@ export default function Home() {
     ? require('../assets/images/horizontalLogoDark.png')
     : require('../assets/images/horizontalLogoLight.png')
    
-  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-  const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-  const green = themeName === 'dark' ? '#00FF6A' : '#34A853'
+  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF' // background
+  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094' // primary color (pink/purple)
+  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E' // text color
+  const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D' // subtext color
+  const green = themeName === 'dark' ? '#00FF6A' : '#34A853' // green is *slightly* different on light/dark
 
   const pulseOpacity = useSharedValue(0.3)
 
@@ -138,8 +139,8 @@ export default function Home() {
                 shadowOpacity: 0.8,
                 shadowRadius: 8,
                 elevation: 5,
-                position: 'relative', // needed for absolute children
-                overflow: 'hidden',   // rounds the gradient background
+                position: 'relative', 
+                overflow: 'hidden',   
               }}
               hoverStyle={{
                 shadowRadius: 15,
@@ -184,6 +185,7 @@ export default function Home() {
               >
                             {/* Gradient background – if want to remove, just remove this section*/}
                             {index === 0 && (
+                              
                               <AnimatedGradient
                               colors={[pc + '50', green + '99']}
                               start={{ x: 0, y: 0 }}
@@ -193,11 +195,15 @@ export default function Home() {
                                 { zIndex: -1 },
                                 animatedStyle, 
                               ]}
+                              
                             />
                           )}
               <YStack>
                 <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
 
+
+               
+                            
                 {/* Speaker dots */}
                 <XStack marginTop={4}>
                     {Array.from({ length: config.speakerCount }).map((_, i) => (
@@ -211,6 +217,8 @@ export default function Home() {
                       />
                     ))}
                   </XStack>
+
+                  
 
                 {/* Connection status */}
                 <H1 style={{ fontSize: 14, color: config.isConnected ? green : "#FF0055", marginTop: 6, fontFamily: "Finlandica", letterSpacing: 1}}>

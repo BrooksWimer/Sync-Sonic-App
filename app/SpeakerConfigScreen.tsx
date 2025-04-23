@@ -183,12 +183,12 @@ export default function SpeakerConfigScreen() {
         ? require('../assets/images/welcomeGraphicDark.png')
         : require('../assets/images/welcomeGraphicLight.png')
      
-      const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-      const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-      const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-      const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-      const green = themeName === 'dark' ? '#00FF6A' : '#34A853'
-      const red = themeName === 'dark' ? 'black' : '#E8004D'
+      const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'   //backgroung
+      const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'   //primary (pink/purple)
+      const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'   // text color
+      const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'    // subtext color
+      const green = themeName === 'dark' ? '#00FF6A' : '#34A853'    // green is *slightly* different on light/dark 
+      const red = themeName === 'dark' ? 'black' : '#E8004D'  // red is actually black on dark mode due to similarity of pc
 
       const { width: screenWidth } = Dimensions.get('window');
 
@@ -272,7 +272,9 @@ export default function SpeakerConfigScreen() {
            <SafeAreaView style={styles.buttonContainer}>
               {configIDParam ? (
                 isConnected ? (
-                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: red, borderWidth: 2}} onPress={() => handleDisconnectWrapper()}>
+                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, 
+                  borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: red, borderWidth: 2}} 
+                    onPress={() => handleDisconnectWrapper()}>
                     <View
                       style={{
                         alignItems: 'center',
@@ -284,8 +286,20 @@ export default function SpeakerConfigScreen() {
 
                       {/* Icon floating on the right */}
                       <View style={{ position: 'absolute', right: 0 }}>
-                        <BluetoothOff size={20} color="white" />
+                        <View
+                          style={{
+                            width: 28,              
+                            height: 28,
+                            backgroundColor: red, 
+                            borderRadius: 4,        
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <BluetoothOff size={16} color={pc} />  
+                        </View>
                       </View>
+
                     </View>
                   </TouchableOpacity>
                 ) : (
@@ -302,8 +316,20 @@ export default function SpeakerConfigScreen() {
 
                       {/* Icon floating on the right */}
                       <View style={{ position: 'absolute', right: 0 }}>
-                        <Bluetooth size={20} color="white" />
+                        <View
+                          style={{
+                            width: 28,
+                            height: 28,
+                            backgroundColor: green,
+                            borderRadius: 4,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Bluetooth size={16} color={pc}/>
+                        </View>
                       </View>
+
                     </View>
                   </TouchableOpacity>
                 )

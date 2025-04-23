@@ -3,6 +3,10 @@ import { useTheme, useThemeName, XStack, YStack } from 'tamagui'
 import { ArrowLeft } from '@tamagui/lucide-icons'
 import { Image } from 'react-native'
 import { useRouter } from 'expo-router'
+import { Platform } from 'react-native';
+
+
+
 
 export const TopBarStart = () => {
   const router = useRouter()
@@ -20,12 +24,22 @@ export const TopBarStart = () => {
     const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
     const nc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
 
+
+    //if android
+    const h = 70
+    const pt = 0
+    //else, 
+    if (Platform.OS === 'ios') {
+      const h = 80;
+      const pt = 25
+    }
+
   return (
     <XStack
-      height={70}
+      height={h}
       style={{
         backgroundColor: pc,
-        paddingTop: 0
+        paddingTop: pt
       }}
       alignItems="center"
       justifyContent="center"
