@@ -20,10 +20,45 @@ export default function RootLayout() {
             <Stack.Screen
               name="index"
               options={{
-                animation: 'slide_from_left', // customize this as needed
+                presentation: "containedTransparentModal",
+                animation: 'slide_from_right', 
+                statusBarBackgroundColor: pc,
               }}
             />
-            {/* Add more screens with custom options here if needed */}
+            <Stack.Screen
+              name="home"
+              options={{
+               
+                presentation: "containedTransparentModal",
+                animation: 'default', 
+                statusBarBackgroundColor: pc,
+
+              }}
+            />
+            <Stack.Screen
+              name="settings/config"
+              options={{
+                presentation: "containedTransparentModal",
+                animation: 'default',
+                statusBarBackgroundColor: pc,
+              }}
+            />
+            <Stack.Screen
+              name="DeviceSelectionScreen"
+              options={{
+                animation: 'default',
+                statusBarBackgroundColor: pc,
+                presentation: "containedTransparentModal",
+              }}
+            /><Stack.Screen
+              name="SpeakerConfigScreen"
+              options={{
+                animation: 'default',
+                statusBarBackgroundColor: pc,
+                presentation: "containedTransparentModal",
+                
+              }}
+            />
           </Stack>
           <StatusBar
             style={colorScheme === 'dark' ? 'light' : 'dark'}
