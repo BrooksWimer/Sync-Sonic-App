@@ -22,6 +22,7 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/stack": "^7.2.10",
+    "@shopify/react-native-skia": "1.5.0",
     "@tamagui/lucide-icons": "^1.125.26",
     "expo": "~52.0.46",
     "expo-blur": "~14.0.3",
@@ -29,6 +30,7 @@
     "expo-device": "~7.0.3",
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.1",
+    "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.5",
     "expo-router": "~4.0.20",
     "expo-splash-screen": "~0.29.24",
@@ -49,9 +51,7 @@
     "react-native-shadow-2": "^7.1.1",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "tamagui": "^1.125.26",
-    "@shopify/react-native-skia": "1.5.0",
-    "expo-linear-gradient": "~14.0.2"
+    "tamagui": "^1.125.26"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

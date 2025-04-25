@@ -1,7 +1,7 @@
 import { useSearchParams } from 'expo-router/build/hooks';
 import {Wifi, WifiOff, Bluetooth, BluetoothOff } from '@tamagui/lucide-icons'
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
+import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions, Text } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter, useNavigation, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +19,7 @@ import {
   getSpeakersFull
 } from './database';
 import {PI_API_URL, KNOWN_CONTROLLERS} from '../utils/constants'
-import { useTheme, useThemeName, YStack, Text } from 'tamagui';
+import { useTheme, useThemeName, YStack,  } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { 
   handleVolumeChange,
@@ -32,6 +32,7 @@ import {
   handleSave
 } from '../utils/ConfigurationFunctions';
 import LottieView from 'lottie-react-native';
+
 
 
 
@@ -273,7 +274,9 @@ export default function SpeakerConfigScreen() {
               {configIDParam ? (
                 isConnected ? (
                   <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, 
-                  borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: red, borderWidth: 2}} 
+                  borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: red, borderWidth: 2,
+                  //elevation: 5, shadowColor: red
+                  }} 
                     onPress={() => handleDisconnectWrapper()}>
                     <View
                       style={{
@@ -304,7 +307,11 @@ export default function SpeakerConfigScreen() {
                   </TouchableOpacity>
                 ) : (
                   
-                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: green, borderWidth: 2}} onPress={() => handleConnectWrapper()}>
+                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, 
+                  borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: green, borderWidth: 2,
+                  //elevation: 2, shadowColor: green
+                  }} 
+                    onPress={() => handleConnectWrapper()}>
                    <View
                       style={{
                         alignItems: 'center',
