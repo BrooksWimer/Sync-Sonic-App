@@ -87,49 +87,53 @@ export const handleDisconnect = async (
   configIDParam: string | null,
   configNameParam: string,
   connectedSpeakers: { [mac: string]: string },
-  settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean; balance: number; isMuted: boolean } },
-  setSettings: (settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean; balance: number; isMuted: boolean } }) => void,
+  settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean } },
+  setSettings: (settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean } }) => void,
   setIsConnected: (isConnected: boolean) => void,
   setIsDisconnecting: (isDisconnecting: boolean) => void
 ): Promise<void> => {
   setIsDisconnecting(true);
+  const payload = {
+    configID: configIDParam,
+    configName: configNameParam,
+    speakers: connectedSpeakers,
+    settings: settings
+  };
+
   try {
-    // Send disconnect request to server
     const response = await fetch(`${PI_API_URL}/disconnect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        configName: configNameParam,
-        speakers: connectedSpeakers
-      })
+      body: JSON.stringify(payload)
     });
-
     if (!response.ok) {
       throw new Error(`HTTP error ${response.status}`);
     }
+    const result = await response.json();
+    Alert.alert("Disconnected", "Configuration disconnected successfully.");
+    
+    // Update isConnected status for all speakers, both in the DB and in local state.
+    const updatedSettings = { ...settings };
+    Object.keys(updatedSettings).forEach(mac => {
+      // Update local state
+      updatedSettings[mac].isConnected = false;
+      // Update the DB
+      if (configIDParam) {
+        updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
+      }
+    });
 
-    // Update connection status in database
+    setSettings(updatedSettings);
+
+    // Update overall configuration status to 0 (not connected).
     if (configIDParam) {
       updateConnectionStatus(Number(configIDParam), 0);
-      // Update speaker connection status
-      Object.keys(connectedSpeakers).forEach(mac => {
-        updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
-      });
     }
-
-    // Update local state
-    const updatedSettings = { ...settings };
-    Object.keys(connectedSpeakers).forEach(mac => {
-      updatedSettings[mac] = {
-        ...updatedSettings[mac],
-        isConnected: false
-      };
-    });
-    setSettings(updatedSettings);
     setIsConnected(false);
+
   } catch (error) {
-    console.error("Error disconnecting:", error);
-    Alert.alert("Disconnection Error", "Failed to disconnect from speakers.");
+    console.error("Error disconnecting configuration:", error);
+    Alert.alert("Disconnection Error", "Failed to disconnect configuration.");
   } finally {
     setIsDisconnecting(false);
   }
@@ -139,56 +143,69 @@ export const handleConnect = async (
   configIDParam: string | null,
   configNameParam: string,
   connectedSpeakers: { [mac: string]: string },
-  settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean; balance: number; isMuted: boolean } },
-  setSettings: (settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean; balance: number; isMuted: boolean } }) => void,
+  settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean } },
+  setSettings: (settings: { [mac: string]: { volume: number; latency: number; isConnected: boolean } }) => void,
   setIsConnected: (isConnected: boolean) => void,
   setIsConnecting: (isConnecting: boolean) => void
 ): Promise<void> => {
-  setIsConnecting(true);
-  try {
-    // First, check if we have a free controller
-    const { freeController, error } = await checkBluetoothPorts();
-    if (error || !freeController) {
-      throw new Error("No free controller available");
-    }
+  if (areAllSpeakersConnected(connectedSpeakers, settings)) {
+    Alert.alert("Already Connected", "All speakers are already connected.");
+    return;
+  }
 
-    // Send connect request to server
+  setIsConnecting(true);
+  const payload = {
+    configID: configIDParam,
+    configName: configNameParam,
+    speakers: connectedSpeakers,
+    settings: settings
+  };
+
+  try {
     const response = await fetch(`${PI_API_URL}/connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        configName: configNameParam,
-        speakers: connectedSpeakers,
-        settings: settings
-      })
+      body: JSON.stringify(payload)
     });
-
     if (!response.ok) {
       throw new Error(`HTTP error ${response.status}`);
     }
-
-    // Update connection status in database
-    if (configIDParam) {
-      updateConnectionStatus(Number(configIDParam), 1);
-      // Update speaker connection status
-      Object.keys(connectedSpeakers).forEach(mac => {
-        updateSpeakerConnectionStatus(Number(configIDParam), mac, true);
-      });
-    }
-
-    // Update local state
+    const result = await response.json();
+  
+    const configIdNum = configIDParam ? Number(configIDParam) : 0;
+    let anyConnected = false;
     const updatedSettings = { ...settings };
-    Object.keys(connectedSpeakers).forEach(mac => {
-      updatedSettings[mac] = {
-        ...updatedSettings[mac],
-        isConnected: true
-      };
+    
+    // Create a message showing the status of each speaker
+    let statusMessage = "Connection Status:\n\n";
+    
+    Object.keys(result).forEach(mac => {
+      const isConnected = result[mac].result === "Connected";
+      const speakerName = connectedSpeakers[mac] || result[mac].name || mac;
+      const status = isConnected ? "✅ Connected" : "❌ Not Connected";
+      
+      statusMessage += `${speakerName}: ${status}\n`;
+      
+      // Update per-speaker status in the database.
+      updateSpeakerConnectionStatus(configIdNum, mac, isConnected);
+      // Update local settings for that speaker.
+      if (updatedSettings[mac]) {
+        updatedSettings[mac].isConnected = isConnected;
+      }
+      if (isConnected) {
+        anyConnected = true;
+      }
     });
+  
+    // Update overall configuration status: connected if ANY speaker is connected.
+    updateConnectionStatus(configIdNum, anyConnected ? 1 : 0);
     setSettings(updatedSettings);
-    setIsConnected(true);
+    setIsConnected(anyConnected);
+  
+    Alert.alert("Connection Status", statusMessage);
   } catch (error) {
-    console.error("Error connecting:", error);
-    Alert.alert("Connection Error", "Failed to connect to speakers.");
+    console.error("Error connecting configuration:", error);
+    Alert.alert("Connection Error", "Failed to connect configuration.");
   } finally {
     setIsConnecting(false);
   }

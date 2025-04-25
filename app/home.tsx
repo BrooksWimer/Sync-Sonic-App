@@ -18,7 +18,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
-import LottieView from 'lottie-react-native';
+import { useBLEContext } from '../contexts/BLEContext';
 
 
 
@@ -27,8 +27,10 @@ import LottieView from 'lottie-react-native';
 
 export default function Home() {
   const router = useRouter(); // page changing
+  const { connectToDevice, rpiDevices, scanForBLEDevices } = useBLEContext();
   const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
   const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
+  const [connecting, setConnecting] = useState(false);
   const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient)
 
   // Fetch configurations and their speaker statuses
@@ -92,8 +94,25 @@ export default function Home() {
     opacity: pulseOpacity.value,
   }))
 
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      // Scan for devices first
+      await scanForBLEDevices();
+      
+      if (rpiDevices.length === 0) {
+        Alert.alert('No Devices', 'No Sync-Sonic devices found. Please ensure your device is powered on and in range.');
+        return;
+      }
 
-  
+      await connectToDevice(rpiDevices[0]);
+    } catch (error) {
+      console.error('Connection failed:', error);
+      Alert.alert('Connection Error', 'Failed to connect to the device. Please try again.');
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   return (
     <YStack flex={1} backgroundColor={bg}>
@@ -104,12 +123,31 @@ export default function Home() {
           paddingTop: 20,
           paddingBottom: 10,
           alignItems: "center",
-          backgroundColor: bg
+          backgroundColor: bg,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20
       }}>
         <H1 style={{ color: tc, fontFamily: "Finlandica", fontSize: 36, lineHeight: 44, fontWeight: "700", marginBottom: 5, marginTop: 15 }}>
           Configurations
         </H1>
         
+        {/* <Button
+          onPress={handleConnect}
+          disabled={connecting}
+          style={{
+            backgroundColor: pc,
+            borderRadius: 999,
+            paddingHorizontal: 20,
+            height: 40,
+            marginTop: 15
+          }}
+          pressStyle={{ opacity: 0.8 }}
+        >
+          <Text style={{ color: 'white', fontSize: 16, fontFamily: "Inter" }}>
+            {connecting ? 'Connecting...' : 'Connect'}
+          </Text>
+        </Button> */}
       </View>
       <ScrollView style={{ paddingHorizontal: 20 }}>
         {configurations.length === 0 ? (
@@ -184,7 +222,7 @@ export default function Home() {
               
               >
                             {/* Gradient background – if want to remove, just remove this section*/}
-                            {index === 0 && (
+                            {/* {index === 0 && (
                               
                               <AnimatedGradient
                               colors={[pc + '50', green + '99']}
@@ -197,7 +235,7 @@ export default function Home() {
                               ]}
                               
                             />
-                          )}
+                          )} */}
               <YStack>
                 <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
 

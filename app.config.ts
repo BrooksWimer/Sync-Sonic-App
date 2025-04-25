@@ -55,12 +55,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-sqlite',
-    [
-      "expo-font",
-      {
-        "fonts": ["./assets/fonts/Finlandica-VariableFont_wght.ttf"]
-      }
-    ]
   ],
   experiments: {
     typedRoutes: true,

@@ -37,12 +37,13 @@ export const TopBar = () => {
       pt = 25
     }
 
+    
   return (
     <XStack
       height={h}
       style={{
         backgroundColor: pc,
-        paddingTop: pt
+        paddingTop: 25
       }}
       alignItems="center" ////////
       justifyContent="space-between"

@@ -7,12 +7,6 @@ export function useCustomFonts() {
     'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic-VariableFont_wght.ttf'),
   });
 
-  useEffect(()=> {
-    if (fontsLoaded) {
-      console.log('fonts loaded', fontsLoaded);
-    }
-  },[])
-
   useEffect(() => {
     if (error) {
       console.error('Error loading fonts:', error);
