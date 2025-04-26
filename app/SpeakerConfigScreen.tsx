@@ -1,5 +1,5 @@
 import { useSearchParams } from 'expo-router/build/hooks';
-import {Wifi, WifiOff, Bluetooth, BluetoothOff } from '@tamagui/lucide-icons'
+import {Wifi, WifiOff, Bluetooth, BluetoothOff, Volume2, VolumeX } from '@tamagui/lucide-icons'
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
@@ -65,6 +65,42 @@ export default function SpeakerConfigScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // State for loading speakers
+  const [loadingSpeakers, setLoadingSpeakers] = useState<{ [mac: string]: { action: 'connect' | 'disconnect' | null } }>({});
+
+  // Add local state for slider values and mute status
+  const [sliderValues, setSliderValues] = useState<{
+    [mac: string]: {
+      volume: number;
+      latency: number;
+      balance: number;
+      isMuted: boolean;
+    }
+  }>({});
+
+  // Update slider values when settings change
+  useEffect(() => {
+    const newSliderValues: {
+      [mac: string]: {
+        volume: number;
+        latency: number;
+        balance: number;
+        isMuted: boolean;
+      }
+    } = {};
+    
+    Object.keys(settings).forEach(mac => {
+      newSliderValues[mac] = {
+        volume: settings[mac]?.volume ?? 50,
+        latency: settings[mac]?.latency ?? 100,
+        balance: 0.5, // Default balance value
+        isMuted: false // Default mute state
+      };
+    });
+    
+    setSliderValues(newSliderValues);
+  }, [settings]);
+
   // Load speakers either from the database (if configID exists) or from URL.
   useEffect(() => {
     if (configIDParam) {
@@ -84,11 +120,12 @@ export default function SpeakerConfigScreen() {
         loadedSettings[row.mac] = {
           volume: row.volume,
           latency: row.latency,
-          isConnected: row.is_connected === 1 // Convert DB 0/1 to boolean
+          isConnected: row.is_connected === 1, // Convert DB 0/1 to boolean
         };
       });
   
       setConnectedSpeakers(mapping);
+      setSettings(loadedSettings);
   
       // For the overall config status:
       try {
@@ -97,9 +134,6 @@ export default function SpeakerConfigScreen() {
       } catch (err) {
         console.error("Error fetching connection status:", err);
       }
-  
-      // Now we have all speaker info, including isConnected, from the DB.
-      setSettings(loadedSettings);
     } else {
       // If configIDParam does not exist, we handle a new config or URL with speakers.
       try {
@@ -114,7 +148,7 @@ export default function SpeakerConfigScreen() {
           defaultSettings[mac] = {
             volume: 50,
             latency: 100,
-            isConnected: false
+            isConnected: false,
           };
         });
         setSettings(defaultSettings);
@@ -175,6 +209,163 @@ export default function SpeakerConfigScreen() {
     );
   };
 
+  const handleSoundFieldChange = async (mac: string, newBalance: number, isSlidingComplete: boolean) => {
+    // Update local state immediately
+    setSliderValues(prev => ({
+      ...prev,
+      [mac]: { ...prev[mac], balance: newBalance }
+    }));
+
+    // If still sliding, don't do server/database updates
+    if (!isSlidingComplete) {
+      return;
+    }
+    
+    try {
+      // Update server
+      const payload = {
+        mac: mac,
+        volume: settings[mac]?.volume || 50,
+        balance: newBalance
+      };
+
+      const response = await fetch(`${PI_API_URL}/volume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error updating sound field:", error);
+      Alert.alert("Error", "Failed to update sound field settings.");
+    }
+  };
+
+  const handleConnectOne = async (mac: string) => {
+    setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: 'connect' } }));
+    const payload = {
+      speakers: connectedSpeakers,
+      settings: settings,
+      targetSpeaker: {
+        mac: mac,
+        name: connectedSpeakers[mac]
+      }
+    };
+
+    try {
+      const response = await fetch(`${PI_API_URL}/connect-one`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      const updatedSettings = { ...settings };
+      updatedSettings[mac].isConnected = true;
+      setSettings(updatedSettings);
+      
+      if (configIDParam) {
+        updateSpeakerConnectionStatus(Number(configIDParam), mac, true);
+      }
+      
+      Alert.alert("Success", `${connectedSpeakers[mac]} connected successfully.`);
+    } catch (error) {
+      console.error("Error connecting speaker:", error);
+      Alert.alert("Connection Error", "Failed to connect speaker.");
+    } finally {
+      setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: null } }));
+    }
+  };
+
+  const handleDisconnectOne = async (mac: string) => {
+    setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: 'disconnect' } }));
+    const payload = {
+      configID: configIDParam,
+      configName: configNameParam,
+      speakers: {
+        [mac]: connectedSpeakers[mac]
+      },
+      settings: {
+        [mac]: settings[mac]
+      }
+    };
+
+    try {
+      const response = await fetch(`${PI_API_URL}/disconnect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      const updatedSettings = { ...settings };
+      updatedSettings[mac].isConnected = false;
+      setSettings(updatedSettings);
+      
+      if (configIDParam) {
+        updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
+      }
+      
+      Alert.alert("Success", `${connectedSpeakers[mac]} disconnected successfully.`);
+    } catch (error) {
+      console.error("Error disconnecting speaker:", error);
+      Alert.alert("Disconnection Error", "Failed to disconnect speaker.");
+    } finally {
+      setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: null } }));
+    }
+  };
+
+  const handleMuteToggle = async (mac: string) => {
+    try {
+      const isCurrentlyMuted = sliderValues[mac]?.isMuted || false;
+      
+      const response = await fetch(`${PI_API_URL}/mute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mac: mac,
+          mute: !isCurrentlyMuted  // Toggle the mute state
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      // Update local state
+      setSliderValues(prev => ({
+        ...prev,
+        [mac]: { ...prev[mac], isMuted: !isCurrentlyMuted }
+      }));
+
+      // Update database if we have a config ID
+      if (configIDParam) {
+        updateSpeakerSettings(
+          Number(configIDParam), 
+          mac, 
+          settings[mac]?.volume || 50, 
+          settings[mac]?.latency || 100
+        );
+      }
+    } catch (error) {
+      console.error("Error toggling mute:", error);
+      Alert.alert("Error", "Failed to toggle mute.");
+    }
+  };
+
   const themeName = useThemeName();
       const theme = useTheme();
     
@@ -204,9 +395,6 @@ export default function SpeakerConfigScreen() {
             Configuration: {configNameParam}
           </Text>
           
-          <Text style={{ fontFamily: 'Finlandica', fontSize: 17, fontWeight: "medium", color: tc, marginTop: 0, alignSelf: 'center', marginBottom: 0 }}>
-            Adjust the sliders for each speaker as needed.
-          </Text>
           {/* LEAVE THIS EMPTY */}
           <Text>  </Text>
           <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
@@ -216,25 +404,25 @@ export default function SpeakerConfigScreen() {
               <Text style={{ fontFamily: 'Finlandica' }}>No connected speakers found.</Text>
             ) : (
               Object.keys(connectedSpeakers).map((mac, index) => (
-                <SafeAreaView key={mac} style={{ width:"90%",
-                                                alignSelf:"center", 
-                                                marginTop: index === 0 ? 7 : 0, // 👈 only the first item gets top margin
-                                                marginBottom: 15, 
-                                                paddingLeft: 20, 
-                                                paddingRight: 20, 
-                                                paddingBottom: 5, 
-                                                paddingTop: 5,
-                                                backgroundColor: bg,
-                                                borderWidth: 1, 
-                                                borderColor: stc,
-                                                borderRadius: 8, 
-                                                shadowColor: tc,
-                                                shadowOffset: { width: 0, height: 0 },
-                                                shadowOpacity: 0.8,
-                                                shadowRadius: 8,
-                                                //height: 300,
-                                                elevation: 10}}>
-                  
+                <SafeAreaView key={mac} style={{ 
+                  width:"90%",
+                  alignSelf:"center", 
+                  marginTop: index === 0 ? 7 : 0,
+                  marginBottom: 15, 
+                  paddingLeft: 20, 
+                  paddingRight: 20, 
+                  paddingBottom: 5, 
+                  paddingTop: 5,
+                  backgroundColor: bg,
+                  borderWidth: 1, 
+                  borderColor: stc,
+                  borderRadius: 8, 
+                  shadowColor: tc,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 8,
+                  elevation: 10
+                }}>
                   <Text style={{ fontFamily: 'Finlandica', fontSize: 24, fontWeight: "bold", color: tc, marginTop: 0, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
                   <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Volume: {settings[mac]?.volume || 50}%</Text>
                   <Slider
@@ -249,7 +437,7 @@ export default function SpeakerConfigScreen() {
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Latency: {settings[mac]?.latency || 100} ms</Text>
+                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Latency: {settings[mac]?.latency ?? 100} ms</Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -262,59 +450,80 @@ export default function SpeakerConfigScreen() {
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
+                  <View style={styles.soundFieldContainer}>
+                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>
+                      {Math.round((sliderValues[mac]?.balance ?? 0.5) >= 0.5 ? (settings[mac]?.volume ?? 50) * (1 - (sliderValues[mac]?.balance ?? 0.5)) * 2 : (settings[mac]?.volume ?? 50))}%
+                    </Text>
+                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>Sound Field</Text>
+                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>
+                      {Math.round((sliderValues[mac]?.balance ?? 0.5) <= 0.5 ? (settings[mac]?.volume ?? 50) * (sliderValues[mac]?.balance ?? 0.5) * 2 : (settings[mac]?.volume ?? 50))}%
+                    </Text>
+                  </View>
+                  <Slider
+                    style={styles.slider}
+                    minimumValue={0}
+                    maximumValue={1}
+                    step={0.01}
+                    value={sliderValues[mac]?.balance ?? 0.5}
+                    onValueChange={(value: number) => {
+                      setSliderValues(prev => ({
+                        ...prev,
+                        [mac]: { ...prev[mac], balance: value }
+                      }));
+                      handleSoundFieldChange(mac, value, false);
+                    }}
+                    onSlidingComplete={(value: number) => {
+                      setSliderValues(prev => ({
+                        ...prev,
+                        [mac]: { ...prev[mac], balance: value }
+                      }));
+                      handleSoundFieldChange(mac, value, true);
+                    }}
+                    minimumTrackTintColor={pc}
+                    maximumTrackTintColor="#000000"
+                    thumbTintColor="white"
+                  />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 30, marginBottom: 10, paddingHorizontal: 10 }}>
+                    <TouchableOpacity 
+                      onPress={() => handleConnectOne(mac)}
+                      disabled={!!loadingSpeakers[mac]?.action}
+                    >
+                      <Text style={{ 
+                        fontFamily: 'Finlandica', 
+                        fontSize: 18, 
+                        fontWeight: "bold", 
+                        color: !!loadingSpeakers[mac]?.action ? stc : themeName === 'dark' ? '#FFFFFF' : '#3E0094'
+                      }}>
+                        {loadingSpeakers[mac]?.action === 'connect' ? 'Connecting...' : 'Connect'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleMuteToggle(mac)}>
+                      {sliderValues[mac]?.isMuted ? (
+                        <VolumeX size={24} color="#FF0055" />
+                      ) : (
+                        <Volume2 size={24} color={themeName === 'dark' ? '#FFFFFF' : pc} />
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => handleDisconnectOne(mac)}
+                      disabled={!!loadingSpeakers[mac]?.action}
+                    >
+                      <Text style={{ 
+                        fontFamily: 'Finlandica', 
+                        fontSize: 18, 
+                        fontWeight: "bold", 
+                        color: !!loadingSpeakers[mac]?.action ? stc : '#FF0055'
+                      }}>
+                        {loadingSpeakers[mac]?.action === 'disconnect' ? 'Disconnecting...' : 'Disconnect'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </SafeAreaView>
               ))
             )}
             
            
           </ScrollView>
-
-           <SafeAreaView style={styles.buttonContainer}>
-              {configIDParam ? (
-                isConnected ? (
-                  <TouchableOpacity style={{ width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: red, borderWidth: 2}} onPress={() => handleDisconnectWrapper()}>
-                    <View
-                      style={{
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                      }}
-                    >
-                      <Text style={styles.buttonText}>Disconnect Configuration</Text>
-
-                      {/* Icon floating on the right */}
-                      <View style={{ position: 'absolute', right: 0 }}>
-                        <BluetoothOff size={20} color="white" />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ) : (
-                  
-                  <TouchableOpacity style={{width: "90%", alignSelf: "center", backgroundColor: pc, padding: 15, borderRadius: 8, position: 'absolute', bottom: 10, left: "5%", borderColor: green, borderWidth: 2}} onPress={() => handleConnectWrapper()}>
-                   <View
-                      style={{
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                      }}
-                    >
-                      <Text style={styles.buttonText}>Connect Configuration</Text>
-
-                      {/* Icon floating on the right */}
-                      <View style={{ position: 'absolute', right: 0 }}>
-                        <Bluetooth size={20} color="white" />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                )
-              ) : (
-                <TouchableOpacity style={styles.saveButton} onPress={() => handleSave(configIDParam, configNameParam, connectedSpeakers, setIsSaving)}>
-                  <Text style={styles.buttonText}>Save Configuration</Text>
-          
-                </TouchableOpacity>
-              )}
-              
-            </SafeAreaView>
         </YStack>
       );
     }
@@ -341,7 +550,6 @@ export default function SpeakerConfigScreen() {
         backgroundColor: '#3E0094',
         justifyContent: 'center',
         alignItems: 'center',
-        
       },
       homeButtonText: { 
         color: '#F2E8FF', 
@@ -355,5 +563,11 @@ export default function SpeakerConfigScreen() {
         width: 20,
         height: 20,
         borderRadius: 10
+      },
+      soundFieldContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+        marginBottom: 5,
       },
     });

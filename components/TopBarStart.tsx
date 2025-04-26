@@ -1,11 +1,14 @@
 // components/TopBar.tsx
 import { useTheme, useThemeName, XStack, YStack } from 'tamagui'
 import { ArrowLeft } from '@tamagui/lucide-icons'
-import { Image } from 'react-native'
+import { Image, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export const TopBarStart = () => {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const baseHeight = Platform.OS === 'ios' ? 50 : 70
 
   const themeName = useThemeName();
     const theme = useTheme();
@@ -22,10 +25,10 @@ export const TopBarStart = () => {
 
   return (
     <XStack
-      height={70}
+      height={baseHeight + insets.top}
       style={{
         backgroundColor: pc,
-        paddingTop: 0
+        paddingTop: insets.top
       }}
       alignItems="center"
       justifyContent="center"
@@ -34,7 +37,6 @@ export const TopBarStart = () => {
       <Image
         source={logo}
         style={{ height: 24, resizeMode: 'contain', alignSelf: 'center'}}
-        
       />
     </XStack>
   )

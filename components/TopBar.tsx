@@ -1,13 +1,15 @@
 // components/TopBar.tsx
 import { useTheme, useThemeName, XStack, YStack } from 'tamagui'
 import { ArrowLeft } from '@tamagui/lucide-icons'
-import { Image, TouchableOpacity } from 'react-native'
+import { Image, TouchableOpacity, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useNavigation } from '@react-navigation/native'
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export const TopBar = () => {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const baseHeight = Platform.OS === 'ios' ? 50 : 70
 
   const themeName = useThemeName();
     const theme = useTheme();
@@ -24,12 +26,12 @@ export const TopBar = () => {
 
   return (
     <XStack
-      height={70}
+      height={baseHeight + insets.top}
       style={{
         backgroundColor: pc,
-        paddingTop: 0
+        paddingTop: insets.top
       }}
-      alignItems="center" ////////
+      alignItems="center"
       justifyContent="space-between"
       paddingHorizontal="$4"
     >

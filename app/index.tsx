@@ -3,10 +3,11 @@ import { YStack, Text, Button, H1, Image, useThemeName, useTheme } from "tamagui
 import * as Linking from "expo-linking"
 import { router } from "expo-router"
 import { PI_API_URL } from "../utils/constants"
-import { setupDatabase } from "./database"
+import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "./database"
 import { TopBarStart } from "../components/TopBarStart"
 import colors from '../assets/colors/colors'
 import LottieView from "lottie-react-native"
+import { Alert } from "react-native"
 
 export default function ConnectPhone() {
   const [connecting, setConnecting] = useState(false)
@@ -52,13 +53,99 @@ export default function ConnectPhone() {
   }
 
   const handleResetAdapters = async () => {
+    // Show adapter count input dialog
+    Alert.prompt(
+      "Setup/Reset Box",
+      "How many Bluetooth connections does your Pi support (including phone)?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Next",
+          onPress: (adapterCount) => {
+            if (!adapterCount || isNaN(Number(adapterCount))) {
+              Alert.alert("Error", "Please enter a valid number");
+              return;
+            }
+            
+            // Show reset type selection
+            Alert.alert(
+              "Reset Type",
+              "Choose reset type:",
+              [
+                {
+                  text: "Soft Reset",
+                  onPress: () => performReset(adapterCount, false)
+                },
+                {
+                  text: "Full Reset",
+                  onPress: () => performReset(adapterCount, true)
+                },
+                {
+                  text: "Cancel",
+                  style: "cancel"
+                }
+              ]
+            );
+          }
+        }
+      ],
+      "plain-text",
+      "4"
+    );
+  };
+
+  const performReset = async (adapterCount: string, deepReset: boolean) => {
     setResetting(true);
     try {
-      await fetch(`${PI_API_URL}/reset-adapters`, { method: "POST" });
+      const response = await fetch(`${PI_API_URL}/reset-adapters`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          expectedAdapterCount: Number(adapterCount),
+          deepReset: deepReset
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reset adapters");
+      }
+
+      const result = await response.json();
+
+      // Reset all configurations and speakers in the database
+      const configurations = getConfigurations();
+      for (const config of configurations) {
+        // Set configuration to disconnected
+        updateConnectionStatus(config.id, 0);
+        
+        // Get all speakers for this configuration
+        const speakers = getSpeakersFull(config.id);
+        for (const speaker of speakers) {
+          // Reset speaker connection status and settings
+          updateSpeakerConnectionStatus(config.id, speaker.mac, false);
+          updateSpeakerSettings(
+            config.id,
+            speaker.mac,
+            50, // Reset volume to 50%
+            100, // Reset latency to 100ms
+            0.5, // Reset balance to middle
+            false // Unmute
+          );
+        }
+      }
+
+      Alert.alert("Success", "Box reset complete. All speakers have been disconnected and reset to default settings.");
     } catch (err) {
       console.error("⚠️ Failed to reset adapters:", err);
+      Alert.alert("Error", "Failed to reset adapters. Please try again.");
+    } finally {
+      setResetting(false);
     }
-    setResetting(false);
   };
 
   return (
