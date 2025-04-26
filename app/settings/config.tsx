@@ -9,8 +9,6 @@ import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '@/components/TopBar';
 import { PI_API_URL } from '../../utils/constants';
-import { removeDevice, saveChanges } from '@/utils/ConfigurationFunctions';
-
 
 export default function Config() {
     const params = useLocalSearchParams();
@@ -22,22 +20,15 @@ export default function Config() {
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
     const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
 
+    // Only load speakers when we have a valid configID
     useFocusEffect(
         useCallback(() => {
-          console.log("DB pull");
-          setDevices(getSpeakers(configID));
+            if (configID && !isNaN(configID)) {
+                console.log("DB pull for config:", configID);
+                setDevices(getSpeakers(configID));
+            }
         }, [configID])
-      );
-
-    useEffect(() => {
-        console.log("updating speaker for config: " + configID)
-        setDevices(getSpeakers(configID));
-    }, [configID]);
-
-    useEffect(() => {
-        console.log("fetching speakers")
-        getSpeakers(configID);
-    }, [configID]);
+    );
 
     // Function to insert dummy data
     const insertDummyData = () => {
@@ -48,6 +39,59 @@ export default function Config() {
             { id: 2, name: "Sonos ghi", mac: "5D-8D-1C-30-BD-8C" }
         ];
         setDevices(dummyDevices);
+    };
+
+    // In edit mode, immediately remove a speaker:
+    // Update the DB, and call the backend disconnect endpoint for that speaker.
+    const removeDevice = async (device: { id: number, name: string, mac: string }) => {
+        console.log("Removing device " + device.id);
+        // If editing an existing configuration, update the DB immediately.
+        if (configID) {
+            deleteSpeakerById(device.id);
+        }
+        // Build payload to disconnect only this speaker.
+        const payload = {
+            configID: configID,
+            configName: configName,
+            speakers: { [device.mac]: device.name },
+            settings: {} // Assuming no settings needed for disconnecting a single speaker.
+        };
+        try {
+            const response = await fetch(PI_API_URL+"/disconnect", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            const result = await response.json();
+            console.log("Disconnect result:", result);
+        } catch (error) {
+            console.error("Error disconnecting device:", error);
+            Alert.alert("Error", "There was an error disconnecting the device.");
+        }
+        // Update the local state to remove the device.
+        setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
+    };
+
+    // updating the DB when creating a new configuration.
+    const saveChanges = () => {
+        if (!configName.trim() || devices.length === 0) return; // don't save without name or devices
+        if (configID) {
+            // In edit mode, configuration updates happen immediately on deletion.
+            console.log("Updating configuration name: " + configName);
+            updateConfiguration(configID, configName);
+        } else {
+            // Create new configuration
+            addConfiguration(configName, (newConfigID) => {
+                devices.forEach(device => addSpeaker(newConfigID, device.name, device.mac));
+                devices.forEach(device => updateSpeakerConnectionStatus(newConfigID, device.mac, true))
+                console.log("New config: " + configName + ":" + newConfigID);
+            });
+        }
+        logDatabaseContents();
+        router.replace('/home'); // navigate back to home
     };
 
     // The "Find Bluetooth Devices" button is now conditionally labeled.
@@ -67,23 +111,20 @@ export default function Config() {
     const [isSaveDisabled, setIsSaveDisabled] = useState(true);
 
     useFocusEffect(
-    useCallback(() => {
-        const disabled = !configName.trim() || devices.length === 0;
-        setIsSaveDisabled(disabled);
-    }, [configName, devices])
+        useCallback(() => {
+            const disabled = !configName.trim() || devices.length === 0;
+            setIsSaveDisabled(disabled);
+        }, [configName, devices])
     );
 
     const themeName = useThemeName();
     const theme = useTheme();
       
-
-        const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-        const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-        const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-        const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-        const dc = themeName === 'dark' ? 'white' : '#26004E'
-      
-    
+    const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
+    const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
+    const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+    const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+    const dc = themeName === 'dark' ? 'white' : '#26004E'
 
     return (
         <YStack flex={1} backgroundColor={bg}>
@@ -191,10 +232,7 @@ export default function Config() {
                         <Button
                             size={50}
                             backgroundColor="transparent"
-                            onPress={() => {
-                                removeDevice(device, configID, configName, devices, setDevices);
-                                setDevices(prev => prev.filter(d => d.id !== device.id));
-                              }}
+                            onPress={() => removeDevice(device)}
                             padding={0}
                             height={50} // match visual height of the text block
                             minWidth={40}
@@ -202,8 +240,7 @@ export default function Config() {
                             justifyContent="center"
                             icon={<SquareX size={24} strokeWidth={1} color={dc} />}
                         />
-                        </XStack>
-
+                    </XStack>
                 </YStack>
                 ))
             )}
@@ -211,7 +248,7 @@ export default function Config() {
 
             {/* Bottom Button */}
             <Button
-                onPress={() => saveChanges(configID, configName, devices, router)}
+                onPress={saveChanges}
                 disabled={isSaveDisabled}
                 style={{
                     backgroundColor: pc,
@@ -229,7 +266,6 @@ export default function Config() {
                     Save
                 </H1>
             </Button>
-
         </YStack>
     );
 }

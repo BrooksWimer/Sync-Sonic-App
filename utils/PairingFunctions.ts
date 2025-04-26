@@ -103,87 +103,78 @@ export const pairSelectedDevices = async (
 ): Promise<void> => {
   const allSelectedDevices = { ...selectedDevices, ...selectedPairedDevices };
   if (Object.keys(allSelectedDevices).length === 0) {
-    Alert.alert('No Devices Selected', 'Please select at least one device to pair.');
+    Alert.alert('No Devices Selected', 'Please select at least one device to add to configuration.');
     return;
   }
+
   setPairing(true);
   try {
-    // Stop the scan on the server
-    await fetch(`${PI_API_URL}/stop-scan`);
-    // Build payload from the selectedDevices object
-    const payload = {
-      devices: Object.values(allSelectedDevices).reduce((acc, device) => {
-        acc[device.mac] = device.name;
-        return acc;
-      }, {} as { [mac: string]: string })
-    };
-
-    const response = await fetch(`${PI_API_URL}/pair`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}`);
-    }
-    const result = await response.json();
-    console.log('Pairing result:', result);
-    Alert.alert('Pairing Complete', 'Devices have been paired.');
-
-    // Convert configIDParam to a number
-    const configIDParsed = Number(configIDParam);
-    if (!isNaN(configIDParsed) && configIDParsed > 0) {
-      // Edit mode: update DB and navigate back to the edit configuration page
-      updateConnectionStatus(configIDParsed, 1);
-    
-      // Retrieve current speakers from the database for this configuration
-      const currentSpeakers = getSpeakers(configIDParsed);
-      // Extract an array of MAC addresses from the current speakers
-      const existingMacs = currentSpeakers.map(speaker => speaker.mac);
-    
-      // Loop over the payload devices and add only unique speakers
-      Object.entries(payload.devices).forEach(([mac, name]) => {
-        if (!existingMacs.includes(mac)) {
-          addSpeaker(configIDParsed, name, mac);
-          // Set initial connection status for new speakers based on the result
-          const isConnected = result[mac]?.result === "Connected";
-          updateSpeakerConnectionStatus(configIDParsed, mac, isConnected);
-        } else {
-          // Update connection status for existing speakers based on the result
-          const isConnected = result[mac]?.result === "Connected";
-          updateSpeakerConnectionStatus(configIDParsed, mac, isConnected);
-        }
-      });
-
+    if (configIDParam) {
+      // For existing configuration, just route to settings/config
       router.replace({
         pathname: '/settings/config',
         params: { 
-          configID: configIDParsed.toString(), 
+          configID: configIDParam,
           configName: configName
         }
       });
     } else {
-      // New configuration: create it, add speakers, update connection, then navigate
+      // Create new configuration and route to settings/config
       addConfiguration(configName, (newConfigID: number) => {
-        Object.entries(payload.devices).forEach(([mac, name]) => {
-          addSpeaker(newConfigID, name, mac);
-          // Set initial connection status for all speakers
-          const isConnected = result[mac]?.result === "Connected";
-          updateSpeakerConnectionStatus(newConfigID, mac, isConnected);
-        });
-        updateConnectionStatus(newConfigID, 1);
         router.replace({
           pathname: '/settings/config',
           params: { 
-            configID: newConfigID.toString(), 
+            configID: newConfigID.toString(),
             configName: configName
           }
         });
       });
     }
   } catch (error) {
-    console.error('Error during pairing:', error);
-    Alert.alert('Pairing Error', 'There was an error pairing the devices.');
+    console.error('Error:', error);
+    Alert.alert('Error', 'Failed to create configuration. Please try again.');
+  } finally {
+    setPairing(false);
+  }
+};
+
+// Create a new configuration with selected devices
+export const createConfiguration = (
+  selectedDevices: Record<string, Device>,
+  selectedPairedDevices: Record<string, Device>,
+  setPairing: (isPairing: boolean) => void,
+  configName: string,
+  addConfiguration: (name: string, callback: (id: number) => void) => void,
+  addSpeaker: (configId: number, name: string, mac: string) => void,
+  router: any
+): void => {
+  const allSelectedDevices = { ...selectedDevices, ...selectedPairedDevices };
+  if (Object.keys(allSelectedDevices).length === 0) {
+    Alert.alert('No Devices Selected', 'Please select at least one device to add to configuration.');
+    return;
+  }
+
+  setPairing(true);
+  try {
+    // Create configuration and navigate to SpeakerConfigScreen
+    addConfiguration(configName, (newConfigID: number) => {
+      // Add all selected speakers to the new configuration
+      Object.entries(allSelectedDevices).forEach(([mac, device]) => {
+        addSpeaker(newConfigID, device.name, mac);
+      });
+      
+      // Navigate to SpeakerConfigScreen
+      router.replace({
+        pathname: '/SpeakerConfigScreen',
+        params: { 
+          configID: newConfigID.toString(),
+          configName: configName
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    Alert.alert('Error', 'Failed to create configuration. Please try again.');
   } finally {
     setPairing(false);
   }

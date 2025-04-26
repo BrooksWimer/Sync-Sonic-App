@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Text, 
   TouchableOpacity, 
@@ -6,9 +6,11 @@ import {
   ActivityIndicator, 
   Alert,
   StyleSheet,
-  SafeAreaView
+  SafeAreaView,
+  ScrollView,
+  Dimensions
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSearchParams } from 'expo-router/build/hooks';
 import { 
   addConfiguration, 
@@ -27,7 +29,7 @@ import {
   fetchPairedDevices,
   togglePairedSelection,
   toggleSelection,
-  pairSelectedDevices
+  createConfiguration
 } from '../utils/PairingFunctions';
 import LottieView from 'lottie-react-native';
 import { Shadow } from 'react-native-shadow-2'
@@ -56,7 +58,6 @@ export default function DeviceSelectionScreen() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Record<string, Device>>(parsedExistingDevices);
   const [loading, setLoading] = useState(false);
-  const [pairing, setPairing] = useState(false);
   const [pairedDevices, setPairedDevices] = useState<Record<string, string>>({}); // State for paired devices
   const [selectedPairedDevices, setSelectedPairedDevices] = useState<Record<string, Device>>({});
   const router = useRouter();
@@ -151,30 +152,29 @@ export default function DeviceSelectionScreen() {
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
   const svbg = themeName === 'dark' ? '#350066' : '#F9F5FF'
 
-  
-
   // Debounce function with state tracking
   const debounce = (func: Function, wait: number) => {
     let timeout: NodeJS.Timeout;
-    return (...args: any[]) => {
+    return async (...args: any[]) => {
       if (isDebouncing) return;
       setIsDebouncing(true);
       clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        func(...args);
-        setIsDebouncing(false);
+      timeout = setTimeout(async () => {
+        try {
+          await func(...args);
+        } finally {
+          setIsDebouncing(false);
+        }
       }, wait);
     };
   };
 
-  const handlePairDevices = debounce(async () => {
-    if (isPairing || isDebouncing) return;
-    
+  const handleCreateConfiguration = debounce(async () => {
     setIsPairing(true);
     setShowLoadingAnimation(true);
     
     try {
-      // Stop scanning immediately when pair button is clicked
+      // Stop scanning immediately when create button is clicked
       if (scanInterval) {
         clearInterval(scanInterval);
         setScanInterval(null);
@@ -183,18 +183,14 @@ export default function DeviceSelectionScreen() {
         console.error("Failed to stop scanning:", err);
       });
       
-      // Then proceed with pairing
-      await pairSelectedDevices(
+      // Create configuration with selected devices
+      await createConfiguration(
         selectedDevices,
         selectedPairedDevices,
-        setPairing,
-        configIDParam,
+        setIsPairing,
         configName,
-        updateConnectionStatus,
-        getSpeakers,
-        addSpeaker,
-        updateSpeakerConnectionStatus,
         addConfiguration,
+        addSpeaker,
         router
       );
     } finally {
@@ -319,18 +315,18 @@ export default function DeviceSelectionScreen() {
 
 
             <Button
-              onPress={handlePairDevices}
+              onPress={handleCreateConfiguration}
               style={[styles.pairButton,
                 {
                 backgroundColor: pc,
                 
               }]}
             >
-              {pairing ? (
+              {isPairing ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica" letterSpacing={1}>
-                  Pair selected devices
+                  Create Configuration
                 </H1>
               )}
             </Button>

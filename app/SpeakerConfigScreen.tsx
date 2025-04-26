@@ -32,10 +32,12 @@ import {
   handleSave
 } from '../utils/ConfigurationFunctions';
 import LottieView from 'lottie-react-native';
+import { bleConnectOne } from '../utils/ble_functions';
+import { useBLEContext } from '@/contexts/BLEContext';
 
-
-
-
+export const SERVICE_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0000';
+const VOLUME_UUID     = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0001';
+const CONNECT_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0002';
 
 export default function SpeakerConfigScreen() {
   // Retrieve parameters from the URL
@@ -159,7 +161,8 @@ export default function SpeakerConfigScreen() {
     }
   }, [configIDParam, speakersStr]);
   
-
+  // Add BLE context
+  const { connectedDevice } = useBLEContext();
 
   const handleVolumeChangeWrapper = async (mac: string, newVolume: number, isSlidingComplete: boolean) => {
     await handleVolumeChange(
@@ -245,33 +248,46 @@ export default function SpeakerConfigScreen() {
   };
 
   const handleConnectOne = async (mac: string) => {
-    setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: 'connect' } }));
-    const payload = {
-      speakers: connectedSpeakers,
-      settings: settings,
-      targetSpeaker: {
-        mac: mac,
-        name: connectedSpeakers[mac]
-      }
-    };
+    console.log('handleConnectOne triggered for mac:', mac); // Debug log
+    
+    if (!connectedDevice) {
+      console.log('No BLE device connected'); // Debug log
+      Alert.alert("Error", "No Bluetooth device connected");
+      return;
+    }
 
+    console.log('BLE device found:', connectedDevice.id); // Debug log
+    setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: 'connect' } }));
+    
     try {
-      const response = await fetch(`${PI_API_URL}/connect-one`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      console.log('Attempting bleConnectOne with settings:', { // Debug log
+        mac,
+        name: connectedSpeakers[mac],
+        settings: {
+          volume: settings[mac]?.volume || 50,
+          latency: settings[mac]?.latency || 100,
+          balance: sliderValues[mac]?.balance || 0.5
+        }
       });
+
+      // Pass the connected device to bleConnectOne
+      await bleConnectOne(
+        connectedDevice,
+        mac,
+        connectedSpeakers[mac],
+        {
+          volume: settings[mac]?.volume || 50,
+          latency: settings[mac]?.latency || 100,
+          balance: sliderValues[mac]?.balance || 0.5
+        }
+      );
       
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
+      // Update local state
       const updatedSettings = { ...settings };
       updatedSettings[mac].isConnected = true;
       setSettings(updatedSettings);
       
+      // Update database if we have a config ID
       if (configIDParam) {
         updateSpeakerConnectionStatus(Number(configIDParam), mac, true);
       }
@@ -279,7 +295,7 @@ export default function SpeakerConfigScreen() {
       Alert.alert("Success", `${connectedSpeakers[mac]} connected successfully.`);
     } catch (error) {
       console.error("Error connecting speaker:", error);
-      Alert.alert("Connection Error", "Failed to connect speaker.");
+      Alert.alert("Connection Error", "Failed to connect speaker via Bluetooth.");
     } finally {
       setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: null } }));
     }

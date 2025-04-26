@@ -36,7 +36,6 @@ export function setupDatabase() {
   const hasLatency = speakerColumns.some((col: any) => col.name === 'latency');
   const hasBalance = speakerColumns.some((col: any) => col.name === 'balance');
   const hasIsMuted = speakerColumns.some((col: any) => col.name === 'is_muted');
-  const hasIsConnected = speakerColumns.some((col: any) => col.name === 'is_connected');
 
   if (!hasVolume) {
     db.execSync(`ALTER TABLE speakers ADD COLUMN volume INTEGER NOT NULL DEFAULT 50;`);
@@ -49,9 +48,6 @@ export function setupDatabase() {
   }
   if (!hasIsMuted) {
     db.execSync(`ALTER TABLE speakers ADD COLUMN is_muted INTEGER NOT NULL DEFAULT 0;`);
-  }
-  if (!hasIsConnected) {
-    db.execSync(`ALTER TABLE speakers ADD COLUMN is_connected INTEGER NOT NULL DEFAULT 0;`);
   }
 
   // Create settings table if it doesn't exist
@@ -68,11 +64,30 @@ export function setupDatabase() {
 
 // Insert new configuration with default isConnected flag set to 0 (not connected)
 export const addConfiguration = (name: string, callback: (id: number) => void) => {
-  const result = db.runSync(
-    `INSERT INTO configurations (name, isConnected) VALUES (?, 0);`,
-    [name]
-  );
-  callback(result.lastInsertRowId);
+  try {
+    db.execSync('BEGIN TRANSACTION');
+    
+    // Insert the configuration
+    db.runSync(
+      `INSERT INTO configurations (name, isConnected) VALUES (?, 0);`,
+      [name]
+    );
+    
+    // Get the last inserted ID explicitly
+    const result = db.getFirstSync<{ id: number }>(
+      `SELECT last_insert_rowid() as id;`
+    );
+    
+    if (result && result.id) {
+      db.execSync('COMMIT');
+      callback(result.id);
+    } else {
+      throw new Error('Failed to get new configuration ID');
+    }
+  } catch (error) {
+    db.execSync('ROLLBACK');
+    throw error;
+  }
 };
 
 // Insert new speaker (associated with a configuration)
