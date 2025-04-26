@@ -31,20 +31,28 @@ export function setupDatabase() {
   // get its columns now that the table definitely exists
   const speakerColumns = db.getAllSync(`PRAGMA table_info(speakers);`) as any[];
 
-  // migrate volume & latency
-  if (!speakerColumns.some(c => c.name === 'volume')) {
-    db.execSync(`ALTER TABLE speakers ADD COLUMN volume      INTEGER NOT NULL DEFAULT 50;`);
-  }
-  if (!speakerColumns.some(c => c.name === 'latency')) {
-    db.execSync(`ALTER TABLE speakers ADD COLUMN latency     INTEGER NOT NULL DEFAULT 100;`);
-  }
+  // Migrate speakers: add volume and latency if they don't exist.
+  const hasVolume = speakerColumns.some((col: any) => col.name === 'volume');
+  const hasLatency = speakerColumns.some((col: any) => col.name === 'latency');
+  const hasBalance = speakerColumns.some((col: any) => col.name === 'balance');
+  const hasIsMuted = speakerColumns.some((col: any) => col.name === 'is_muted');
+  const hasIsConnected = speakerColumns.some((col: any) => col.name === 'is_connected');
 
-  // ← migrate is_connected here too
-  if (!speakerColumns.some(c => c.name === 'is_connected')) {
+  if (!hasVolume) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN volume INTEGER NOT NULL DEFAULT 50;`);
+  }
+  if (!hasLatency) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN latency INTEGER NOT NULL DEFAULT 100;`);
+  }
+  if (!hasBalance) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN balance REAL NOT NULL DEFAULT 0.5;`);
+  }
+  if (!hasIsMuted) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN is_muted INTEGER NOT NULL DEFAULT 0;`);
+  }
+  if (!hasIsConnected) {
     db.execSync(`ALTER TABLE speakers ADD COLUMN is_connected INTEGER NOT NULL DEFAULT 0;`);
   }
-
-
 
   // Create settings table if it doesn't exist
   db.execSync(
@@ -54,10 +62,9 @@ export function setupDatabase() {
       value TEXT
     );`
   );
+
   console.log('Database tables created successfully');
 }
-
-
 
 // Insert new configuration with default isConnected flag set to 0 (not connected)
 export const addConfiguration = (name: string, callback: (id: number) => void) => {
@@ -142,10 +149,10 @@ export const getConfigurationStatus = (configId: number): number => {
   return rows.length > 0 ? rows[0].isConnected : 0;
 };
 
-export const updateSpeakerSettings = (configId: number, mac: string, volume: number, latency: number) => {
+export const updateSpeakerSettings = (configId: number, mac: string, volume: number, latency: number, balance: number = 0.5, isMuted: boolean = false) => {
     db.runSync(
-      `UPDATE speakers SET volume = ?, latency = ? WHERE config_id = ? AND mac = ?;`,
-      [volume, latency, configId, mac]
+      `UPDATE speakers SET volume = ?, latency = ?, balance = ?, is_muted = ? WHERE config_id = ? AND mac = ?;`,
+      [volume, latency, balance, isMuted ? 1 : 0, configId, mac]
     );
   };
 
