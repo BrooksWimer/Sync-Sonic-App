@@ -154,7 +154,11 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       
       // Simple check that worked in the old version
-      const isRpi = device.name === RPI_DEVICE_NAME;
+      // New check: does this device advertise our Pi service?
+      const isRpi = Array.isArray(device.serviceUUIDs) &&
+      device.serviceUUIDs.some(
+        u => u.toLowerCase() === RPI_SERVICE_UUID.toLowerCase()
+      );
       
       if (isRpi) {
         console.log('Found RPI device:', {

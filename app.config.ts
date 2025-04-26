@@ -1,4 +1,4 @@
-import { ExpoConfig, ConfigContext } from '@expo/config'
+import { ExpoConfig, ConfigContext } from '@expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -12,19 +12,34 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   ios: {
+    ...config.ios,
     supportsTablet: true,
     bundleIdentifier: 'com.sync-sonic.sync-sonic',
     userInterfaceStyle: 'automatic',
+
+    // ← Add these two keys for BLE on iOS
+    newArchEnabled: false,
+    infoPlist: {
+      ...(config.ios?.infoPlist || {}),
+      NSBluetoothAlwaysUsageDescription: 'Sync-Sonic needs Bluetooth to connect to speakers',
+      NSBluetoothPeripheralUsageDescription:
+        'Sync-Sonic needs Bluetooth to connect to speakers',
+        ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: {
+    ...config.android,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#ffffff',
     },
     permissions: [
+      // You already have BLUETOOTH_CONNECT; add SCAN if you need it:
       'android.permission.BLUETOOTH',
       'android.permission.BLUETOOTH_ADMIN',
       'android.permission.BLUETOOTH_CONNECT',
+      'android.permission.BLUETOOTH_SCAN',
+      'android.permission.ACCESS_COARSE_LOCATION',
     ],
     package: 'com.syncsonic.SyncSonic',
     userInterfaceStyle: 'automatic',
@@ -45,6 +60,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         backgroundColor: '#ffffff',
       },
     ],
+
+    // ← BLE module (already present)  
     [
       'react-native-ble-plx',
       {
@@ -54,6 +71,24 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Allow $(PRODUCT_NAME) to connect to bluetooth devices',
       },
     ],
+
+    // ← Add this to enable the permissions plugin
+    [
+      'react-native-permissions',
+      {
+        iosPermissions: [
+          'NSBluetoothAlwaysUsageDescription',
+          'NSBluetoothPeripheralUsageDescription',
+        ],
+        androidPermissions: [
+          'android.permission.BLUETOOTH_SCAN',
+          'android.permission.BLUETOOTH_CONNECT',
+          'android.permission.ACCESS_COARSE_LOCATION',
+        ],
+      },
+    ],
+    
+
     'expo-sqlite',
   ],
   experiments: {
@@ -67,4 +102,4 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       projectId: 'a3f49fa9-2789-40b4-9826-bf1dcfe0049e',
     },
   },
-})
+});

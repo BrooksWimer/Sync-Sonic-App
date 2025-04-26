@@ -18,26 +18,33 @@ export function setupDatabase() {
     db.execSync(`ALTER TABLE configurations ADD COLUMN isConnected INTEGER NOT NULL DEFAULT 0;`);
   }
 
-  // Create speakers table if it doesn't exist (initially without volume and latency)
-  db.execSync(
-    `CREATE TABLE IF NOT EXISTS speakers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      config_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      mac TEXT NOT NULL,
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS speakers (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      config_id  INTEGER NOT NULL,
+      name       TEXT    NOT NULL,
+      mac        TEXT    NOT NULL,
       FOREIGN KEY (config_id) REFERENCES configurations(id) ON DELETE CASCADE
-    );`
-  );
-  // Migrate speakers: add volume and latency if they don't exist.
+    );
+  `);
+
+  // get its columns now that the table definitely exists
   const speakerColumns = db.getAllSync(`PRAGMA table_info(speakers);`) as any[];
-  const hasVolume = speakerColumns.some((col: any) => col.name === 'volume');
-  const hasLatency = speakerColumns.some((col: any) => col.name === 'latency');
-  if (!hasVolume) {
-    db.execSync(`ALTER TABLE speakers ADD COLUMN volume INTEGER NOT NULL DEFAULT 50;`);
+
+  // migrate volume & latency
+  if (!speakerColumns.some(c => c.name === 'volume')) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN volume      INTEGER NOT NULL DEFAULT 50;`);
   }
-  if (!hasLatency) {
-    db.execSync(`ALTER TABLE speakers ADD COLUMN latency INTEGER NOT NULL DEFAULT 100;`);
+  if (!speakerColumns.some(c => c.name === 'latency')) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN latency     INTEGER NOT NULL DEFAULT 100;`);
   }
+
+  // ← migrate is_connected here too
+  if (!speakerColumns.some(c => c.name === 'is_connected')) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN is_connected INTEGER NOT NULL DEFAULT 0;`);
+  }
+
+
 
   // Create settings table if it doesn't exist
   db.execSync(
@@ -50,12 +57,7 @@ export function setupDatabase() {
   console.log('Database tables created successfully');
 }
 
-// Migrate speakers: add is_connected if it doesn't exist.
-const speakerColumns = db.getAllSync(`PRAGMA table_info(speakers);`) as any[];
-const hasIsConnected = speakerColumns.some((col: any) => col.name === 'is_connected');
-if (!hasIsConnected) {
-  db.execSync(`ALTER TABLE speakers ADD COLUMN is_connected INTEGER NOT NULL DEFAULT 0;`);
-}
+
 
 // Insert new configuration with default isConnected flag set to 0 (not connected)
 export const addConfiguration = (name: string, callback: (id: number) => void) => {
