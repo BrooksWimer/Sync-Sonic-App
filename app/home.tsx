@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {CirclePlus} from '@tamagui/lucide-icons'
 import { Button, H1, YStack, View, XStack, ScrollView, Text, useThemeName, useTheme } from "tamagui";
-import { ActivityIndicator, Pressable, StatusBar, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StatusBar, TouchableOpacity } from 'react-native';
 import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert, StyleSheet } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -30,6 +30,15 @@ export default function Home() {
   const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
   const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
   const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient)
+
+   //if android
+          let abuffer = 20
+          let iosbuffer=0
+          //else, 
+          if (Platform.OS === 'ios') {
+              abuffer = 0
+              iosbuffer=20
+          }
 
   // Fetch configurations and their speaker statuses
   useFocusEffect(
@@ -247,7 +256,7 @@ export default function Home() {
       <View
         style={{
           position: 'absolute',
-          bottom: 32,
+          bottom: 32+iosbuffer,
           left: 0,
           right: 0,
           alignItems: 'center',

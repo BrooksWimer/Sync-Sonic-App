@@ -30,8 +30,8 @@ export const TopBarStart = () => {
     let pt = 0
     //else, 
     if (Platform.OS === 'ios') {
-      h = 80;
-      pt = 25
+      h = 115;
+      pt = 50
     }
 
   return (

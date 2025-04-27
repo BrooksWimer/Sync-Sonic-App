@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { useFonts } from 'expo-font'
 import { FontProvider } from '../utils/fonts'
+import { Platform } from 'react-native'
 
 export default function RootLayout() {
   const colorScheme = useColorScheme() // 'light' or 'dark'
@@ -12,6 +13,14 @@ export default function RootLayout() {
   const backgroundColor = colorScheme === 'dark' ? '#250047' : '#F2E8FF'
   const pc = colorScheme === 'dark' ? '#E8004D' : '#3E0094'
 
+  //if android
+      let p = 'containedTransparentModal'
+      //else, 
+      if (Platform.OS === 'ios') {
+        p = "card";
+      }
+
+  
   return (
     <TamaguiProvider config={config} defaultTheme={colorScheme ?? 'light'}>
       <FontProvider>
@@ -20,16 +29,15 @@ export default function RootLayout() {
             <Stack.Screen
               name="index"
               options={{
-                presentation: "containedTransparentModal",
-                animation: 'slide_from_right', 
+                presentation: Platform.OS === 'ios' ? "card" : "containedTransparentModal",
+                animation: 'default', 
                 statusBarBackgroundColor: pc,
               }}
             />
             <Stack.Screen
               name="home"
               options={{
-               
-                presentation: "containedTransparentModal",
+                presentation: Platform.OS === 'ios' ? "card" : "containedTransparentModal",
                 animation: 'default', 
                 statusBarBackgroundColor: pc,
 
@@ -38,7 +46,7 @@ export default function RootLayout() {
             <Stack.Screen
               name="settings/config"
               options={{
-                presentation: "containedTransparentModal",
+                presentation: Platform.OS === 'ios' ? "card" : "containedTransparentModal",
                 animation: 'default',
                 statusBarBackgroundColor: pc,
               }}
@@ -48,14 +56,14 @@ export default function RootLayout() {
               options={{
                 animation: 'default',
                 statusBarBackgroundColor: pc,
-                presentation: "containedTransparentModal",
+                presentation: Platform.OS === 'ios' ? "card" : "containedTransparentModal",
               }}
             /><Stack.Screen
               name="SpeakerConfigScreen"
               options={{
                 animation: 'default',
                 statusBarBackgroundColor: pc,
-                presentation: "containedTransparentModal",
+                presentation: Platform.OS === 'ios' ? "card" : "containedTransparentModal",
                 
               }}
             />

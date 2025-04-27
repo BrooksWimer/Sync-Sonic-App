@@ -7,7 +7,7 @@ import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSetting
 import { TopBarStart } from "../components/TopBarStart"
 import colors from '../assets/colors/colors'
 import LottieView from "lottie-react-native"
-import { Alert } from "react-native"
+import { Alert, Platform } from "react-native"
 
 export default function ConnectPhone() {
   const [connecting, setConnecting] = useState(false)
@@ -22,6 +22,15 @@ export default function ConnectPhone() {
   const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+
+   //if android
+      let abuffer = 20
+      let iosbuffer=0
+      //else, 
+      if (Platform.OS === 'ios') {
+            abuffer = 0
+            iosbuffer=20
+        }
 
   const loaderSource = themeName === 'dark'
   ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
@@ -187,7 +196,7 @@ export default function ConnectPhone() {
       </YStack>
 
       {/* Bottom Buttons */}
-      <YStack space="$4" paddingBottom="$4">
+      <YStack space="$4" paddingBottom={36}>
         <Button
           onPress={handleResetAdapters}
           disabled={resetting}

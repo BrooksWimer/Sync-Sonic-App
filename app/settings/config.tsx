@@ -82,6 +82,14 @@ export default function Config() {
         const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
         const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
         const dc = themeName === 'dark' ? 'white' : '#26004E'
+         //if android
+        let abuffer = 20
+        let iosbuffer=0
+        //else, 
+        if (Platform.OS === 'ios') {
+            abuffer = 0
+            iosbuffer=50
+        }
       
     
 
@@ -219,7 +227,7 @@ export default function Config() {
                     height: 50,
                     borderRadius: 999,
                     marginBottom: 5,
-                    marginTop: 50,
+                    marginTop: 50 +iosbuffer,
                     alignSelf: 'center',
                     opacity: !isSaveDisabled ? 1 : 0.5,
                 }}
