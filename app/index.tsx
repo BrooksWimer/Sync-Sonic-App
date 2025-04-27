@@ -9,13 +9,14 @@ import colors from '../assets/colors/colors'
 import LottieView from "lottie-react-native"
 import { useBLEContext } from "../contexts/BLEContext"
 import { Alert } from "react-native"
+import { startClassicPairing } from '../utils/ble_functions';
 
 export default function Index() {
   const [connecting, setConnecting] = useState(false)
   const [resetting, setResetting] = useState(false)
   const themeName = useThemeName();
   const theme = useTheme();
-  const { connectedDevice, reconnectToLastDevice, scanForBLEDevices } = useBLEContext();
+  const { connectedDevice, isConnected, reconnectToLastDevice, scanForBLEDevices } = useBLEContext();
 
   const imageSource = themeName === 'dark'
     ? require('../assets/images/welcomeGraphicDark.png')
@@ -37,7 +38,7 @@ export default function Index() {
     const checkConnection = async () => {
       try {
         await scanForBLEDevices();
-        if (connectedDevice) {
+        if (isConnected) {
           router.push('/home');
         }
       } catch (error) {
@@ -46,13 +47,25 @@ export default function Index() {
     };
     
     checkConnection();
-  }, []);
+  }, [isConnected]);
+
+  // const handleConnect = async () => {
+  //   setConnecting(true);
+  
+  //   try {
+  //     if (!connectedDevice) {
+  //       throw new Error('No BLE device connected');
+  //     }
+  //     await startClassicPairing(connectedDevice);
+  //   } catch (err) {
+  //     console.error("⚠️ Failed to start classic pairing over BLE:", err);
+  //   }
+  
+  //   setConnecting(false);
+  // };
 
   const handleConnect = async () => {
     setConnecting(true)
-
-    // Open Bluetooth settings
-    Linking.openSettings()
 
     // Fire off the pairing request (no need to wait for success right now)
     try {
@@ -62,10 +75,10 @@ export default function Index() {
     }
 
     setConnecting(false)
-  }
+}
 
   const goHome = () => {
-    if (connectedDevice) {
+    if (isConnected) {
       router.push('/home');
     } else {
       router.push('./connect-device');

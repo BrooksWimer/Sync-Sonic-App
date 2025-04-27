@@ -50,6 +50,12 @@ export function setupDatabase() {
     db.execSync(`ALTER TABLE speakers ADD COLUMN is_muted INTEGER NOT NULL DEFAULT 0;`);
   }
 
+  // Add is_connected column if it doesn't exist
+  const hasSpeakerIsConnected = speakerColumns.some((col: any) => col.name === 'is_connected');
+  if (!hasSpeakerIsConnected) {
+    db.execSync(`ALTER TABLE speakers ADD COLUMN is_connected INTEGER NOT NULL DEFAULT 0;`);
+  }
+
   // Create settings table if it doesn't exist
   db.execSync(
     `CREATE TABLE IF NOT EXISTS settings (
@@ -79,8 +85,9 @@ export const addConfiguration = (name: string, callback: (id: number) => void) =
     );
     
     if (result && result.id) {
-      db.execSync('COMMIT');
+      // Call the callback inside the transaction
       callback(result.id);
+      db.execSync('COMMIT');
     } else {
       throw new Error('Failed to get new configuration ID');
     }
@@ -226,5 +233,53 @@ export function getLastConnectedDevice(): Promise<string | null> {
     }
   });
 }
+
+/**
+ * Creates a new configuration with its associated speakers in a single transaction
+ * @param name - The name of the configuration
+ * @param speakers - Array of speaker objects containing name and mac address
+ * @returns The ID of the newly created configuration
+ */
+export const create_configuration = (name: string, speakers: Array<{name: string, mac: string}>): number => {
+  try {
+    // Start transaction
+    db.execSync('BEGIN TRANSACTION');
+    
+    // Insert the configuration
+    db.runSync(
+      `INSERT INTO configurations (name, isConnected) VALUES (?, 0);`,
+      [name]
+    );
+    
+    // Get the last inserted ID
+    const result = db.getFirstSync<{ id: number }>(
+      `SELECT last_insert_rowid() as id;`
+    );
+    
+    if (!result || !result.id) {
+      throw new Error('Failed to get new configuration ID');
+    }
+    
+    const configId = result.id;
+    
+    // Add all speakers to the configuration
+    speakers.forEach(speaker => {
+      db.runSync(
+        `INSERT INTO speakers (config_id, name, mac, volume, latency, is_connected) 
+         VALUES (?, ?, ?, 50, 100, 0);`,
+        [configId, speaker.name, speaker.mac]
+      );
+    });
+    
+    // Commit the transaction
+    db.execSync('COMMIT');
+    
+    return configId;
+  } catch (error) {
+    // Rollback on any error
+    db.execSync('ROLLBACK');
+    throw error;
+  }
+};
 
 export default db;

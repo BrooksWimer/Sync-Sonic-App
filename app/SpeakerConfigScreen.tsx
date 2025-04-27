@@ -32,7 +32,7 @@ import {
   handleSave
 } from '../utils/ConfigurationFunctions';
 import LottieView from 'lottie-react-native';
-import { bleConnectOne } from '../utils/ble_functions';
+import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
 import { useBLEContext } from '@/contexts/BLEContext';
 
 export const SERVICE_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0000';
@@ -172,6 +172,7 @@ export default function SpeakerConfigScreen() {
       setSettings,
       configIDParam,
       updateSpeakerSettings,
+      connectedDevice,
       isSlidingComplete
     );
   };
@@ -184,7 +185,8 @@ export default function SpeakerConfigScreen() {
       setSettings,
       configIDParam,
       updateSpeakerSettings,
-      isSlidingComplete
+      isSlidingComplete,
+      connectedDevice
     );
   };
 
@@ -225,21 +227,29 @@ export default function SpeakerConfigScreen() {
     }
     
     try {
-      // Update server
-      const payload = {
-        mac: mac,
-        volume: settings[mac]?.volume || 50,
-        balance: newBalance
-      };
+      if (!connectedDevice) {
+        console.error('No BLE device connected for sound field change');
+        Alert.alert("Error", "No BLE device connected");
+        return;
+      }
 
-      const response = await fetch(`${PI_API_URL}/volume`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      // Use the same setVolume function with the current volume and new balance
+      await setVolume(
+        connectedDevice,
+        mac,
+        settings[mac]?.volume || 50,
+        newBalance
+      );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
+      // Update database if we have a config ID
+      if (configIDParam) {
+        updateSpeakerSettings(
+          Number(configIDParam),
+          mac,
+          settings[mac]?.volume || 50,
+          settings[mac]?.latency || 100,
+          newBalance
+        );
       }
     } catch (error) {
       console.error("Error updating sound field:", error);
@@ -303,34 +313,22 @@ export default function SpeakerConfigScreen() {
 
   const handleDisconnectOne = async (mac: string) => {
     setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: 'disconnect' } }));
-    const payload = {
-      configID: configIDParam,
-      configName: configNameParam,
-      speakers: {
-        [mac]: connectedSpeakers[mac]
-      },
-      settings: {
-        [mac]: settings[mac]
-      }
-    };
+    
+    if (!connectedDevice) {
+      console.log('No BLE device connected');
+      Alert.alert("Error", "No Bluetooth device connected");
+      return;
+    }
 
     try {
-      const response = await fetch(`${PI_API_URL}/disconnect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      await bleDisconnectOne(connectedDevice, mac);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
+      // Update local state
       const updatedSettings = { ...settings };
       updatedSettings[mac].isConnected = false;
       setSettings(updatedSettings);
       
+      // Update database if we have a config ID
       if (configIDParam) {
         updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
       }
@@ -348,18 +346,14 @@ export default function SpeakerConfigScreen() {
     try {
       const isCurrentlyMuted = sliderValues[mac]?.isMuted || false;
       
-      const response = await fetch(`${PI_API_URL}/mute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mac: mac,
-          mute: !isCurrentlyMuted  // Toggle the mute state
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
+      if (!connectedDevice) {
+        console.error('No BLE device connected for mute toggle');
+        Alert.alert("Error", "No BLE device connected");
+        return;
       }
+
+      // Use the new BLE-based setMute function
+      await setMute(connectedDevice, mac, !isCurrentlyMuted);
 
       // Update local state
       setSliderValues(prev => ({
@@ -373,7 +367,9 @@ export default function SpeakerConfigScreen() {
           Number(configIDParam), 
           mac, 
           settings[mac]?.volume || 50, 
-          settings[mac]?.latency || 100
+          settings[mac]?.latency || 100,
+          sliderValues[mac]?.balance || 0.5,
+          !isCurrentlyMuted
         );
       }
     } catch (error) {

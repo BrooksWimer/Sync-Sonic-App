@@ -7,7 +7,7 @@ import {
   Characteristic,
   Device,
 } from "react-native-ble-plx";
-import { RPI_SERVICE_UUID, RPI_CHARACTERISTIC_UUID } from "@/contexts/BLEContext";
+import { SERVICE_UUID, CHARACTERISTIC_UUID } from "@/utils/ble_constants";
 
 const bleManager = new BleManager({
   restoreStateIdentifier: 'sync-sonic-ble',
@@ -131,35 +131,38 @@ export function useBLE(onNotification?: NotificationHandler) {
       null,
       scanOptions,
       async (error, device) => {
-      if (error) {
-        console.error('BLE scan error:', error);
-        return;
-      }
-      if (device) {
+        if (error) {
+          console.error('BLE scan error:', error);
+          return;
+        }
+        if (device) {
           try {
             // Log device details
-        console.log('Found device:', {
-          id: device.id,
-          name: device.name,
+            console.log('Found device:', {
+              id: device.id,
+              name: device.name,
               localName: device.localName,
               rssi: device.rssi,
               serviceUUIDs: device.serviceUUIDs
             });
             
-            // Add to pending devices if not already present
-            setPendingDevices(prev => {
-              if (!prev.some(d => d.id === device.id)) {
-                const newDevices = [...prev, device];
-                // Update allDevices immediately with new devices
-                setAllDevices(current => {
-                  const existingIds = new Set(current.map(d => d.id));
-                  const newDevicesToAdd = newDevices.filter(d => !existingIds.has(d.id));
-                  return [...current, ...newDevicesToAdd];
-                });
-            return newDevices;
-              }
-              return prev;
-            });
+            // Only add devices with names
+            if (device.name || device.localName) {
+              // Add to pending devices if not already present
+              setPendingDevices(prev => {
+                if (!prev.some(d => d.id === device.id)) {
+                  const newDevices = [...prev, device];
+                  // Update allDevices immediately with new devices
+                  setAllDevices(current => {
+                    const existingIds = new Set(current.map(d => d.id));
+                    const newDevicesToAdd = newDevices.filter(d => !existingIds.has(d.id));
+                    return [...current, ...newDevicesToAdd];
+                  });
+                  return newDevices;
+                }
+                return prev;
+              });
+            }
           } catch (e) {
             console.error('Error processing device:', e);
           }
@@ -207,8 +210,8 @@ export function useBLE(onNotification?: NotificationHandler) {
       // Set up notification handler if provided
       if (onNotification) {
         await deviceConnection.monitorCharacteristicForService(
-          RPI_SERVICE_UUID,
-          RPI_CHARACTERISTIC_UUID,
+          SERVICE_UUID,
+          CHARACTERISTIC_UUID,
           onNotification
         );
       }

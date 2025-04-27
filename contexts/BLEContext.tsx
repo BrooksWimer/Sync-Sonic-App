@@ -5,37 +5,8 @@ import { Alert } from 'react-native';
 import { saveLastConnectedDevice, getLastConnectedDevice } from '@/app/database';
 import bleManager from "@/services/BLEManager";
 import { getConnectedDevices } from "@/services/BLEManager";
-
-// BLE Constants
-export const RPI_DEVICE_NAME = "Sync-Sonic";
-export const RPI_SERVICE_UUID = "19b10000-e8f2-537e-4f6c-d104768a1214";
-export const RPI_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1217";
-
-// Message Types
-export const MESSAGE_TYPES = {
-  // Scan related
-  START_SCAN: 0x10,
-  STOP_SCAN: 0x11,
-  GET_DEVICES: 0x12,
-  DEVICE_FOUND: 0x13,
-  // Pairing related
-  PAIR: 0x20,
-  // Volume and latency
-  SET_VOLUME: 0x30,
-  SET_LATENCY: 0x31,
-  // Connection related
-  CONNECT: 0x40,
-  DISCONNECT: 0x41,
-  // Device management
-  GET_PAIRED_DEVICES: 0x50,
-  // Response types
-  SUCCESS: 0xF0,
-  FAILURE: 0xF1,
-  // Ping/Pong
-  PING: 0x01,
-  PONG: 0x02,
-  ERROR: 0x03
-} as const;
+import { RPI_DEVICE_NAME, SERVICE_UUID, CHARACTERISTIC_UUID, MESSAGE_TYPES } from '@/utils/ble_constants';
+import { fetchPairedDevices } from '../utils/ble_functions';
 
 interface BLEMessageDevice {
   id: string;
@@ -54,26 +25,28 @@ interface DecodedMessage {
 
 interface BLEContextType {
   connectedDevice: Device | null;
+  isConnected: boolean;
   pingCount: number;
   pongCount: number;
   isPinging: boolean;
   allDevices: Device[];
   rpiDevices: Device[];
   scanning: boolean;
-  pairedDevices: any[];
+  pairedDevices: Record<string, string>;
   connectToDevice: (device: Device) => Promise<void>;
   sendPing: () => Promise<void>;
   disconnectDevice: () => Promise<void>;
   requestPermissions: () => Promise<boolean>;
   scanForPeripherals: () => void;
   scanForBLEDevices: () => Promise<void>;
+  scanForSpeakerDevices: () => Promise<void>;
   startScan: () => Promise<void>;
   stopScan: () => Promise<void>;
   getDevices: () => Promise<any[]>;
   pairDevices: (devices: any[]) => Promise<void>;
   setVolume: (volume: number) => Promise<void>;
   setLatency: (latency: number) => Promise<void>;
-  getPairedDevices: () => Promise<any[]>;
+  getPairedDevices: () => Promise<Record<string, string>>;
   reconnectToLastDevice: () => Promise<void>;
   saveLastConnectedDevice: (device: Device) => void;
   sendMessage: (messageType: number, data?: any) => Promise<void>;
@@ -83,11 +56,12 @@ const BLEContext = createContext<BLEContextType | null>(null);
 
 export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   const [pingCount, setPingCount] = useState(0);
   const [pongCount, setPongCount] = useState(0);
   const [isPinging, setIsPinging] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [pairedDevices, setPairedDevices] = useState<any[]>([]);
+  const [pairedDevices, setPairedDevices] = useState<Record<string, string>>({});
   const [allDevices, setAllDevices] = useState<Device[]>([]);
 
   const handleMessage = (error: any, characteristic: any) => {
@@ -103,21 +77,14 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.log('Received message:', decoded);
 
       switch (decoded.messageType) {
-        case MESSAGE_TYPES.DEVICE_FOUND:
-          if (decoded.data && decoded.data.devices) {
-            setPairedDevices(prevDevices => {
-              const newDevices = [...prevDevices];
-              decoded.data.devices?.forEach((device: BLEMessageDevice) => {
-                if (!newDevices.some(d => d.id === device.id)) {
-                  newDevices.push(device);
-                }
-              });
-              return newDevices;
-            });
-          }
-          break;
         case MESSAGE_TYPES.PONG:
           setPongCount(prev => prev + 1);
+          break;
+        case MESSAGE_TYPES.SUCCESS:
+          console.log('Operation successful');
+          break;
+        case MESSAGE_TYPES.FAILURE:
+          console.error('Operation failed');
           break;
         default:
           console.log('Unknown message type:', decoded.messageType);
@@ -157,7 +124,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // New check: does this device advertise our Pi service?
       const isRpi = Array.isArray(device.serviceUUIDs) &&
       device.serviceUUIDs.some(
-        u => u.toLowerCase() === RPI_SERVICE_UUID.toLowerCase()
+        u => u.toLowerCase() === SERVICE_UUID.toLowerCase()
       );
       
       if (isRpi) {
@@ -181,7 +148,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       // First check for already connected devices
       try {
-        const connectedDevices = await getConnectedDevices([RPI_SERVICE_UUID]);
+        const connectedDevices = await getConnectedDevices([SERVICE_UUID]);
         console.log('Found connected devices:', connectedDevices);
         
         if (connectedDevices.length > 0) {
@@ -229,6 +196,34 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, 30000);
     } catch (error) {
       console.error('Error during BLE scan:', error);
+      setScanning(false);
+    }
+  };
+
+  const scanForSpeakerDevices = async () => {
+    try {
+      setScanning(true);
+      console.log('Starting speaker device scan...');
+      
+      const isPermissionsEnabled = await requestPermissions();
+      if (!isPermissionsEnabled) {
+        console.log('BLE permissions not granted');
+        Alert.alert('Error', 'Bluetooth permissions are required to scan for devices');
+        setScanning(false);
+        return;
+      }
+
+      // Start scanning for devices
+      scanForPeripherals();
+      
+      // Keep scanning for 30 seconds
+      setTimeout(() => {
+        console.log('Stopping speaker device scan...');
+        stopScan();
+        setScanning(false);
+      }, 30000);
+    } catch (error) {
+      console.error('Error during speaker device scan:', error);
       setScanning(false);
     }
   };
@@ -300,8 +295,8 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const message = encodeMessage(messageType, data);
       await connectedDevice.writeCharacteristicWithResponseForService(
-        RPI_SERVICE_UUID,
-        RPI_CHARACTERISTIC_UUID,
+        SERVICE_UUID,
+        CHARACTERISTIC_UUID,
         message
       );
     } catch (error) {
@@ -312,21 +307,15 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // BLE API Methods
   const startScan = async () => {
-    await sendMessage(MESSAGE_TYPES.START_SCAN);
-    setScanning(true);
+    throw new Error('Scanning not supported by backend');
   };
 
   const getDevices = async () => {
-    await sendMessage(MESSAGE_TYPES.GET_DEVICES);
-    
-    // Wait for a short time to allow the response to be processed
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    return pairedDevices;
+    throw new Error('Device scanning not supported by backend');
   };
 
   const pairDevices = async (devices: any[]) => {
-    await sendMessage(MESSAGE_TYPES.PAIR, { devices });
+    throw new Error('Pairing not supported by backend');
   };
 
   const setVolume = async (volume: number) => {
@@ -338,9 +327,8 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const getPairedDevices = async () => {
-    await sendMessage(MESSAGE_TYPES.GET_PAIRED_DEVICES);
-    // Response will be handled by handleMessage
-    return pairedDevices;
+    if (!connectedDevice) throw new Error('No device connected');
+    return fetchPairedDevices(connectedDevice);
   };
 
   const connectToDevice = async (device: Device) => {
@@ -375,9 +363,9 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })));
       
       // Find the service with the correct UUID
-      const targetService = services.find(s => s.uuid.toLowerCase() === RPI_SERVICE_UUID.toLowerCase());
+      const targetService = services.find(s => s.uuid.toLowerCase() === SERVICE_UUID.toLowerCase());
       if (!targetService) {
-        console.error('Service not found. Looking for:', RPI_SERVICE_UUID);
+        console.error('Service not found. Looking for:', SERVICE_UUID);
         console.error('Available services:', services.map(s => s.uuid));
         throw new Error('Service not found');
       }
@@ -389,9 +377,9 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         serviceUUID: c.serviceUUID
       })));
       
-      const targetCharacteristic = characteristics.find(c => c.uuid.toLowerCase() === RPI_CHARACTERISTIC_UUID.toLowerCase());
+      const targetCharacteristic = characteristics.find(c => c.uuid.toLowerCase() === CHARACTERISTIC_UUID.toLowerCase());
       if (!targetCharacteristic) {
-        console.error('Characteristic not found. Looking for:', RPI_CHARACTERISTIC_UUID);
+        console.error('Characteristic not found. Looking for:', CHARACTERISTIC_UUID);
         console.error('Available characteristics:', characteristics.map(c => c.uuid));
         throw new Error('Characteristic not found');
       }
@@ -406,6 +394,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       
       setConnectedDevice(connectedDevice);
+      setIsConnected(true);
       console.log('Successfully connected and set up notifications');
     } catch (error) {
       console.error('Error connecting to device:', error);
@@ -424,6 +413,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await connectedDevice.cancelConnection();
       setConnectedDevice(null);
+      setIsConnected(false);
       console.log('Disconnected from device');
     } catch (error) {
       console.error('Error disconnecting from device:', error);
@@ -476,32 +466,36 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <BLEContext.Provider value={{
-      connectedDevice,
-      pingCount,
-      pongCount,
-      isPinging,
-      allDevices,
-      rpiDevices,
-      scanning,
-      pairedDevices,
-      connectToDevice,
-      sendPing,
-      disconnectDevice: disconnectFromDevice,
-      requestPermissions,
-      scanForPeripherals,
-      scanForBLEDevices,
-      startScan,
-      stopScan,
-      getDevices,
-      pairDevices,
-      setVolume,
-      setLatency,
-      getPairedDevices,
-      reconnectToLastDevice,
-      saveLastConnectedDevice: saveLastConnectedDeviceToDB,
-      sendMessage
-    }}>
+    <BLEContext.Provider
+      value={{
+        connectedDevice,
+        isConnected,
+        pingCount,
+        pongCount,
+        isPinging,
+        allDevices,
+        rpiDevices: allDevices.filter(device => device.name?.includes(RPI_DEVICE_NAME)),
+        scanning,
+        pairedDevices,
+        connectToDevice,
+        sendPing,
+        disconnectDevice: disconnectFromDevice,
+        requestPermissions,
+        scanForPeripherals,
+        scanForBLEDevices,
+        scanForSpeakerDevices,
+        startScan,
+        stopScan,
+        getDevices,
+        pairDevices,
+        setVolume,
+        setLatency,
+        getPairedDevices,
+        reconnectToLastDevice,
+        saveLastConnectedDevice: saveLastConnectedDeviceToDB,
+        sendMessage
+      }}
+    >
       {children}
     </BLEContext.Provider>
   );
