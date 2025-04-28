@@ -20,7 +20,7 @@ import { getConfigurations, getSpeakers, updateConnectionStatus } from "@/app/da
 
 type NotificationHandler = (error: BleError | null, characteristic: Characteristic | null) => void;
 
-function updateDatabaseConnectionStates(connectedMacs: string[]) {
+function updateDatabaseConnectionStates(connectedMacs: string[], onUpdate?: () => void) {
   const configs = getConfigurations();
 
   for (const config of configs) {
@@ -35,6 +35,7 @@ function updateDatabaseConnectionStates(connectedMacs: string[]) {
 
     if (config.isConnected !== status) {  // (optional: only update if changed)
       updateConnectionStatus(config.id, status);
+      onUpdate?.(); // Call the callback if provided
     }
   }
 }
@@ -43,6 +44,18 @@ function updateDatabaseConnectionStates(connectedMacs: string[]) {
 
 const handleNotification: NotificationHandler = (error, characteristic) => {
   if (error) {
+    
+      // Check if the error is a disconnection
+      if (error.message?.includes('disconnected')) {
+        Alert.alert(
+          "Disconnected",
+          "Phone connection was lost.",
+          [{ text: "OK" }]
+        );
+      }
+  
+      return;
+    
     console.error("[BLE] Notification error:", error);
     return;
   }

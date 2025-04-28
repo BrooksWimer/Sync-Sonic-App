@@ -80,6 +80,9 @@ export default function SpeakerConfigScreen() {
     }
   }>({});
 
+  // Add dbUpdateTrigger state
+  const [dbUpdateTrigger, setDbUpdateTrigger] = useState(0);
+
   // Update slider values when settings change
   useEffect(() => {
     const newSliderValues: {
@@ -159,7 +162,7 @@ export default function SpeakerConfigScreen() {
         setConnectedSpeakers({});
       }
     }
-  }, [configIDParam, speakersStr]);
+  }, [configIDParam, speakersStr, dbUpdateTrigger]);
   
   // Add BLE context
   const { connectedDevice } = useBLEContext();

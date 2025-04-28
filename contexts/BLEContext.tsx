@@ -17,6 +17,8 @@ import { MESSAGE_TYPES } from "@/utils/ble_constants";
 type BLECtx = ReturnType<typeof useBLE> & {
   /** payload last pushed by the Raspberry Pi (e.g. {connected:[…]}) */
   piStatus: any;
+  dbUpdateTrigger: number;
+  triggerDbUpdate: () => void;
 };
 
 const Ctx = createContext<BLECtx | null>(null);
@@ -24,11 +26,14 @@ const Ctx = createContext<BLECtx | null>(null);
 /* ------------------------------------------------------------------ */
 /*  2.  provider                                                      */
 /* ------------------------------------------------------------------ */
-export const BLEProvider = ({ children }: { children: ReactNode }) => {
-  /* local state that holds backend→frontend notifications */
+export function BLEProvider({ children }: { children: ReactNode }) {
   const [piStatus, setPiStatus] = useState<any>({});
+  const [dbUpdateTrigger, setDbUpdateTrigger] = useState(0);
 
-  /* hook-level callback will be wired into useBLE below */
+  const triggerDbUpdate = () => {
+    setDbUpdateTrigger(prev => prev + 1);
+  };
+
   function handleNotify(err: BleError | null, chr: Characteristic | null) {
     if (err || !chr?.value) return;
 
@@ -39,14 +44,17 @@ export const BLEProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  /* one BleManager instance for the whole app */
-  const ble = useBLE(handleNotify);
+  const ble = useBLE(triggerDbUpdate);
 
-  /* make everything available to consumers */
-  const value: BLECtx = { ...ble, piStatus };
+  const value: BLECtx = {
+    ...ble,
+    piStatus,
+    dbUpdateTrigger,
+    triggerDbUpdate
+  };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-};
+}
 
 /* ------------------------------------------------------------------ */
 /*  3.  tiny helper hook                                              */
