@@ -434,7 +434,7 @@ export default function SpeakerConfigScreen() {
                   borderWidth: 1, 
                   borderColor: stc,
                   borderRadius: 8, 
-                  shadowColor: tc,
+                  shadowColor: settings[mac]?.isConnected ? green : red,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.8,
                   shadowRadius: 8,

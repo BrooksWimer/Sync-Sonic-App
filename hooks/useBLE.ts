@@ -16,8 +16,69 @@ const bleManager = new BleManager({
     console.log('BLE Manager state restored:', restoredState);
   }
 });
+import { getConfigurations, getSpeakers, updateConnectionStatus } from "@/app/database";
 
 type NotificationHandler = (error: BleError | null, characteristic: Characteristic | null) => void;
+
+function updateDatabaseConnectionStates(connectedMacs: string[]) {
+  const configs = getConfigurations();
+
+  for (const config of configs) {
+    const speakers = getSpeakers(config.id);
+
+    const isAnySpeakerConnected = speakers.some(speaker => {
+      const speakerMac = speaker.macAddress?.toUpperCase();
+      return connectedMacs.includes(speakerMac);
+    });
+
+    const status = isAnySpeakerConnected ? 1 : 0;
+
+    if (config.isConnected !== status) {  // (optional: only update if changed)
+      updateConnectionStatus(config.id, status);
+    }
+  }
+}
+
+
+
+const handleNotification: NotificationHandler = (error, characteristic) => {
+  if (error) {
+    console.error("[BLE] Notification error:", error);
+    return;
+  }
+  if (!characteristic?.value) {
+    console.warn("[BLE] Empty notification received");
+    return;
+  }
+
+  try {
+    const rawBytes = atob(characteristic.value);
+
+    if (rawBytes.length < 2) {
+      console.warn("[BLE] Notification payload too short");
+      return;
+    }
+
+    const opcode = rawBytes.charCodeAt(0);      // first byte
+    const jsonString = rawBytes.slice(1);        // rest is JSON
+
+    if (opcode !== 0xF0) {                      // expect SUCCESS
+      console.warn(`[BLE] Unexpected opcode: ${opcode}`);
+      return;
+    }
+
+    const payload = JSON.parse(jsonString);
+
+    console.log("[BLE] Decoded payload:", payload);
+
+    if (payload.connected) {
+      updateDatabaseConnectionStates(payload.connected);
+    }
+
+  } catch (err) {
+    console.error("[BLE] Failed to decode notification:", err);
+  }
+};
 
 export function useBLE(onNotification?: NotificationHandler) {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
@@ -191,8 +252,9 @@ export function useBLE(onNotification?: NotificationHandler) {
           CHARACTERISTIC_UUID,
           (err, char) => {
             console.log('[BLE] monitor callback fired'); 
-            console.log('[BLE] NOTIFY raw:', char?.value);   // <-- base-64 packet
-            onNotification?.(err, char);                     // existing path
+            console.log('[BLE] NOTIFY raw:', char?.value);
+            handleNotification(err, char);   // <-- always handle it internally
+            onNotification?.(err, char);     // <-- still call external handler if user passed one
           }
         );
       }
@@ -232,6 +294,34 @@ export function useBLE(onNotification?: NotificationHandler) {
     }
   };
 
+
+  // inside useBLE (add just after stopScan)
+const waitForPi = (): Promise<Device> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      stopScan();
+      reject(new Error("Scan timeout (15 s)"));
+    }, 15_000);
+
+    // narrow scan to our service UUID to reduce noise
+    bleManager.startDeviceScan([SERVICE_UUID], null, (err, dev) => {
+      if (err) {
+        stopScan();
+        clearTimeout(timer);
+        return reject(err);
+      }
+      if (
+        dev &&
+        (dev.name?.toLowerCase() === "sync-sonic" ||
+         dev.localName?.toLowerCase() === "sync-sonic")
+      ) {
+        stopScan();
+        clearTimeout(timer);
+        resolve(dev);
+      }
+    });
+  });
+
   return {
     scanForPeripherals,
     stopScan,
@@ -239,7 +329,9 @@ export function useBLE(onNotification?: NotificationHandler) {
     allDevices,
     connectedDevice,
     isScanning,
-    requestPermissions
+    requestPermissions,
+    manager: bleManager,
+    waitForPi
   };
 }
 

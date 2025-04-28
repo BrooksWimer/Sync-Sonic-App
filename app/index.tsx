@@ -1,211 +1,102 @@
-import { useState, useEffect } from "react"
-import { YStack, Text, Button, H1, Image, useThemeName, useTheme } from "tamagui"
-import * as Linking from "expo-linking"
-import { router } from "expo-router"
-import { PI_API_URL } from "../utils/constants"
-import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "./database"
-import { TopBarStart } from "../components/TopBarStart"
-import colors from '../assets/colors/colors'
-import LottieView from "lottie-react-native"
-import { useBLEContext } from "../contexts/BLEContext"
-import { Alert } from "react-native"
-import { startClassicPairing } from '../utils/ble_functions';
-import { BleManager, Device } from "react-native-ble-plx";
-import { SERVICE_UUID } from "@/utils/ble_constants";
-import { getLastConnectedDevice, saveLastConnectedDevice } from "@/app/database";
+import { useState, useEffect } from "react";
+import {
+  YStack, Text, Button, H1, Image,
+  useThemeName, useTheme
+} from "tamagui";
+import LottieView   from "lottie-react-native";
+import { Alert }    from "react-native";
+import { router }   from "expo-router";
 
+import { TopBarStart }       from "../components/TopBarStart";
+import { setupDatabase }     from "./database";
+
+import { useBLEContext }     from "@/contexts/BLEContext";
+import { SERVICE_UUID }      from "@/utils/ble_constants";
+import {
+  getLastConnectedDevice,
+  saveLastConnectedDevice
+} from "@/app/database";
 
 export default function Index() {
-  const [connecting, setConnecting] = useState(false)
-  const [resetting, setResetting] = useState(false)
   const themeName = useThemeName();
   const theme = useTheme();
-  const { connectedDevice, isConnected } = useBLEContext();
+  
+  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF';
+  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094';
+  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E';
+  const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D';
+  const green = themeName === 'dark' ? '#00FF6A' : '#34A853';
+  const red = themeName === 'dark' ? 'black' : '#E8004D';
 
   const imageSource = themeName === 'dark'
     ? require('../assets/images/welcomeGraphicDark.png')
-    : require('../assets/images/welcomeGraphicLight.png')
+    : require('../assets/images/welcomeGraphicLight.png');
 
-  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF' //background
-  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094' //primary color
-  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E' //text color
 
-  const loaderSource = themeName === 'dark'
-  ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
-  : require('../assets/animations/SyncSonic_Loading_Dark_nbg.json');
 
-  useEffect(() => {
-    setupDatabase();
-  }, []);
+  /* -------------------------------------------------------------- */
+  /*  theme + BLE helpers                                           */
+  /* -------------------------------------------------------------- */
+  const {
+    manager,                 // BleManager instance from context
+    scanForPeripherals,      // starts a scan (15 s timeout handled below)
+    stopScan,
+    connectToDevice,         // Device → Promise<Device>
+    allDevices,              // filled by the scan
+    waitForPi
+  } = useBLEContext();
 
+  const [connecting, setConnecting] = useState(false);
+
+  /* -------------------------------------------------------------- */
+  /*  initial DB setup                                              */
+  /* -------------------------------------------------------------- */
+  useEffect(() => { setupDatabase(); }, []);
+
+  /* -------------------------------------------------------------- */
+  /*  connect button                                                */
+  /* -------------------------------------------------------------- */
   const handleConnect = async () => {
     setConnecting(true);
-    let connected: Device | null = null;
-    const bleManager = new BleManager();
-
     try {
-      // ── 1. Fast-path: reconnect to the MAC we saved last time ────────────
+      /******** 1. fast path – reconnect by cached MAC ****************/
       const lastMac = await getLastConnectedDevice();
-  
-      if (lastMac) {
+      let dev = null;
+
+      if (lastMac && manager) {
         try {
-          connected = await bleManager.connectToDevice(lastMac, { autoConnect: true });
-          if (connected) {
-            await connected.discoverAllServicesAndCharacteristics();
-            console.log("✅ Re-connected to cached device", lastMac);
+          const [cached] = await manager.devices([lastMac]);
+          if (cached) {
+            dev = await connectToDevice(cached);
+            console.log("✅ fast-reconnected", lastMac);
           }
         } catch (e) {
-          console.log("⚠️ Fast reconnect failed, will scan instead", e);
+          console.log("⚠️ fast reconnect failed:", e);
         }
       }
-  
-      // ── 2. Slow-path: scan until we see "Sync-Sonic" ─────────────────────
-      if (!connected) {
-        console.log("🔍 Scanning for Sync-Sonic …");
-  
-        await new Promise<void>((resolve, reject) => {
-          const TIMEOUT_MS = 15000;                 // stop after 15 s
-          const timer = setTimeout(() => {
-            bleManager.stopDeviceScan();
-            reject(new Error("Scan timeout"));
-          }, TIMEOUT_MS);
-  
-          bleManager.startDeviceScan([SERVICE_UUID], null, async (err, dev) => {
-            if (err) {
-              clearTimeout(timer);
-              bleManager.stopDeviceScan();
-              return reject(err);
-            }
-  
-            if (dev && dev.name === "Sync-Sonic") {
-              console.log("🎯 Found Sync-Sonic → connecting …");
-              bleManager.stopDeviceScan();
-              clearTimeout(timer);
-  
-              try {
-                connected = await dev.connect();
-                await connected.discoverAllServicesAndCharacteristics();
-                resolve();
-              } catch (e) {
-                reject(e);
-              }
-            }
-          });
-        });
+
+      /******** 2. scan & connect if fast path failed *****************/
+      if (!dev) {
+        const pi = await waitForPi();      // ← waits until we *really* have the Pi
+        dev = await connectToDevice(pi);
       }
-  
-      // ── 3. Success: remember MAC and navigate ────────────────────────────
-      if (connected) {
-        await saveLastConnectedDevice(connected.id);
-        router.push("/connect-device");            // or whatever screen
-      }
-    } catch (err: any) {
-      console.error("🚫 BLE connection failed:", err);
-      Alert.alert("Connection error", err.message ?? "Unable to connect to Sync-Sonic");
+
+      /******** 3. success – remember MAC & navigate *****************/
+      await saveLastConnectedDevice(dev.id);
+      router.push("/home");  
+    } catch (e: any) {
+      console.error("🚫 BLE connection failed:", e);
+      Alert.alert("Connection error", e?.message ?? "Unable to connect");
     } finally {
       setConnecting(false);
     }
   };
 
+
   const goHome = () => {
     router.push('/home');
   }
 
-  const handleResetAdapters = async () => {
-    // Show adapter count input dialog
-    Alert.prompt(
-      "Setup/Reset Box",
-      "How many Bluetooth connections does your Pi support (including phone)?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Next",
-          onPress: (adapterCount) => {
-            if (!adapterCount || isNaN(Number(adapterCount))) {
-              Alert.alert("Error", "Please enter a valid number");
-              return;
-            }
-            
-            // Show reset type selection
-            Alert.alert(
-              "Reset Type",
-              "Choose reset type:",
-              [
-                {
-                  text: "Soft Reset",
-                  onPress: () => performReset(adapterCount, false)
-                },
-                {
-                  text: "Full Reset",
-                  onPress: () => performReset(adapterCount, true)
-                },
-                {
-                  text: "Cancel",
-                  style: "cancel"
-                }
-              ]
-            );
-          }
-        }
-      ],
-      "plain-text",
-      "4"
-    );
-  };
-
-  const performReset = async (adapterCount: string, deepReset: boolean) => {
-    setResetting(true);
-    try {
-      const response = await fetch(`${PI_API_URL}/reset-adapters`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          expectedAdapterCount: Number(adapterCount),
-          deepReset: deepReset
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to reset adapters");
-      }
-
-      const result = await response.json();
-
-      // Reset all configurations and speakers in the database
-      const configurations = getConfigurations();
-      for (const config of configurations) {
-        // Set configuration to disconnected
-        updateConnectionStatus(config.id, 0);
-        
-        // Get all speakers for this configuration
-        const speakers = getSpeakersFull(config.id);
-        for (const speaker of speakers) {
-          // Reset speaker connection status and settings
-          updateSpeakerConnectionStatus(config.id, speaker.mac, false);
-          updateSpeakerSettings(
-            config.id,
-            speaker.mac,
-            50, // Reset volume to 50%
-            100, // Reset latency to 100ms
-            0.5, // Reset balance to middle
-            false // Unmute
-          );
-        }
-      }
-
-      Alert.alert("Success", "Box reset complete. All speakers have been disconnected and reset to default settings.");
-    } catch (err) {
-      console.error("⚠️ Failed to reset adapters:", err);
-      Alert.alert("Error", "Failed to reset adapters. Please try again.");
-    } finally {
-      setResetting(false);
-    }
-  };
 
   return (
     <YStack
@@ -247,39 +138,7 @@ export default function Index() {
 
       {/* Bottom Buttons */}
       <YStack space="$4" paddingBottom="$4">
-        <Button
-          onPress={handleResetAdapters}
-          disabled={resetting}
-          style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 999,
-            alignSelf: 'center',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative',
-          }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
-            {resetting ? "Resetting..." : "Reset Adapters"}
-          </Text>
 
-          {resetting && (
-            <LottieView
-              source={loaderSource}
-              autoPlay
-              loop
-              style={{
-                width: 100,
-                height: 100,
-                position: 'absolute',
-                right: -10, // spacing from the edge
-              }}
-            />
-          )}
-        </Button>
 
 
         <Button
@@ -300,20 +159,6 @@ export default function Index() {
           <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
             {connecting ? "Connecting..." : "Connect Phone"}
           </Text>
-
-          {connecting && (
-            <LottieView
-              source={loaderSource}
-              autoPlay
-              loop
-              style={{
-                width: 100,
-                height: 100,
-                position: 'absolute',
-                right: -10, // spacing from the edge
-              }}
-            />
-          )}
         </Button>
 
 
