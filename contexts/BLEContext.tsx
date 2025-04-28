@@ -1,12 +1,54 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { Device, Characteristic, BleError } from "react-native-ble-plx";
+import { Device, Characteristic, BleError, Service } from "react-native-ble-plx";
 import useBLE from "@/hooks/useBLE";
-import { Alert } from 'react-native';
-import { saveLastConnectedDevice, getLastConnectedDevice } from '@/app/database';
+import { Alert, Platform, NativeModules } from 'react-native';
+import { saveLastConnectedDevice, 
+          getLastConnectedDevice,
+          updateSpeakerConnectionStatus,
+          updateConnectionStatus,
+          getConfigurations,
+          getSpeakers } from '@/app/database';
 import bleManager from "@/services/BLEManager";
 import { getConnectedDevices } from "@/services/BLEManager";
 import { RPI_DEVICE_NAME, SERVICE_UUID, CHARACTERISTIC_UUID, MESSAGE_TYPES } from '@/utils/ble_constants';
 import { fetchPairedDevices } from '../utils/ble_functions';
+
+async function applyConnectedList(macList: string[]) {
+  try {
+    // 1) one pass: mark each speaker row
+    const allConfigs = getConfigurations();           // existing helper
+    const macSet = new Set(macList.map(m => m.toUpperCase()));
+
+    allConfigs.forEach(cfg => {
+      const spkRows = getSpeakers(cfg.id);
+      let anyUp = false;
+
+      spkRows.forEach(row => {
+        const up = macSet.has(row.mac.toUpperCase());
+        if (up) anyUp = true;
+        updateSpeakerConnectionStatus(cfg.id, row.mac, up);
+      });
+
+      // 2) update the configuration flag
+      updateConnectionStatus(cfg.id, anyUp ? 1 : 0);
+    });
+  } catch (e) {
+    console.error("applyConnectedList:", e);
+  }
+}
+
+// Add type declarations
+declare module 'react-native' {
+  interface AlertStatic {
+    alert: (title: string, message?: string, buttons?: any[], options?: any) => void;
+  }
+  interface PlatformStatic {
+    OS: 'ios' | 'android' | 'windows' | 'macos' | 'web';
+  }
+  interface NativeModulesStatic {
+    [key: string]: any;
+  }
+}
 
 interface BLEMessageDevice {
   id: string;
@@ -16,6 +58,7 @@ interface BLEMessageDevice {
 interface MessageData {
   count?: number;
   devices?: BLEMessageDevice[];
+  connected?: string[]; 
 }
 
 interface DecodedMessage {
@@ -64,7 +107,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pairedDevices, setPairedDevices] = useState<Record<string, string>>({});
   const [allDevices, setAllDevices] = useState<Device[]>([]);
 
-  const handleMessage = (error: any, characteristic: any) => {
+  const handleMessage = async (error: any, characteristic: any) => {
     if (error) {
       console.error('Error in characteristic notification:', error);
       return;
@@ -80,9 +123,17 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         case MESSAGE_TYPES.PONG:
           setPongCount(prev => prev + 1);
           break;
-        case MESSAGE_TYPES.SUCCESS:
-          console.log('Operation successful');
-          break;
+        case MESSAGE_TYPES.SUCCESS: {
+            // ── 1. Whatever you were already doing ───────────────────────────────
+            console.log("Operation successful");
+          
+            // ── 2. NEW: did the Pi include the "connected" array? ────────────────
+            if (Array.isArray(decoded.data.connected)) {
+              // write the list into SQLite → screens update automatically
+              await applyConnectedList(decoded.data.connected);
+            }
+            break;
+          }
         case MESSAGE_TYPES.FAILURE:
           console.error('Operation failed');
           break;
@@ -155,7 +206,12 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const rpiDevice = connectedDevices.find((device: Device) => device.name === RPI_DEVICE_NAME);
           if (rpiDevice) {
             console.log('Found already connected RPI device:', rpiDevice.id);
-            await connectToDevice(rpiDevice);
+            // Only connect if we don't already have a connected device
+            if (!connectedDevice || connectedDevice.id !== rpiDevice.id) {
+              await connectToDevice(rpiDevice);
+            } else {
+              console.log('Device already connected, skipping connection attempt');
+            }
             setScanning(false);
             return;
           }
@@ -241,11 +297,21 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!lastDeviceId) return;
 
     try {
+      // Check if the device is already connected
+      if (connectedDevice && connectedDevice.id === lastDeviceId) {
+        console.log('Device already connected, skipping reconnection');
+        return;
+      }
+
       // Look for the device in the already scanned devices first
       const device = rpiDevices.find(d => d.id === lastDeviceId);
       if (device) {
         console.log('Found device in existing devices, connecting...');
         await connectToDevice(device);
+      } else {
+        // If not found, start a scan to find it
+        console.log('Device not found in existing devices, starting scan...');
+        await scanForBLEDevices();
       }
     } catch (error) {
       console.log('Reconnection failed:', error);
@@ -253,39 +319,42 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const encodeMessage = (messageType: number, data: any = {}) => {
-    // Create a 5-byte buffer
-    const buffer = new ArrayBuffer(5);
-    const view = new DataView(buffer);
-    
-    // Set message type in first byte
-    view.setUint8(0, messageType);
-    
-    // Set count in next 4 bytes (big-endian)
-    const count = data.count || 0;
-    view.setUint32(1, count, false); // false for big-endian
-    
-    // Convert to base64
-    const bytes = new Uint8Array(buffer);
-    return btoa(String.fromCharCode.apply(null, Array.from(bytes)));
+    /* PING with {count:n} can be kept compact */
+    if (messageType === MESSAGE_TYPES.PING) {
+      const buf   = new ArrayBuffer(5);
+      const view  = new DataView(buf);
+      view.setUint8 (0, messageType);
+      view.setUint32(1, data.count ?? 0, false);   // big-endian
+      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+  
+    /* everything else → JSON payload */
+    const json     = JSON.stringify(data);
+    const bytes    = new TextEncoder().encode(json);
+    const packet   = new Uint8Array(1 + bytes.length);
+    packet[0]      = messageType;
+    packet.set(bytes, 1);
+    return btoa(String.fromCharCode(...packet));
   };
-
-  const decodeMessage = (value: any): DecodedMessage | null => {
+  
+  const decodeMessage = (value: string): DecodedMessage | null => {
     if (!value) return null;
-    
     try {
       const buffer = Buffer.from(value, 'base64');
       const messageType = buffer[0];
-      const count = buffer.readUInt32BE(1);
+      const jsonBytes = buffer.slice(1);
+      const data = JSON.parse(jsonBytes.toString('utf8'));
       
       return {
         messageType,
-        data: { count }
+        data
       };
-    } catch (error) {
-      console.error('Error decoding message:', error);
+    } catch (err) {
+      console.error("decodeMessage failed:", err);
       return null;
     }
   };
+  
 
   const sendMessage = async (messageType: number, data: any = {}) => {
     if (!connectedDevice) {
@@ -332,78 +401,170 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const connectToDevice = async (device: Device) => {
-    try {
-      console.log('Connecting to device:', device.id);
-      
-      // Stop scanning and update state
-      if (scanning) {
-        console.log('Stopping scan before connecting...');
-        await stopScan();
-        setScanning(false);
+    // Check if we're already connected to this device
+    if (connectedDevice && connectedDevice.id === device.id) {
+      console.log('Already connected to this device, skipping connection attempt');
+      return;
+    }
+
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds between retries
+
+    while (retryCount < maxRetries) {
+      try {
+        console.log(`Attempting connection (attempt ${retryCount + 1}/${maxRetries})...`);
         
-        // Add a small delay to allow the BLE stack to clean up
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      const connectedDevice = await device.connect({
-        timeout: 10000, // 10 second timeout
-        autoConnect: false // Don't auto-connect
-      });
-      
-      console.log('Connected to device:', connectedDevice.id);
-      
-      const discoveredDevice = await connectedDevice.discoverAllServicesAndCharacteristics();
-      console.log('Discovered services and characteristics');
-      
-      const services = await discoveredDevice.services();
-      console.log('Found services:', services.map(s => ({
-        uuid: s.uuid,
-        isPrimary: s.isPrimary,
-        deviceID: s.deviceID
-      })));
-      
-      // Find the service with the correct UUID
-      const targetService = services.find(s => s.uuid.toLowerCase() === SERVICE_UUID.toLowerCase());
-      if (!targetService) {
-        console.error('Service not found. Looking for:', SERVICE_UUID);
-        console.error('Available services:', services.map(s => s.uuid));
-        throw new Error('Service not found');
-      }
-      
-      // Find the characteristic with the correct UUID
-      const characteristics = await targetService.characteristics();
-      console.log('Found characteristics:', characteristics.map(c => ({
-        uuid: c.uuid,
-        serviceUUID: c.serviceUUID
-      })));
-      
-      const targetCharacteristic = characteristics.find(c => c.uuid.toLowerCase() === CHARACTERISTIC_UUID.toLowerCase());
-      if (!targetCharacteristic) {
-        console.error('Characteristic not found. Looking for:', CHARACTERISTIC_UUID);
-        console.error('Available characteristics:', characteristics.map(c => c.uuid));
-        throw new Error('Characteristic not found');
-      }
-      
-      // Enable notifications
-      await targetCharacteristic.monitor((error, characteristic) => {
-        if (error) {
-          console.error('Error monitoring characteristic:', error);
-          return;
+        // Stop scanning and update state
+        if (scanning) {
+          console.log('Stopping scan before connecting...');
+          await stopScan();
+          setScanning(false);
+          
+          // Add a small delay to allow the BLE stack to clean up
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-        handleMessage(error, characteristic);
-      });
-      
-      setConnectedDevice(connectedDevice);
-      setIsConnected(true);
-      console.log('Successfully connected and set up notifications');
-    } catch (error) {
-      console.error('Error connecting to device:', error);
-      // Clean up on error
-      if (scanning) {
-        await stopScan();
-        setScanning(false);
+
+        // Add a delay before attempting connection to allow any previous connections to fully close
+        if (retryCount > 0) {
+          console.log(`Waiting ${retryDelay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+        
+        const connectedDevice = await device.connect({
+          timeout: 10000, // 10 second timeout
+          autoConnect: false // Don't auto-connect
+        });
+        
+        console.log('Connected to device:', connectedDevice.id);
+        
+        // Add a delay before service discovery to allow the connection to stabilize
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Retry service discovery up to 3 times
+        let discoveredDevice: Device | null = null;
+        let services: Service[] = [];
+        let serviceRetryCount = 0;
+        const maxServiceRetries = 3;
+        
+        while (serviceRetryCount < maxServiceRetries) {
+          try {
+            console.log(`Attempting service discovery (attempt ${serviceRetryCount + 1}/${maxServiceRetries})...`);
+            discoveredDevice = await connectedDevice.discoverAllServicesAndCharacteristics();
+            console.log('Discovered services and characteristics');
+            
+            services = await discoveredDevice.services();
+            console.log('Found services:', services.map(s => ({
+              uuid: s.uuid,
+              isPrimary: s.isPrimary,
+              deviceID: s.deviceID
+            })));
+            
+            // Check if our service is found
+            const targetService = services.find(s => s.uuid.toLowerCase() === SERVICE_UUID.toLowerCase());
+            if (targetService) {
+              console.log('Found target service:', targetService.uuid);
+              break;
+            }
+            
+            console.log('Target service not found, retrying...');
+            serviceRetryCount++;
+            if (serviceRetryCount < maxServiceRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          } catch (error) {
+            console.error(`Service discovery attempt ${serviceRetryCount + 1} failed:`, error);
+            serviceRetryCount++;
+            if (serviceRetryCount < maxServiceRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
+        
+        if (serviceRetryCount === maxServiceRetries) {
+          throw new Error(`Failed to discover services after ${maxServiceRetries} attempts`);
+        }
+        
+        // Find the service with the correct UUID
+        const targetService = services.find(s => s.uuid.toLowerCase() === SERVICE_UUID.toLowerCase());
+        if (!targetService) {
+          console.error('Service not found. Looking for:', SERVICE_UUID);
+          console.error('Available services:', services.map(s => s.uuid));
+          throw new Error('Service not found');
+        }
+        
+        // Find the characteristic with the correct UUID
+        const characteristics = await targetService.characteristics();
+        console.log('Found characteristics:', characteristics.map((c: Characteristic) => ({
+          uuid: c.uuid,
+          serviceUUID: c.serviceUUID
+        })));
+        
+        const targetCharacteristic = characteristics.find((c: Characteristic) => c.uuid.toLowerCase() === CHARACTERISTIC_UUID.toLowerCase());
+        if (!targetCharacteristic) {
+          console.error('Characteristic not found. Looking for:', CHARACTERISTIC_UUID);
+          console.error('Available characteristics:', characteristics.map((c: Characteristic) => c.uuid));
+          throw new Error('Characteristic not found');
+        }
+
+        // Only try to enable notifications if we don't already have them set up
+        if (!isConnected) {
+          // Try to enable notifications with retries
+          let notificationRetryCount = 0;
+          const maxNotificationRetries = 3;
+          let notificationSuccess = false;
+
+          while (notificationRetryCount < maxNotificationRetries) {
+            try {
+              console.log(`Attempting to enable notifications (attempt ${notificationRetryCount + 1}/${maxNotificationRetries})...`);
+              await targetCharacteristic.monitor((error: BleError | null, characteristic: Characteristic | null) => {
+                if (error) {
+                  console.error('Error in characteristic notification:', error);
+                  return;
+                }
+                handleMessage(error, characteristic);
+              });
+              notificationSuccess = true;
+              break;
+            } catch (error) {
+              console.error(`Notification setup attempt ${notificationRetryCount + 1} failed:`, error);
+              notificationRetryCount++;
+              if (notificationRetryCount < maxNotificationRetries) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
+          }
+
+          if (!notificationSuccess) {
+            console.warn('Failed to set up notifications after multiple attempts, but connection is established');
+            // We'll still consider this a successful connection even if notifications fail
+          }
+        }
+        
+        setConnectedDevice(connectedDevice);
+        setIsConnected(true);
+        console.log('Successfully connected and set up notifications');
+        return; // Successfully connected, exit the retry loop
+      } catch (error) {
+        console.error(`Connection attempt ${retryCount + 1} failed:`, error);
+        retryCount++;
+        
+        // If we've exhausted all retries, clean up and throw the error
+        if (retryCount === maxRetries) {
+          console.error('All connection attempts failed');
+          if (scanning) {
+            await stopScan();
+            setScanning(false);
+          }
+          throw error;
+        }
+        
+        // If this is a pairing-related error, add an additional delay
+        if (error instanceof Error && error.message?.includes('pairing')) {
+          console.log('Pairing error detected, adding extra delay...');
+          await new Promise(resolve => setTimeout(resolve, retryDelay * 2));
+        }
       }
-      throw error;
     }
   };
 
@@ -438,27 +599,78 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Add useEffect to attempt reconnection on app start
-  useEffect(() => {
-    const attemptReconnection = async () => {
-      try {
-        await reconnectToLastDevice();
-      } catch (error) {
-        console.log('Initial reconnection attempt failed:', error);
-      }
-    };
-
-    attemptReconnection();
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
+  const checkAllBluetoothConnections = async (): Promise<boolean> => {
+    try {
+      // First check if we have a connected device and if it's still connected
       if (connectedDevice) {
-        disconnectFromDevice();
+        try {
+          const isStillConnected = await connectedDevice.isConnected();
+          if (isStillConnected) {
+            return true;
+          }
+        } catch (error) {
+          console.log('Error checking device connection status:', error);
+        }
+      }
+      
+      // If we don't have a connected device or it's not connected, check for BLE connections
+      try {
+        const bleDevices = await bleManager.connectedDevices([SERVICE_UUID]);
+        if (bleDevices.length > 0) {
+          const rpiDevice = bleDevices.find((device: Device) => device.name === RPI_DEVICE_NAME);
+          if (rpiDevice) {
+            // Update our state to match the BLE system
+            setConnectedDevice(rpiDevice);
+            setIsConnected(true);
+            return true;
+          }
+        }
+      } catch (error) {
+        console.log('Error checking BLE connections:', error);
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error checking all Bluetooth connections:', error);
+      return false;
+    }
+  };
+
+  // Add useEffect to monitor connection status
+  useEffect(() => {
+    let isMounted = true;
+    let checkTimeout: NodeJS.Timeout;
+
+    const checkConnection = async () => {
+      if (!isMounted) return;
+
+      const isActuallyConnected = await checkAllBluetoothConnections();
+      
+      // Only update state if there's a mismatch and we're not in the middle of a connection attempt
+      if (isActuallyConnected !== isConnected && !scanning) {
+        setIsConnected(isActuallyConnected);
+        if (!isActuallyConnected) {
+          setConnectedDevice(null);
+        }
+      }
+
+      // Schedule next check
+      if (isMounted) {
+        checkTimeout = setTimeout(checkConnection, 5000);
       }
     };
-  }, []);
+
+    // Start the first check
+    checkConnection();
+
+    // Cleanup
+    return () => {
+      isMounted = false;
+      if (checkTimeout) {
+        clearTimeout(checkTimeout);
+      }
+    };
+  }, [isConnected, connectedDevice, scanning]);
 
   const stopScan = async () => {
     stopScanHook();
@@ -474,7 +686,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         pongCount,
         isPinging,
         allDevices,
-        rpiDevices: allDevices.filter(device => device.name?.includes(RPI_DEVICE_NAME)),
+        rpiDevices,
         scanning,
         pairedDevices,
         connectToDevice,

@@ -132,10 +132,12 @@ export async function bleConnectOne(
     mac: string,
     name: string,
     settings: Record<string, any>,
+    allowedMacs: string[] = []
   ): Promise<void> {
     const payload = {
       targetSpeaker: { mac, name },
-      settings: { [mac]: settings }
+      settings: { [mac]: settings },
+      allowed: allowedMacs
     };
     
     console.log('CONNECT_ONE opcode:', MESSAGE_TYPES.CONNECT_ONE.toString(16));

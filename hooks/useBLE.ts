@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { PermissionsAndroid, Platform } from "react-native";
+import { Platform } from "react-native";
+import { PERMISSIONS, request, requestMultiple } from "react-native-permissions";
 import * as ExpoDevice from "expo-device";
 import {
   BleError,
@@ -50,59 +51,35 @@ export function useBLE(onNotification?: NotificationHandler) {
     }
   };
 
-  const requestAndroid31Permissions = async () => {
-    const bluetoothScanPermission = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-      {
-        title: "Location Permission",
-        message: "Bluetooth Low Energy requires Location",
-        buttonPositive: "OK",
-      }
+  const ensurePiNotifications = async (
+    dev: Device,
+    onNotify: (e: BleError | null, c: Characteristic | null) => void
+  ) => {
+    // already monitoring?  (Ble-plx keeps listeners here)
+    // @ts-ignore – not in typings but exists at runtime
+    if (dev.monitorListeners?.length) return;
+  
+    console.log('[BLE] discovering SVC/CHR for', dev.id);
+    const d2        = await dev.discoverAllServicesAndCharacteristics();
+    const svcs      = await d2.services();
+    const svc       = svcs.find(
+      s => s.uuid.toLowerCase() === SERVICE_UUID.toLowerCase()
     );
-    const bluetoothConnectPermission = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      {
-        title: "Location Permission",
-        message: "Bluetooth Low Energy requires Location",
-        buttonPositive: "OK",
-      }
+    if (!svc) throw new Error('Pi service not found');
+  
+    const chrs      = await svc.characteristics();
+    const chr       = chrs.find(
+      c => c.uuid.toLowerCase() === CHARACTERISTIC_UUID.toLowerCase()
     );
-    const fineLocationPermission = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      {
-        title: "Location Permission",
-        message: "Bluetooth Low Energy requires Location",
-        buttonPositive: "OK",
-      }
-    );
-
-    return (
-      bluetoothScanPermission === "granted" &&
-      bluetoothConnectPermission === "granted" &&
-      fineLocationPermission === "granted"
-    );
-  };
-
-  const requestPermissions = async () => {
-    if (Platform.OS === "android") {
-      if ((ExpoDevice.platformApiLevel ?? -1) < 31) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: "Location Permission",
-            message: "Bluetooth Low Energy requires Location",
-            buttonPositive: "OK",
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } else {
-        const isAndroid31PermissionsGranted = await requestAndroid31Permissions();
-        return isAndroid31PermissionsGranted;
-      }
-    } else {
-      return true;
-    }
-  };
+    if (!chr) throw new Error('Pi characteristic not found');
+  
+    console.log('[BLE] enabling notifications …');
+    await chr.monitor((err, c) => {
+      if (err) console.error('[BLE] monitor error:', err);
+      else     console.log('[BLE] NOTIFY raw:', c?.value);
+      onNotify(err, c);
+    });
+  }
 
   const isDuplicateDevice = (devices: Device[], nextDevice: Device) =>
     devices.findIndex((device) => nextDevice.id === device.id) > -1;
@@ -212,7 +189,11 @@ export function useBLE(onNotification?: NotificationHandler) {
         await deviceConnection.monitorCharacteristicForService(
           SERVICE_UUID,
           CHARACTERISTIC_UUID,
-          onNotification
+          (err, char) => {
+            console.log('[BLE] monitor callback fired'); 
+            console.log('[BLE] NOTIFY raw:', char?.value);   // <-- base-64 packet
+            onNotification?.(err, char);                     // existing path
+          }
         );
       }
 
@@ -223,14 +204,42 @@ export function useBLE(onNotification?: NotificationHandler) {
     }
   };
 
+  const requestPermissions = async () => {
+    if (Platform.OS === 'android') {
+      const apiLevel = ExpoDevice.platformApiLevel;
+      if (apiLevel === null) {
+        console.error('Could not determine Android API level');
+        return false;
+      }
+      
+      if (apiLevel < 31) {
+        const result = await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+        return result === 'granted';
+      } else {
+        const results = await requestMultiple([
+          PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
+          PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
+          PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
+        ]);
+        return (
+          results[PERMISSIONS.ANDROID.BLUETOOTH_SCAN] === 'granted' &&
+          results[PERMISSIONS.ANDROID.BLUETOOTH_CONNECT] === 'granted' &&
+          results[PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION] === 'granted'
+        );
+      }
+    } else {
+      return true;
+    }
+  };
+
   return {
     scanForPeripherals,
     stopScan,
-    requestPermissions,
     connectToDevice,
     allDevices,
     connectedDevice,
-    isScanning
+    isScanning,
+    requestPermissions
   };
 }
 

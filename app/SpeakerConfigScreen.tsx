@@ -280,6 +280,10 @@ export default function SpeakerConfigScreen() {
         }
       });
 
+      // Get all speaker MACs in the configuration from the database
+      const allSpeakers = configIDParam ? getSpeakersFull(Number(configIDParam)) : [];
+      const allowedMacs = allSpeakers.map(speaker => speaker.mac);
+
       // Pass the connected device to bleConnectOne
       await bleConnectOne(
         connectedDevice,
@@ -289,7 +293,8 @@ export default function SpeakerConfigScreen() {
           volume: settings[mac]?.volume || 50,
           latency: settings[mac]?.latency || 100,
           balance: sliderValues[mac]?.balance || 0.5
-        }
+        },
+        allowedMacs  // Pass the allowed MACs
       );
       
       // Update local state

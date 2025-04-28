@@ -10,13 +10,17 @@ import LottieView from "lottie-react-native"
 import { useBLEContext } from "../contexts/BLEContext"
 import { Alert } from "react-native"
 import { startClassicPairing } from '../utils/ble_functions';
+import { BleManager, Device } from "react-native-ble-plx";
+import { SERVICE_UUID } from "@/utils/ble_constants";
+import { getLastConnectedDevice, saveLastConnectedDevice } from "@/app/database";
+
 
 export default function Index() {
   const [connecting, setConnecting] = useState(false)
   const [resetting, setResetting] = useState(false)
   const themeName = useThemeName();
   const theme = useTheme();
-  const { connectedDevice, isConnected, reconnectToLastDevice, scanForBLEDevices } = useBLEContext();
+  const { connectedDevice, isConnected } = useBLEContext();
 
   const imageSource = themeName === 'dark'
     ? require('../assets/images/welcomeGraphicDark.png')
@@ -30,59 +34,81 @@ export default function Index() {
   ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
   : require('../assets/animations/SyncSonic_Loading_Dark_nbg.json');
 
-
   useEffect(() => {
     setupDatabase();
-    
-    // Check for connected devices on initial load
-    const checkConnection = async () => {
-      try {
-        await scanForBLEDevices();
-        if (isConnected) {
-          router.push('/home');
-        }
-      } catch (error) {
-        console.log('Error checking connection:', error);
-      }
-    };
-    
-    checkConnection();
-  }, [isConnected]);
-
-  // const handleConnect = async () => {
-  //   setConnecting(true);
-  
-  //   try {
-  //     if (!connectedDevice) {
-  //       throw new Error('No BLE device connected');
-  //     }
-  //     await startClassicPairing(connectedDevice);
-  //   } catch (err) {
-  //     console.error("⚠️ Failed to start classic pairing over BLE:", err);
-  //   }
-  
-  //   setConnecting(false);
-  // };
+  }, []);
 
   const handleConnect = async () => {
-    setConnecting(true)
+    setConnecting(true);
+    let connected: Device | null = null;
+    const bleManager = new BleManager();
 
-    // Fire off the pairing request (no need to wait for success right now)
     try {
-      await fetch(`${PI_API_URL}/connect_phone`, { method: "POST" })
-    } catch (err) {
-      console.error("⚠️ Failed to call /connect_phone:", err)
+      // ── 1. Fast-path: reconnect to the MAC we saved last time ────────────
+      const lastMac = await getLastConnectedDevice();
+  
+      if (lastMac) {
+        try {
+          connected = await bleManager.connectToDevice(lastMac, { autoConnect: true });
+          if (connected) {
+            await connected.discoverAllServicesAndCharacteristics();
+            console.log("✅ Re-connected to cached device", lastMac);
+          }
+        } catch (e) {
+          console.log("⚠️ Fast reconnect failed, will scan instead", e);
+        }
+      }
+  
+      // ── 2. Slow-path: scan until we see "Sync-Sonic" ─────────────────────
+      if (!connected) {
+        console.log("🔍 Scanning for Sync-Sonic …");
+  
+        await new Promise<void>((resolve, reject) => {
+          const TIMEOUT_MS = 15000;                 // stop after 15 s
+          const timer = setTimeout(() => {
+            bleManager.stopDeviceScan();
+            reject(new Error("Scan timeout"));
+          }, TIMEOUT_MS);
+  
+          bleManager.startDeviceScan([SERVICE_UUID], null, async (err, dev) => {
+            if (err) {
+              clearTimeout(timer);
+              bleManager.stopDeviceScan();
+              return reject(err);
+            }
+  
+            if (dev && dev.name === "Sync-Sonic") {
+              console.log("🎯 Found Sync-Sonic → connecting …");
+              bleManager.stopDeviceScan();
+              clearTimeout(timer);
+  
+              try {
+                connected = await dev.connect();
+                await connected.discoverAllServicesAndCharacteristics();
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            }
+          });
+        });
+      }
+  
+      // ── 3. Success: remember MAC and navigate ────────────────────────────
+      if (connected) {
+        await saveLastConnectedDevice(connected.id);
+        router.push("/connect-device");            // or whatever screen
+      }
+    } catch (err: any) {
+      console.error("🚫 BLE connection failed:", err);
+      Alert.alert("Connection error", err.message ?? "Unable to connect to Sync-Sonic");
+    } finally {
+      setConnecting(false);
     }
-
-    setConnecting(false)
-}
+  };
 
   const goHome = () => {
-    if (isConnected) {
-      router.push('/home');
-    } else {
-      router.push('./connect-device');
-    }
+    router.push('/home');
   }
 
   const handleResetAdapters = async () => {
