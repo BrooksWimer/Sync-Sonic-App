@@ -18,7 +18,7 @@ import {
   getSpeakersFull
 } from './database';
 import {PI_API_URL, KNOWN_CONTROLLERS} from '../utils/constants'
-import { useTheme, useThemeName, YStack, Text } from 'tamagui';
+import { useTheme, useThemeName, YStack, Text, H1 } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { 
   handleVolumeChange,
@@ -32,6 +32,7 @@ import {
 } from '../utils/ConfigurationFunctions';
 import { useFocusEffect } from '@react-navigation/native';
 import { Bluetooth, BluetoothOff, Volume2, VolumeX } from '@tamagui/lucide-icons';
+import * as Font from 'expo-font';
 
 
 
@@ -45,6 +46,25 @@ export default function SpeakerConfigScreen() {
   const speakersStr = params.get('speakers'); // JSON string or null
   const configNameParam = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // may be undefined for a new config
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+    
+      useEffect(() => {
+        async function loadFonts() {
+          await Font.loadAsync({
+            'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
+            'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
+            'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
+            'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
+            'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
+            'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
+            'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
+          });
+          setFontsLoaded(true);
+        }
+    
+        loadFonts();
+      }, []);
+  
 
   // State to hold connected speakers (mapping from mac to name)
   const [connectedSpeakers, setConnectedSpeakers] = useState<{ [mac: string]: string }>({});
@@ -427,11 +447,18 @@ export default function SpeakerConfigScreen() {
       return (
         <YStack flex={1} backgroundColor={bg}>
           <TopBar/>
-          <Text style={{ fontFamily: 'Finlandica', fontSize: 35, fontWeight: "bold", color: tc, marginBottom: 10, marginTop: 20, alignSelf: 'center' }}>
-            {configNameParam}
-          </Text>
-          {/* LEAVE THIS EMPTY */}
-          <Text>  </Text>
+          {/* Header */}
+          <View style={{
+                    paddingTop: 20,
+                    paddingBottom: 10,
+                    alignItems: "center",
+                    backgroundColor: bg
+                }}>
+          <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginBottom: 5, marginTop: 15, letterSpacing: 1 }}>
+                    {configNameParam}
+          </H1>
+          </View>
+          
           <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
             
             
@@ -441,7 +468,7 @@ export default function SpeakerConfigScreen() {
               Object.keys(connectedSpeakers).map((mac, index) => (
                 <SafeAreaView key={mac} style={{ width:"90%",
                                                 alignSelf:"center", 
-                                                marginTop: index === 0 ? 7 : 0, // 👈 only the first item gets top margin
+                                                marginTop: index === 0 ? 15 : 0, // 👈 only the first item gets top margin
                                                 marginBottom: 15, 
                                                 paddingLeft: 20, 
                                                 paddingRight: 20, 
@@ -458,14 +485,14 @@ export default function SpeakerConfigScreen() {
                                                 //height: 300,
                                                 elevation: 10}}>
                   
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 24, fontWeight: "bold", color: tc, marginTop: 0, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
+                  <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 28, color: tc, marginTop: 0, alignSelf: 'center',  }}>{connectedSpeakers[mac]}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={{ 
-                      fontFamily: 'Finlandica', 
+                      fontFamily: 'Finlandica-Medium', 
                       fontSize: 18, 
-                      fontWeight: "bold", 
                       color: tc, 
-                      marginTop: 6 
+                      marginTop: 6,
+                      letterSpacing: 1
                     }}>
                       Volume: {settings[mac]?.volume ?? 50}%
                     </Text>
@@ -510,7 +537,9 @@ export default function SpeakerConfigScreen() {
                     thumbTintColor="white" 
                   />
                   
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Latency: {settings[mac]?.latency ?? 100} ms</Text>
+                  <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 18, letterSpacing: 1, color: tc, marginTop: 6 }}>
+                    Latency: {settings[mac]?.latency ?? 100} ms
+                  </Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -535,10 +564,10 @@ export default function SpeakerConfigScreen() {
                       borderColor: tc,
                       justifyContent: 'center',
                       alignItems: 'center',
-                      marginRight: 6, // small spacing between circle and number
+                      marginRight: 6
                     }}>
                       <Text style={{
-                        fontFamily: 'Finlandica',
+                        fontFamily: 'Inter',
                         fontSize: 14,
                         fontWeight: 'bold',
                         color: tc,
@@ -546,19 +575,19 @@ export default function SpeakerConfigScreen() {
                         L
                       </Text>
                     </View>
-                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>
+                    <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 18, color: tc, letterSpacing: 1 }}>
                       {Math.round((settings[mac]?.balance ?? 0.5) >= 0.5 ? (settings[mac]?.volume ?? 50) * (1 - (settings[mac]?.balance ?? 0.5)) * 2 : (settings[mac]?.volume ?? 50))}%
                     </Text>
                   </View>
 
                   {/* Middle (Sound Field) */}
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>
+                  <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 18, color: tc, letterSpacing: 1 }}>
                     Sound Field
                   </Text>
 
                   {/* Right side (R) */}
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>
+                    <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 18, color: tc, letterSpacing: 1 }}>
                       {Math.round((settings[mac]?.balance ?? 0.5) <= 0.5 ? (settings[mac]?.volume ?? 50) * (settings[mac]?.balance ?? 0.5) * 2 : (settings[mac]?.volume ?? 50))}%
                     </Text>
                     <View style={{
@@ -572,7 +601,7 @@ export default function SpeakerConfigScreen() {
                       marginLeft: 6, // small spacing between number and circle
                     }}>
                       <Text style={{
-                        fontFamily: 'Finlandica',
+                        fontFamily: 'Inter',
                         fontSize: 14,
                         fontWeight: 'bold',
                         color: tc,

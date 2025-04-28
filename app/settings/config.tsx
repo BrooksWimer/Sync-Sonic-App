@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '@/components/TopBar';
 import { PI_API_URL } from '../../utils/constants';
 import { removeDevice, saveChanges } from '@/utils/ConfigurationFunctions';
+import * as Font from 'expo-font';
 
 
 export default function Config() {
@@ -21,6 +22,25 @@ export default function Config() {
     const [configName, setConfigName] = useState(initialConfigName);
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
     const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
+    const [fontsLoaded, setFontsLoaded] = useState(false);
+      
+        useEffect(() => {
+          async function loadFonts() {
+            await Font.loadAsync({
+              'Finlandica-Regular': require('../../assets/fonts/Finlandica-Regular.ttf'),
+              'Finlandica-Medium': require('../../assets/fonts/Finlandica-Medium.ttf'),
+              'Finlandica-SemiBold': require('../../assets/fonts/Finlandica-SemiBold.ttf'),
+              'Finlandica-Bold': require('../../assets/fonts/Finlandica-Bold.ttf'),
+              'Finlandica-Italic': require('../../assets/fonts/Finlandica-Italic.ttf'),
+              'Finlandica-SemiBoldItalic': require('../../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
+              'Finlandica-BoldItalic': require('../../assets/fonts/Finlandica-BoldItalic.ttf'),
+            });
+            setFontsLoaded(true);
+          }
+      
+          loadFonts();
+        }, []);
+    
 
     useFocusEffect(
         useCallback(() => {
@@ -99,16 +119,20 @@ export default function Config() {
             <TopBar/>
 
             {/* Header */}
-            <View style={{
-                paddingTop: 20,
-                paddingBottom: 10,
-                alignItems: "center",
-            }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>{editHeader}</H1>
-            </View>
+                  <View style={{
+                      paddingTop: 20,
+                      paddingBottom: 10,
+                      alignItems: "center",
+                      backgroundColor: bg
+                  }}>
+                    <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginTop: 15, letterSpacing: 1 }}>
+                      Edit Configuration
+                    </H1>
+                    
+                  </View>
 
             {/* Configuration Name Input Field */}
-            <YStack marginHorizontal={20} marginTop={1} gap={10}>
+            <YStack marginHorizontal={20} marginTop={5} marginBottom={5} gap={10}>
                 <H1
                     style={{ color: tc, fontFamily: "Finlandica" }}
                     alignSelf='center'
@@ -128,6 +152,8 @@ export default function Config() {
                     borderWidth={1}
                     borderColor={stc}
                     borderRadius={12}
+                    marginTop={5}
+                    marginBottom={5}
                     padding={10}
                     fontSize={16}
                     fontFamily="Finlandica"
@@ -225,15 +251,15 @@ export default function Config() {
                     backgroundColor: pc,
                     width: '90%',
                     height: 50,
-                    borderRadius: 999,
-                    marginBottom: 5,
+                    borderRadius: 15,
+                    marginBottom: 20,
                     marginTop: 50 +iosbuffer,
                     alignSelf: 'center',
                     opacity: !isSaveDisabled ? 1 : 0.5,
                 }}
                 pressStyle={{ opacity: !isSaveDisabled ? 0.8 : 0.5 }}
             >
-                <H1 style={{ color: "white", fontSize: 18, fontFamily: "Finlandica" }}>
+                <H1 style={{ color: "white", fontSize: 18, fontFamily: "Inter" }}>
                     Save
                 </H1>
             </Button>

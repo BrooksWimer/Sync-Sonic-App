@@ -8,6 +8,7 @@ import { TopBarStart } from "../components/TopBarStart"
 import colors from '../assets/colors/colors'
 import LottieView from "lottie-react-native"
 import { Alert, Platform } from "react-native"
+import * as Font from 'expo-font';
 
 export default function ConnectPhone() {
   const [connecting, setConnecting] = useState(false)
@@ -22,6 +23,26 @@ export default function ConnectPhone() {
   const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    async function loadFonts() {
+      await Font.loadAsync({
+        'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
+        'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
+        'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
+        'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
+        'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
+        'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
+        'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
+      });
+      setFontsLoaded(true);
+    }
+
+    loadFonts();
+  }, []);
+
 
    //if android
       let abuffer = 20
@@ -166,15 +187,14 @@ export default function ConnectPhone() {
       <TopBarStart/>
 
       {/* Middle Content */}
-      <YStack alignItems="center" paddingTop="$4">
+      <YStack alignItems="center" paddingTop={40}>
         <H1
-          style={{ color: tc, fontFamily: "Finlandica" }}
-          fontSize={36}
+          style={{ color: tc, fontFamily: "Finlandica-Medium" }}
+          fontSize={40}
           lineHeight={44}
-          fontWeight="700"
           letterSpacing={1}
         >
-          Connect Your Phone
+          Welcome
         </H1>
 
         <Text
@@ -182,7 +202,7 @@ export default function ConnectPhone() {
           fontSize={16}
           textAlign="center"
           marginTop={16}
-          marginBottom={32}
+          //marginBottom={32}
           paddingHorizontal={20}
         >
           To stream music from your phone, please turn on Bluetooth and pair it with the box.
@@ -204,7 +224,7 @@ export default function ConnectPhone() {
             backgroundColor: pc,
             width: '90%',
             height: 50,
-            borderRadius: 999,
+            borderRadius: 15,
             alignSelf: 'center',
             justifyContent: 'center',
             alignItems: 'center',
@@ -239,7 +259,7 @@ export default function ConnectPhone() {
             backgroundColor: pc,
             width: '90%',
             height: 50,
-            borderRadius: 999,
+            borderRadius: 15,
             alignSelf: 'center',
             justifyContent: 'center',
             alignItems: 'center',
@@ -273,7 +293,7 @@ export default function ConnectPhone() {
             backgroundColor: pc,
             width: '90%',
             height: 50,
-            borderRadius: 999,
+            borderRadius: 15,
             alignSelf: 'center',
           }}
           pressStyle={{ opacity: 0.8 }}

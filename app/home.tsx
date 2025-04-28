@@ -8,7 +8,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteConfiguration, getConfigurations, getSpeakersFull } from './database';
 import { TopBar } from '@/components/TopBar';
-import { AddButton } from '@/components/AddButton'
 import { PI_API_URL } from '../utils/constants'
 import { handleDeleteConfig } from '@/utils/ConfigurationFunctions'
 import Animated, {
@@ -19,8 +18,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import LottieView from 'lottie-react-native';
-
-
+import * as Font from 'expo-font';
 
 
 
@@ -30,6 +28,24 @@ export default function Home() {
   const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
   const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
   const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient)
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  
+    useEffect(() => {
+      async function loadFonts() {
+        await Font.loadAsync({
+          'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
+          'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
+          'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
+          'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
+          'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
+          'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
+          'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
+        });
+        setFontsLoaded(true);
+      }
+  
+      loadFonts();
+    }, []);
 
    //if android
           let abuffer = 20
@@ -115,12 +131,12 @@ export default function Home() {
           alignItems: "center",
           backgroundColor: bg
       }}>
-        <H1 style={{ color: tc, fontFamily: "Finlandica", fontSize: 36, lineHeight: 44, fontWeight: "700", marginBottom: 5, marginTop: 15 }}>
+        <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginBottom: 5, marginTop: 15, letterSpacing: 1 }}>
           Configurations
         </H1>
         
       </View>
-      <ScrollView style={{ paddingHorizontal: 20 }}>
+      <ScrollView style={{ paddingHorizontal: 20, marginBottom: 98 }}>
         {configurations.length === 0 ? (
           <H1 style={{ textAlign: "center", color: stc, fontFamily: "Finlandica", marginVertical: 10 }}>
             No configurations found.
@@ -130,7 +146,6 @@ export default function Home() {
             // Touching the configuration takes you to the SpeakerConfigScreen
             <Pressable
             key={config.id}
-            //onLongPress={() => handleDeleteConfig(config.id)}
             delayLongPress={600}
           >
             <XStack
@@ -208,7 +223,7 @@ export default function Home() {
                             />
                           )}
               <YStack>
-                <H1 style={{ fontSize: 18, color: tc, fontWeight: "bold", fontFamily: "Finlandica"}}>{config.name}</H1>
+                <H1 style={{ fontSize: 18, color: tc, fontWeight: "400", fontFamily: "Inter"}}>{config.name}</H1>
 
 
                
@@ -256,7 +271,7 @@ export default function Home() {
       <View
         style={{
           position: 'absolute',
-          bottom: 32+iosbuffer,
+          bottom: 15+iosbuffer,
           left: 0,
           right: 0,
           alignItems: 'center',

@@ -6,7 +6,8 @@ import {
   ActivityIndicator, 
   Alert,
   StyleSheet,
-  SafeAreaView
+  SafeAreaView,
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSearchParams } from 'expo-router/build/hooks';
@@ -31,6 +32,7 @@ import {
 } from '../utils/PairingFunctions';
 import LottieView from 'lottie-react-native';
 import { Shadow } from 'react-native-shadow-2'
+import * as Font from 'expo-font';
 
 const testerDev: Device = {
   mac: "test-mac",
@@ -151,6 +153,15 @@ export default function DeviceSelectionScreen() {
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
   const svbg = themeName === 'dark' ? '#350066' : '#F9F5FF'
 
+  //if android
+            let abuffer = 20
+            let iosbuffer=0
+            //else, 
+            if (Platform.OS === 'ios') {
+                abuffer = 0
+                iosbuffer=20
+            }
+
   
 
   // Debounce function with state tracking
@@ -214,7 +225,7 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 10,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing:1}}>Select Speaker</H1>
+                <H1 style={{ fontSize: 32, color: tc, fontFamily: "Finlandica-Medium", letterSpacing:1}}>Select Speaker</H1>
             </View>
 
             {showLoadingAnimation && (
@@ -291,7 +302,7 @@ export default function DeviceSelectionScreen() {
                 paddingBottom: 5,
                 alignItems: "center",
             }}>
-                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica", letterSpacing: 1}}>Saved Speakers</H1>
+                <H1 style={{ fontSize: 32,  color: tc, fontFamily: "Finlandica-Medium", letterSpacing: 1}}>Saved Speakers</H1>
             </View>
             <FlatList
               style={[styles.list, 
@@ -320,20 +331,25 @@ export default function DeviceSelectionScreen() {
 
             <Button
               onPress={handlePairDevices}
-              style={[styles.pairButton,
-                {
+              style={{
                 backgroundColor: pc,
-                
-              }]}
+                width: '90%',
+                height: 50,
+                borderRadius: 999,
+                marginBottom: "5%",
+                marginTop: "7%",
+                alignSelf: 'center',
+            }}
             >
               {pairing ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica" letterSpacing={1}>
+                <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Inter" letterSpacing={1}>
                   Pair selected devices
                 </H1>
               )}
             </Button>
+
           </YStack>
         );
 }
