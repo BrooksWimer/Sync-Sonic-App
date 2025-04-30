@@ -50,10 +50,10 @@ export default function ConnectDevice() {
   const theme = useTheme()
 
   const {
-    allDevices,           // ← not “rpiDevices”
-    isScanning,           // ← not “scanning”
+    allDevices,           // ← not "rpiDevices"
+    isScanning,           // ← not "scanning"
     connectToDevice,
-    scanForPeripherals,   // ← not “scanForBLEDevices”
+    scanForPeripherals,   // ← not "scanForBLEDevices"
     stopScan
   } = useBLEContext()
 
@@ -168,8 +168,8 @@ export default function ConnectDevice() {
         </Text>
 
         <FlatList
-          data={rpiDevices}
-          keyExtractor={(item) => item.id}
+          data={allDevices}
+          keyExtractor={(item: Device) => item.id}
           renderItem={renderDevice}
           ListEmptyComponent={
             <Text 
@@ -180,7 +180,7 @@ export default function ConnectDevice() {
                 fontFamily: "Finlandica"
               }}
             >
-              {scanning 
+              {isScanning 
                 ? 'Scanning for devices...' 
                 : 'No Sync-Sonic devices found. Tap "Scan for Devices" to start scanning.'}
             </Text>

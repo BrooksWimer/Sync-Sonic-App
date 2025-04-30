@@ -22,5 +22,7 @@ export const MESSAGE_TYPES = {
   GET_PAIRED_DEVICES: 0x64,
   // Mute control
   SET_MUTE: 0x65,
-  START_CLASSIC_PAIRING: 0x66
+  START_CLASSIC_PAIRING: 0x66,
+  // Connection Status Update
+  CONNECTION_STATUS_UPDATE: 0x70  // General connection status update
 } as const; 

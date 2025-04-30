@@ -43,7 +43,9 @@ export default function Index() {
     stopScan,
     connectToDevice,         // Device → Promise<Device>
     allDevices,              // filled by the scan
-    waitForPi
+    waitForPi,
+    ensurePiNotifications,
+    handleNotification
   } = useBLEContext();
 
   const [connecting, setConnecting] = useState(false);
@@ -74,6 +76,7 @@ export default function Index() {
           if (services.some(s=>s.uuid === SERVICE_UUID)) {
             console.log("✅ fast-reconnected to Pi", lastId);
             deviceConnection = conn;
+            await ensurePiNotifications(conn, handleNotification); 
           } else {
             console.warn("⚠️ fast path got wrong device, dropping it");
             await conn.cancelConnection();

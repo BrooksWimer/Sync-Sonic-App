@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, createContext } from "react";
 import { Alert, Platform } from "react-native";
 import { PERMISSIONS, request, requestMultiple } from "react-native-permissions";
 import * as ExpoDevice from "expo-device";
@@ -8,7 +8,7 @@ import {
   Characteristic,
   Device,
 } from "react-native-ble-plx";
-import { SERVICE_UUID, CHARACTERISTIC_UUID } from "@/utils/ble_constants";
+import { SERVICE_UUID, CHARACTERISTIC_UUID, MESSAGE_TYPES } from "@/utils/ble_constants";
 
 const bleManager = new BleManager({
   restoreStateIdentifier: 'sync-sonic-ble',
@@ -16,49 +16,92 @@ const bleManager = new BleManager({
     console.log('BLE Manager state restored:', restoredState);
   }
 });
-import { getConfigurations, getSpeakers, updateConnectionStatus } from "@/app/database";
+import { getConfigurations, getSpeakers, updateConnectionStatus, updateSpeakerConnectionStatus } from "@/app/database";
 
 type NotificationHandler = (error: BleError | null, characteristic: Characteristic | null) => void;
 
+interface ConnectionStatus {
+  status: string;
+  progress?: number;
+  error?: string;
+  mac?: string;
+}
+
+interface BLEContextType {
+  allDevices: Device[];
+  connectedDevice: Device | null;
+  isScanning: boolean;
+  requestPermissions: () => Promise<boolean>;
+  manager: BleManager;
+  waitForPi: () => Promise<Device>;
+  ensurePiNotifications: (dev: Device, onNotify: (e: BleError | null, c: Characteristic | null) => void) => void;
+  handleNotification: NotificationHandler;
+  connectionStatus: ConnectionStatus | null;
+  setConnectionStatus: (status: ConnectionStatus | null) => void;
+  clearConnectionStatus: () => void;
+}
+
+const BLEContext = createContext<BLEContextType | null>(null);
+
 function updateDatabaseConnectionStates(connectedMacs: string[], onUpdate?: () => void) {
+  console.log("[BLE] 🔄 Updating DB connection states...");
+  console.log("[BLE] ✅ Connected MACs:", connectedMacs);
+
   const configs = getConfigurations();
+  let didUpdate = false;
 
   for (const config of configs) {
+    console.log(`[BLE] 📦 Checking config "${config.name}" (ID: ${config.id})`);
     const speakers = getSpeakers(config.id);
+    let anySpeakerConnected = false;
 
-    const isAnySpeakerConnected = speakers.some(speaker => {
-      const speakerMac = speaker.macAddress?.toUpperCase();
-      return connectedMacs.includes(speakerMac);
-    });
+    for (const speaker of speakers) {
+      const mac = speaker.mac?.toUpperCase();
+      const isNowConnected = connectedMacs.includes(mac);
+      const wasConnected = speaker.is_connected === 1;
 
-    const status = isAnySpeakerConnected ? 1 : 0;
+      console.log(`[BLE] 🔍 Speaker: ${speaker.name} [${mac}] → wasConnected=${wasConnected}, isNowConnected=${isNowConnected}`);
 
-    if (config.isConnected !== status) {  // (optional: only update if changed)
-      updateConnectionStatus(config.id, status);
-      onUpdate?.(); // Call the callback if provided
+      if (wasConnected !== isNowConnected) {
+        console.log(`[BLE] ✏️ Updating speaker "${speaker.name}" → is_connected=${isNowConnected ? 1 : 0}`);
+        updateSpeakerConnectionStatus(config.id, mac, isNowConnected);
+        didUpdate = true;
+      }
+
+      if (isNowConnected) anySpeakerConnected = true;
     }
+
+    const configShouldBe = anySpeakerConnected ? 1 : 0;
+    if (config.isConnected !== configShouldBe) {
+      console.log(`[BLE] ⚙️ Updating config "${config.name}" → isConnected=${configShouldBe}`);
+      updateConnectionStatus(config.id, configShouldBe);
+      didUpdate = true;
+    } else {
+      console.log(`[BLE] ↪️ Config "${config.name}" already correct`);
+    }
+  }
+
+  if (didUpdate) {
+    console.log("[BLE] ✅ DB updated, triggering UI refresh");
+    if (onUpdate) onUpdate();
+  } else {
+    console.log("[BLE] 🚫 No changes detected in DB");
   }
 }
 
-
-
 const handleNotification: NotificationHandler = (error, characteristic) => {
   if (error) {
-    
-      // Check if the error is a disconnection
-      if (error.message?.includes('disconnected')) {
-        Alert.alert(
-          "Disconnected",
-          "Phone connection was lost.",
-          [{ text: "OK" }]
-        );
-      }
-  
-      return;
-    
-    console.error("[BLE] Notification error:", error);
+    // Check if the error is a disconnection
+    if (error.message?.includes('disconnected')) {
+      Alert.alert(
+        "Disconnected",
+        "Phone connection was lost.",
+        [{ text: "OK" }]
+      );
+    }
     return;
   }
+
   if (!characteristic?.value) {
     console.warn("[BLE] Empty notification received");
     return;
@@ -74,18 +117,31 @@ const handleNotification: NotificationHandler = (error, characteristic) => {
 
     const opcode = rawBytes.charCodeAt(0);      // first byte
     const jsonString = rawBytes.slice(1);        // rest is JSON
-
-    if (opcode !== 0xF0) {                      // expect SUCCESS
-      console.warn(`[BLE] Unexpected opcode: ${opcode}`);
-      return;
-    }
-
     const payload = JSON.parse(jsonString);
 
-    console.log("[BLE] Decoded payload:", payload);
+    console.log("[BLE] Received notification:", { opcode, payload });
 
-    if (payload.connected) {
-      updateDatabaseConnectionStates(payload.connected);
+    switch (opcode) {
+      case MESSAGE_TYPES.SUCCESS:
+        if (payload.connected) {
+          updateDatabaseConnectionStates(payload.connected);
+        }
+        break;
+      
+      case MESSAGE_TYPES.CONNECTION_STATUS_UPDATE:
+        // Handle connection status update
+        if (payload.status) {
+          setConnectionStatus({
+            status: payload.status,
+            progress: payload.progress,
+            error: payload.error,
+            mac: payload.mac
+          });
+        }
+        break;
+      
+      default:
+        console.warn(`[BLE] Unexpected opcode: ${opcode}`);
     }
 
   } catch (err) {
@@ -99,6 +155,11 @@ export function useBLE(onNotification?: NotificationHandler) {
   const [pendingDevices, setPendingDevices] = useState<Device[]>([]);
   const [updateTimeout, setUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
+
+  const clearConnectionStatus = useCallback(() => {
+    setConnectionStatus(null);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -317,7 +378,6 @@ export function useBLE(onNotification?: NotificationHandler) {
     }
   };
 
-
   // inside useBLE (add just after stopScan)
 const waitForPi = (): Promise<Device> =>
   new Promise((resolve, reject) => {
@@ -354,7 +414,12 @@ const waitForPi = (): Promise<Device> =>
     isScanning,
     requestPermissions,
     manager: bleManager,
-    waitForPi
+    waitForPi,
+    ensurePiNotifications,      
+    handleNotification,
+    connectionStatus,
+    setConnectionStatus,
+    clearConnectionStatus,
   };
 }
 

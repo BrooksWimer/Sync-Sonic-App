@@ -27,7 +27,7 @@ import { useBLEContext } from '../contexts/BLEContext';
 
 export default function Home() {
   const router = useRouter(); // page changing
-  const { connectToDevice, rpiDevices, scanForBLEDevices } = useBLEContext();
+  const { connectToDevice, dbUpdateTrigger } = useBLEContext();
   const [configurations, setConfigurations] = useState<{ id: number, name: string, speakerCount: number, isConnected: number }[]>([]);
   const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
   const [connecting, setConnecting] = useState(false);
@@ -54,7 +54,7 @@ export default function Home() {
       };
 
       fetchData();
-    }, [])
+    }, [dbUpdateTrigger]) // Add dbUpdateTrigger as a dependency
   );
 
   // Function to navigate to create a new configuration.
@@ -80,39 +80,8 @@ export default function Home() {
   const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D' // subtext color
   const green = themeName === 'dark' ? '#00FF6A' : '#34A853' // green is *slightly* different on light/dark
 
-  const pulseOpacity = useSharedValue(0.3)
 
-  useEffect(() => {
-    pulseOpacity.value = withRepeat(
-      withTiming(0.8, { duration: 1500 }),
-      -1,
-      true // reverse = pulse in and out
-    )
-  }, [])
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: pulseOpacity.value,
-  }))
-
-  const handleConnect = async () => {
-    setConnecting(true);
-    try {
-      // Scan for devices first
-      await scanForBLEDevices();
-      
-      if (rpiDevices.length === 0) {
-        Alert.alert('No Devices', 'No Sync-Sonic devices found. Please ensure your device is powered on and in range.');
-        return;
-      }
-
-      await connectToDevice(rpiDevices[0]);
-    } catch (error) {
-      console.error('Connection failed:', error);
-      Alert.alert('Connection Error', 'Failed to connect to the device. Please try again.');
-    } finally {
-      setConnecting(false);
-    }
-  };
 
   return (
     <YStack flex={1} backgroundColor={bg}>
@@ -124,30 +93,12 @@ export default function Home() {
           paddingBottom: 10,
           alignItems: "center",
           backgroundColor: bg,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
+          justifyContent: "center",
           paddingHorizontal: 20
       }}>
         <H1 style={{ color: tc, fontFamily: "Finlandica", fontSize: 36, lineHeight: 44, fontWeight: "700", marginBottom: 5, marginTop: 15 }}>
           Configurations
         </H1>
-        
-        {/* <Button
-          onPress={handleConnect}
-          disabled={connecting}
-          style={{
-            backgroundColor: pc,
-            borderRadius: 999,
-            paddingHorizontal: 20,
-            height: 40,
-            marginTop: 15
-          }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <Text style={{ color: 'white', fontSize: 16, fontFamily: "Inter" }}>
-            {connecting ? 'Connecting...' : 'Connect'}
-          </Text>
-        </Button> */}
       </View>
       <ScrollView style={{ paddingHorizontal: 20 }}>
         {configurations.length === 0 ? (

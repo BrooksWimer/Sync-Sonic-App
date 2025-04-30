@@ -33,7 +33,7 @@ import {
 } from '../utils/ConfigurationFunctions';
 import LottieView from 'lottie-react-native';
 import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
-import { useBLEContext } from '@/contexts/BLEContext';
+import { useBLEContext, } from '@/contexts/BLEContext';
 
 export const SERVICE_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0000';
 const VOLUME_UUID     = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0001';
@@ -47,6 +47,8 @@ export default function SpeakerConfigScreen() {
   const speakersStr = params.get('speakers'); // JSON string or null
   const configNameParam = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // may be undefined for a new config
+
+  const { dbUpdateTrigger } = useBLEContext();
 
   // State to hold connected speakers (mapping from mac to name)
   const [connectedSpeakers, setConnectedSpeakers] = useState<{ [mac: string]: string }>({});
@@ -80,8 +82,7 @@ export default function SpeakerConfigScreen() {
     }
   }>({});
 
-  // Add dbUpdateTrigger state
-  const [dbUpdateTrigger, setDbUpdateTrigger] = useState(0);
+
 
   // Update slider values when settings change
   useEffect(() => {
@@ -412,7 +413,7 @@ export default function SpeakerConfigScreen() {
         <YStack flex={1} backgroundColor={bg}>
           <TopBar/>
           <Text style={{ fontFamily: 'Finlandica', fontSize: 25, fontWeight: "bold", color: tc, marginBottom: 10, marginTop: 20, alignSelf: 'center' }}>
-            Configuration: {configNameParam}
+            {configNameParam}
           </Text>
           
           {/* LEAVE THIS EMPTY */}
@@ -437,14 +438,49 @@ export default function SpeakerConfigScreen() {
                   borderWidth: 1, 
                   borderColor: stc,
                   borderRadius: 8, 
-                  shadowColor: settings[mac]?.isConnected ? green : red,
+                  shadowColor: themeName === 'dark' ? '#000000' : stc,
                   shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.8,
-                  shadowRadius: 8,
-                  elevation: 10
+                  shadowOpacity: themeName === 'dark' ? 0.9 : 0.5,
+                  shadowRadius: themeName === 'dark' ? 12 : 8,
+                  elevation: themeName === 'dark' ? 15 : 10,
+                  position: 'relative'
                 }}>
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 24, fontWeight: "bold", color: tc, marginTop: 0, alignSelf: 'center' }}>{connectedSpeakers[mac]}</Text>
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Volume: {settings[mac]?.volume || 50}%</Text>
+                  <View style={{
+                    position: 'absolute',
+                    top: 20,
+                    left: 15,
+                    width: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    backgroundColor: settings[mac]?.isConnected ? green : '#FF0055',
+                    shadowColor: themeName === 'dark' ? '#000000' : tc,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: themeName === 'dark' ? 0.9 : 0.6,
+                    shadowRadius: themeName === 'dark' ? 6 : 4,
+                    elevation: themeName === 'dark' ? 8 : 5,
+                    borderWidth: themeName === 'dark' ? 1 : 0,
+                    borderColor: themeName === 'dark' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    zIndex: 2
+                  }} />
+                  <Text style={{ 
+                    fontFamily: 'Finlandica', 
+                    fontSize: 24, 
+                    fontWeight: "bold", 
+                    color: tc, 
+                    alignSelf: 'center',
+                    marginTop: 0
+                  }}>
+                    {connectedSpeakers[mac]}
+                  </Text>
+                  <Text style={{ 
+                    fontFamily: 'Finlandica', 
+                    fontSize: 18, 
+                    fontWeight: "bold", 
+                    color: tc, 
+                    marginTop: 20
+                  }}>
+                    Volume: {settings[mac]?.volume || 50}%
+                  </Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
