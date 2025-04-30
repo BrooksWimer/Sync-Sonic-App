@@ -29,22 +29,18 @@ const Ctx = createContext<BLECtx | null>(null);
 export function BLEProvider({ children }: { children: ReactNode }) {
   const [piStatus, setPiStatus] = useState<any>({});
   const [dbUpdateTrigger, setDbUpdateTrigger] = useState(0);
-
-  const triggerDbUpdate = () => {
-    setDbUpdateTrigger(prev => prev + 1);
-  };
+  const triggerDbUpdate = () => setDbUpdateTrigger(v => v + 1);
 
   function handleNotify(err: BleError | null, chr: Characteristic | null) {
     if (err || !chr?.value) return;
-
     const { type, json } = decode(chr.value);
-
     if (type === MESSAGE_TYPES.SUCCESS && json.connected) {
-      setPiStatus(json); // e.g. {connected:["AA:BB:…"], playback:{…}}
+      setPiStatus(json);
+      triggerDbUpdate();         // ← bump your DB trigger if you still need it
     }
   }
 
-  const ble = useBLE(triggerDbUpdate);
+  const ble = useBLE(handleNotify);
 
   const value: BLECtx = {
     ...ble,
@@ -55,6 +51,8 @@ export function BLEProvider({ children }: { children: ReactNode }) {
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
+
+
 
 /* ------------------------------------------------------------------ */
 /*  3.  tiny helper hook                                              */

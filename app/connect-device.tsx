@@ -50,10 +50,10 @@ export default function ConnectDevice() {
   const theme = useTheme()
 
   const {
-    rpiDevices,
-    scanning,
+    allDevices,           // ← not “rpiDevices”
+    isScanning,           // ← not “scanning”
     connectToDevice,
-    scanForBLEDevices,
+    scanForPeripherals,   // ← not “scanForBLEDevices”
     stopScan
   } = useBLEContext()
 
@@ -64,7 +64,7 @@ export default function ConnectDevice() {
   // Cleanup function to stop scanning when component unmounts
   useEffect(() => {
     return () => {
-      if (scanning) {
+      if (isScanning) {
         stopScan();
       }
     };
@@ -75,10 +75,10 @@ export default function ConnectDevice() {
     
     try {
       setLoading(true);
-      if (scanning) {
+      if (isScanning) {
         await stopScan();
       } else {
-        await scanForBLEDevices();
+        await scanForPeripherals();
       }
     } catch (error) {
       console.error('Error during scan:', error);

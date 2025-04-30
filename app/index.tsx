@@ -54,42 +54,70 @@ export default function Index() {
   useEffect(() => { setupDatabase(); }, []);
 
   /* -------------------------------------------------------------- */
-  /*  connect button                                                */
+  /*  connect Phone button                                                */
   /* -------------------------------------------------------------- */
   const handleConnect = async () => {
     setConnecting(true);
-    try {
-      /******** 1. fast path – reconnect by cached MAC ****************/
-      const lastMac = await getLastConnectedDevice();
-      let dev = null;
-
-      if (lastMac && manager) {
-        try {
-          const [cached] = await manager.devices([lastMac]);
-          if (cached) {
-            dev = await connectToDevice(cached);
-            console.log("✅ fast-reconnected", lastMac);
+    let deviceConnection = null;
+  
+    // 1) Try to reconnect to the Pi via cached ID, but *verify* its services
+    const lastId = await getLastConnectedDevice();
+    if (lastId) {
+      try {
+        const [cached] = await manager.devices([lastId]);
+        if (cached) {
+          const conn = await connectToDevice(cached);
+          // discover & check
+          await conn.discoverAllServicesAndCharacteristics();
+          const services = await conn.services();
+          console.log("🔍 Fast-reconnected services:", services.map(s=>s.uuid));
+          if (services.some(s=>s.uuid === SERVICE_UUID)) {
+            console.log("✅ fast-reconnected to Pi", lastId);
+            deviceConnection = conn;
+          } else {
+            console.warn("⚠️ fast path got wrong device, dropping it");
+            await conn.cancelConnection();
           }
-        } catch (e) {
-          console.log("⚠️ fast reconnect failed:", e);
         }
+      } catch (e) {
+        console.log("⚠️ fast reconnect failed:", e);
       }
-
-      /******** 2. scan & connect if fast path failed *****************/
-      if (!dev) {
-        const pi = await waitForPi();      // ← waits until we *really* have the Pi
-        dev = await connectToDevice(pi);
-      }
-
-      /******** 3. success – remember MAC & navigate *****************/
-      await saveLastConnectedDevice(dev.id);
-      router.push("/home");  
-    } catch (e: any) {
-      console.error("🚫 BLE connection failed:", e);
-      Alert.alert("Connection error", e?.message ?? "Unable to connect");
-    } finally {
-      setConnecting(false);
     }
+  
+    // 2) If that didn’t work, do a filtered scan for the Pi’s service
+    if (!deviceConnection) {
+      console.log("🔎 Scanning for Pi advertising our SERVICE_UUID…");
+      let piDevice = null;
+      manager.startDeviceScan(
+        [SERVICE_UUID],
+        { allowDuplicates: false },
+        (error, device) => {
+          if (error) {
+            console.error(error);
+            return;
+          }
+          if (device && device.serviceUUIDs?.includes(SERVICE_UUID)) {
+            piDevice = device;
+            manager.stopDeviceScan();
+          }
+        }
+      );
+      // wait a couple seconds
+      await new Promise(r => setTimeout(r, 2000));
+  
+      if (!piDevice) {
+        console.error("❌ Could not find Pi advertising our GATT service");
+        setConnecting(false);
+        router.push('/connect-device');
+        return;
+      }
+      deviceConnection = await connectToDevice(piDevice);
+      console.log("✅ Scanned & connected to Pi", piDevice.id);
+    }
+  
+    // 3) Save the Pi’s ID for next time
+    await saveLastConnectedDevice(deviceConnection.id);
+    setConnecting(false);
   };
 
 

@@ -29,7 +29,12 @@ import { Shadow } from 'react-native-shadow-2';
 import { useBLEContext } from '../contexts/BLEContext';
 import { fetchPairedDevices } from '../utils/ble_functions';
 
+
+
+
+
 export default function DeviceSelectionScreen() {
+  const { scanForPeripherals, stopScan, connectedDevice, allDevices } = useBLEContext();
   const params = useSearchParams();
   const configName = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID');
@@ -44,13 +49,6 @@ export default function DeviceSelectionScreen() {
     console.error("Error parsing existingDevices:", e);
   }
   
-  const { 
-    allDevices,
-    scanning,
-    scanForSpeakerDevices: startBLEScan,
-    stopScan: stopBLEScan,
-    connectedDevice
-  } = useBLEContext();
 
   const [selectedDevices, setSelectedDevices] = useState<Record<string, Device>>(parsedExistingDevices);
   const [loading, setLoading] = useState(false);
@@ -99,23 +97,16 @@ export default function DeviceSelectionScreen() {
     };
   }, [connectedDevice]);
 
-  // Start scanning for devices when component mounts
   useEffect(() => {
-    const startScanning = async () => {
-      try {
-        console.log('Starting device scan...');
-        await startBLEScan();
-      } catch (error) {
-        console.error('Error starting scan:', error);
-      }
-    };
-
-    startScanning();
-
+    // kick off the scan as soon as the component mounts
+    scanForPeripherals();
+  
+    // tear it down on unmount
     return () => {
-      stopBLEScan();
+      stopScan();
     };
   }, []);
+
 
   // Toggle selection for scanned devices
   const toggleSelection = (device: Device, selectedDevices: Record<string, Device>, setSelectedDevices: React.Dispatch<React.SetStateAction<Record<string, Device>>>) => {
@@ -227,7 +218,7 @@ export default function DeviceSelectionScreen() {
         clearInterval(scanInterval);
         setScanInterval(null);
       }
-      await stopBLEScan();
+      await stopScan();
       
       // Combine selected devices and paired devices
       const allSelectedDevices = { ...selectedDevices, ...selectedPairedDevices };

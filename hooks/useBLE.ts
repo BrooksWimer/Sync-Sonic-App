@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import { PERMISSIONS, request, requestMultiple } from "react-native-permissions";
 import * as ExpoDevice from "expo-device";
 import {
@@ -257,6 +257,16 @@ export function useBLE(onNotification?: NotificationHandler) {
       
       // Discover services and characteristics
       await deviceConnection.discoverAllServicesAndCharacteristics();
+      // 1) fetch the services array
+      const services = await deviceConnection.services()
+
+      // 2) log out exactly what you got back
+      console.log("Discovered services on Pi:", services.map(s => s.uuid))
+
+      // now you can proceed to monitor/ write…
+      if (!services.some(s => s.uuid === SERVICE_UUID)) {
+        console.log("🛑 Our custom service UUID not found!")
+}
 
       // Set up notification handler if provided
       if (onNotification) {
