@@ -219,6 +219,17 @@ export function saveLastConnectedDevice(deviceId: string) {
   console.log('Last connected device saved:', deviceId);
 }
 
+/**
+ * Clears the cached last-connected device from the settings table.
+ */
+export function removeLastConnectedDevice(): void {
+  db.runSync(
+    `DELETE FROM settings WHERE key = ?;`,
+    ['lastConnectedDevice']
+  );
+  console.log('Last connected device removed from cache');
+}
+
 export function getLastConnectedDevice(): Promise<string | null> {
   return new Promise((resolve, reject) => {
     try {

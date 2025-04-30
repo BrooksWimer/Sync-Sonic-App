@@ -7,6 +7,7 @@ import { Device } from "react-native-ble-plx"
 import { TopBarStart } from "../components/TopBarStart"
 import LottieView from "lottie-react-native"
 
+
 const SignalStrengthIndicator = ({ rssi }: { rssi: number }) => {
   // Convert RSSI to a 0-4 scale (4 being best signal)
   const getSignalLevel = (rssi: number) => {
@@ -45,48 +46,36 @@ const SignalStrengthIndicator = ({ rssi }: { rssi: number }) => {
 };
 
 export default function ConnectDevice() {
-  const [loading, setLoading] = useState(false)
-  const themeName = useThemeName()
-  const theme = useTheme()
-
   const {
-    allDevices,           // ← not "rpiDevices"
-    isScanning,           // ← not "scanning"
-    connectToDevice,
-    scanForPeripherals,   // ← not "scanForBLEDevices"
-    stopScan
+    allDevices,
+    isScanning,
+    scanForPeripherals,
+    stopScan,
+    connectToDevice
   } = useBLEContext()
+  const [loading, setLoading] = useState(false);
+  
+  const themeName = useThemeName();
 
-  const loaderSource = themeName === 'dark'
-    ? require('../assets/animations/SyncSonic_Loading_Dark_nbg.json')
-    : require('../assets/animations/SyncSonic_Loading_Light_nbg.json');
-
-  // Cleanup function to stop scanning when component unmounts
+  // when this screen comes into focus, start scanning; when it loses focus, stop
   useEffect(() => {
+    console.log("Starting BLE scan (mount)")
+    scanForPeripherals()
+  
     return () => {
-      if (isScanning) {
-        stopScan();
-      }
-    };
-  }, []); // Empty dependency array since we only want this to run on unmount
+      console.log("Stopping BLE scan (unmount)")
+      stopScan()
+    }
+  }, [])  // <-- empty deps so it only runs once
+
 
   const handleScanPress = async () => {
-    if (loading) return; // Prevent multiple scans
-    
-    try {
-      setLoading(true);
-      if (isScanning) {
-        await stopScan();
-      } else {
-        await scanForPeripherals();
-      }
-    } catch (error) {
-      console.error('Error during scan:', error);
-      Alert.alert('Error', 'Failed to scan for devices');
-    } finally {
-      setLoading(false);
+    if (isScanning) {
+      await stopScan()
+    } else {
+      await scanForPeripherals()
     }
-  };
+  }
 
   const handleDeviceSelect = async (device: Device) => {
     try {
@@ -211,10 +200,10 @@ export default function ConnectDevice() {
         pressStyle={{ opacity: 0.8 }}
       >
         <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
-          {scanning ? 'Scanning...' : 'Scan for Devices'}
+          {isScanning ? 'Scanning...' : 'Scan for Devices'}
         </Text>
 
-        {scanning && (
+        {isScanning && (
           <LottieView
             source={loaderSource}
             autoPlay

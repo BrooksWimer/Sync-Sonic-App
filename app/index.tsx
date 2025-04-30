@@ -14,8 +14,11 @@ import { useBLEContext }     from "@/contexts/BLEContext";
 import { SERVICE_UUID }      from "@/utils/ble_constants";
 import {
   getLastConnectedDevice,
-  saveLastConnectedDevice
+  saveLastConnectedDevice,
+  removeLastConnectedDevice
 } from "@/app/database";
+import { Device } from 'react-native-ble-plx';
+
 
 export default function Index() {
   const themeName = useThemeName();
@@ -62,67 +65,75 @@ export default function Index() {
     setConnecting(true);
     let deviceConnection = null;
   
-    // 1) Try to reconnect to the Pi via cached ID, but *verify* its services
+    // 1) Fast-path: check cached ID’s advertised services _before_ connect
     const lastId = await getLastConnectedDevice();
     if (lastId) {
       try {
         const [cached] = await manager.devices([lastId]);
         if (cached) {
-          const conn = await connectToDevice(cached);
-          // discover & check
-          await conn.discoverAllServicesAndCharacteristics();
-          const services = await conn.services();
-          console.log("🔍 Fast-reconnected services:", services.map(s=>s.uuid));
-          if (services.some(s=>s.uuid === SERVICE_UUID)) {
-            console.log("✅ fast-reconnected to Pi", lastId);
+          console.log("🔍 cached device info:", cached.id, cached.name, cached.serviceUUIDs);
+  
+          // only proceed if it’s actually our Pi (by UUID & optional name)
+          const hasSvc = cached.serviceUUIDs?.includes(SERVICE_UUID);
+          const isPi   = cached.name?.startsWith("Sync-Sonic");  // or whatever your Pi advertises
+          if (hasSvc && isPi) {
+            console.log("✅ Fast-path: cached device looks good, connecting...");
+            const conn = await connectToDevice(cached);
+            await conn.discoverAllServicesAndCharacteristics();
             deviceConnection = conn;
-            await ensurePiNotifications(conn, handleNotification); 
+            await ensurePiNotifications(conn, handleNotification);
           } else {
-            console.warn("⚠️ fast path got wrong device, dropping it");
-            await conn.cancelConnection();
+            console.warn("⚠️ Cached device isn’t our Pi—dropping it");
+            await removeLastConnectedDevice();  // clear bad cache
           }
         }
       } catch (e) {
-        console.log("⚠️ fast reconnect failed:", e);
+        console.log("⚠️ Fast reconnect attempt threw:", e);
+        await removeLastConnectedDevice();    // clear cache on error
       }
     }
   
-    // 2) If that didn’t work, do a filtered scan for the Pi’s service
+       // 2) Full scan if fast path failed
     if (!deviceConnection) {
-      console.log("🔎 Scanning for Pi advertising our SERVICE_UUID…");
-      let piDevice = null;
+      console.log("🔎 Scanning for Pi advertising SERVICE_UUID…");
+      
+      // 🛑 STOP any existing scan first
+      manager.stopDeviceScan();
+
+      let piDevice: Device | null = null;
       manager.startDeviceScan(
         [SERVICE_UUID],
         { allowDuplicates: false },
         (error, device) => {
           if (error) {
-            console.error(error);
+            console.error("Scan error", error);
             return;
           }
-          if (device && device.serviceUUIDs?.includes(SERVICE_UUID)) {
+          if (
+            device &&
+            device.serviceUUIDs?.includes(SERVICE_UUID) &&
+            device.name?.startsWith("Sync-Sonic")
+          ) {
+            console.log("🔔 Found Pi during scan:", device.id, device.name);
             piDevice = device;
             manager.stopDeviceScan();
           }
         }
       );
-      // wait a couple seconds
-      await new Promise(r => setTimeout(r, 2000));
-  
+      // give it enough time to see your Pi
+      await new Promise(r => setTimeout(r, 3000));
+
       if (!piDevice) {
         console.error("❌ Could not find Pi advertising our GATT service");
         setConnecting(false);
         router.push('/connect-device');
         return;
       }
+
       deviceConnection = await connectToDevice(piDevice);
       console.log("✅ Scanned & connected to Pi", piDevice.id);
     }
-  
-    // 3) Save the Pi’s ID for next time
-    await saveLastConnectedDevice(deviceConnection.id);
-    setConnecting(false);
-  };
-
+  }
 
   const goHome = () => {
     router.push('/home');
