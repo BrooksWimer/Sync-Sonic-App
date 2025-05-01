@@ -34,10 +34,10 @@ import {
 import LottieView from 'lottie-react-native';
 import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
 import { useBLEContext, } from '@/contexts/BLEContext';
+import { MESSAGE_TYPES, CHARACTERISTIC_UUID } from '@/utils/ble_constants';
 
 export const SERVICE_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0000';
-const VOLUME_UUID     = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0001';
-const CONNECT_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0002';
+
 
 export default function SpeakerConfigScreen() {
   // Retrieve parameters from the URL
@@ -48,7 +48,7 @@ export default function SpeakerConfigScreen() {
   const configNameParam = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // may be undefined for a new config
 
-  const { dbUpdateTrigger } = useBLEContext();
+  const { dbUpdateTrigger, connectedDevice, connectionStatus, clearConnectionStatus } = useBLEContext();
 
   // State to hold connected speakers (mapping from mac to name)
   const [connectedSpeakers, setConnectedSpeakers] = useState<{ [mac: string]: string }>({});
@@ -59,18 +59,98 @@ export default function SpeakerConfigScreen() {
   // State for speaker settings (volume and latency)
   const [settings, setSettings] = useState<{ [mac: string]: { volume: number; latency: number; isConnected: boolean } }>({});
 
-  // State for the free controller (if any)
-  const [freeController, setFreeController] = useState<string | null>(null);
-
-  // State for loading indicators
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [isCheckingPort, setIsCheckingPort] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
   // State for loading speakers
-  const [loadingSpeakers, setLoadingSpeakers] = useState<{ [mac: string]: { action: 'connect' | 'disconnect' | null } }>({});
+  const [loadingSpeakers, setLoadingSpeakers] = useState<{ 
+    [mac: string]: { 
+      action: 'connect' | 'disconnect' | null;
+      statusMessage?: string;
+      instructions?: string;
+      error?: string;
+      success?: boolean;
+    } | null
+  }>({});
+
+  // Speaker card overlay component - define inside the main component to access state and props
+  const SpeakerCardOverlay = ({ mac, status }: { 
+    mac: string, 
+    status: { 
+      action: 'connect' | 'disconnect' | null, 
+      statusMessage?: string, 
+      instructions?: string, 
+      error?: string, 
+      success?: boolean 
+    } 
+  }) => {
+    const themeName = useThemeName();
+    
+    if (!status || !status.action) return null;
+    
+    // Make overlay more opaque - reduced transparency
+    const bgColor = themeName === 'dark' ? 'rgba(37, 0, 71, 0.95)' : 'rgba(242, 232, 255, 0.95)';
+    const textColor = themeName === 'dark' ? '#F2E8FF' : '#26004E';
+    
+    // Use the same Lottie animation sources as ConnectionStatusOverlay
+    const loaderSource = themeName === 'dark'
+      ? require('../assets/animations/SyncSonic_Loading_Dark_nbg.json')
+      : require('../assets/animations/SyncSonic_Loading_Light_nbg.json');
+    
+    return (
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: bgColor,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+        borderRadius: 8,
+        padding: 16
+      }}>
+        {/* Increase the size of LottieView */}
+        <LottieView
+          source={loaderSource}
+          autoPlay
+          loop
+          style={{ width: 120, height: 120 }}
+        />
+        <Text style={{ 
+          fontFamily: 'Finlandica', 
+          fontSize: 18, 
+          fontWeight: "bold", 
+          color: textColor,
+          textAlign: 'center',
+          marginTop: 16
+        }}>
+          {status.statusMessage || (status.action === 'connect' ? 'Connecting...' : 'Disconnecting...')}
+        </Text>
+        {status.instructions && (
+          <Text style={{ 
+            fontFamily: 'Finlandica', 
+            fontSize: 16, 
+            fontWeight: "bold",
+            color: textColor, // Use same color as status text, not green
+            textAlign: 'center',
+            marginTop: 12
+          }}>
+            {status.instructions}
+          </Text>
+        )}
+        {status.error && (
+          <Text style={{ 
+            fontFamily: 'Finlandica', 
+            fontSize: 14, 
+            color: textColor, // Use same color as status text, not red
+            textAlign: 'center',
+            marginTop: 8
+          }}>
+            {status.error}
+          </Text>
+        )}
+      </View>
+    );
+  };
 
   // Add local state for slider values and mute status
   const [sliderValues, setSliderValues] = useState<{
@@ -82,7 +162,7 @@ export default function SpeakerConfigScreen() {
     }
   }>({});
 
-
+  const { connectionStatus: bleConnectionStatus, clearConnectionStatus: bleClearConnectionStatus, setConnectionStatus } = useBLEContext();
 
   // Update slider values when settings change
   useEffect(() => {
@@ -165,8 +245,88 @@ export default function SpeakerConfigScreen() {
     }
   }, [configIDParam, speakersStr, dbUpdateTrigger]);
   
-  // Add BLE context
-  const { connectedDevice } = useBLEContext();
+  // Listen for connection status updates from BLEContext and update the overlay
+  useEffect(() => {
+    if (!connectionStatus) return;
+    
+    const mac = connectionStatus.mac;
+    if (!mac) return;
+    
+    console.log(`Received connection status update for ${mac}:`, connectionStatus);
+    
+    // If we get a status update for a speaker that's part of this configuration
+    if (connectedSpeakers[mac]) {
+      if (connectionStatus.error) {
+        // Handle error
+        setLoadingSpeakers(prev => ({
+          ...prev,
+          [mac]: {
+            action: 'connect',
+            statusMessage: "Connection failed",
+            error: connectionStatus.error
+          }
+        }));
+        
+        // Clear error after 5 seconds
+        setTimeout(() => {
+          setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
+        }, 5000);
+      } else {
+        // Handle status update
+        const statusMessage = connectionStatus.status;
+        
+        if (statusMessage === "Discovering speaker...") {
+          // Special case for discovery - add instructions
+          setLoadingSpeakers(prev => ({
+            ...prev,
+            [mac]: {
+              action: 'connect',
+              statusMessage,
+              instructions: "Please put your speaker in pairing mode"
+            }
+          }));
+        } else if (statusMessage === "Connection successful!") {
+          // Success case
+          setLoadingSpeakers(prev => ({
+            ...prev,
+            [mac]: {
+              action: 'connect',
+              statusMessage,
+              success: true
+            }
+          }));
+          
+          // Update local state
+          setSettings(prev => {
+            const updatedSettings = { ...prev };
+            if (updatedSettings[mac]) {
+              updatedSettings[mac].isConnected = true;
+            }
+            return updatedSettings;
+          });
+          
+          // Update database
+          if (configIDParam) {
+            updateSpeakerConnectionStatus(Number(configIDParam), mac, true);
+          }
+          
+          // Clear after 3 seconds
+          setTimeout(() => {
+            setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
+          }, 3000);
+        } else {
+          // Regular status update
+          setLoadingSpeakers(prev => ({
+            ...prev,
+            [mac]: {
+              action: 'connect',
+              statusMessage
+            }
+          }));
+        }
+      }
+    }
+  }, [connectionStatus, connectedSpeakers, configIDParam]);
 
   const handleVolumeChangeWrapper = async (mac: string, newVolume: number, isSlidingComplete: boolean) => {
     await handleVolumeChange(
@@ -191,30 +351,6 @@ export default function SpeakerConfigScreen() {
       updateSpeakerSettings,
       isSlidingComplete,
       connectedDevice
-    );
-  };
-
-  const handleConnectWrapper = async () => {
-    await handleConnect(
-      configIDParam,
-      configNameParam,
-      connectedSpeakers,
-      settings,
-      setSettings,
-      setIsConnected,
-      setIsConnecting
-    );
-  };
-
-  const handleDisconnectWrapper = async () => {
-    await handleDisconnect(
-      configIDParam,
-      configNameParam,
-      connectedSpeakers,
-      settings,
-      setSettings,
-      setIsConnected,
-      setIsDisconnecting
     );
   };
 
@@ -262,19 +398,24 @@ export default function SpeakerConfigScreen() {
   };
 
   const handleConnectOne = async (mac: string) => {
-    console.log('handleConnectOne triggered for mac:', mac); // Debug log
+    console.log('handleConnectOne triggered for mac:', mac);
     
     if (!connectedDevice) {
-      console.log('No BLE device connected'); // Debug log
+      console.log('No BLE device connected');
       Alert.alert("Error", "No Bluetooth device connected");
       return;
     }
 
-    console.log('BLE device found:', connectedDevice.id); // Debug log
-    setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: 'connect' } }));
+    console.log('BLE device found:', connectedDevice.id);
+    
+    // Show loading indicator overlay on the speaker card
+    setLoadingSpeakers(prev => ({ ...prev, [mac]: { 
+      action: 'connect',
+      statusMessage: "Starting connection process..."
+    }}));
     
     try {
-      console.log('Attempting bleConnectOne with settings:', { // Debug log
+      console.log('Attempting bleConnectOne with settings:', {
         mac,
         name: connectedSpeakers[mac],
         settings: {
@@ -301,27 +442,39 @@ export default function SpeakerConfigScreen() {
         allowedMacs  // Pass the allowed MACs
       );
       
-      // Update local state
-      const updatedSettings = { ...settings };
-      updatedSettings[mac].isConnected = true;
-      setSettings(updatedSettings);
-      
-      // Update database if we have a config ID
-      if (configIDParam) {
-        updateSpeakerConnectionStatus(Number(configIDParam), mac, true);
-      }
-      
-      Alert.alert("Success", `${connectedSpeakers[mac]} connected successfully.`);
+      // Set a fallback timeout in case no notification is received - changed to 2 minutes
+      setTimeout(() => {
+        setLoadingSpeakers(prev => {
+          // Only clear if still in the initial state
+          if (prev[mac]?.action === 'connect' && prev[mac]?.statusMessage === "Starting connection process...") {
+            return { ...prev, [mac]: null };
+          }
+          return prev;
+        });
+      }, 120000); // 2 minute timeout (120000ms)
     } catch (error) {
       console.error("Error connecting speaker:", error);
-      Alert.alert("Connection Error", "Failed to connect speaker via Bluetooth.");
-    } finally {
-      setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: null } }));
+      
+      // Show error in the overlay
+      setLoadingSpeakers(prev => ({ ...prev, [mac]: { 
+        action: 'connect',
+        statusMessage: "Connection failed",
+        error: "Failed to connect speaker. Please try again."
+      }}));
+      
+      // Clear error after 5 seconds
+      setTimeout(() => {
+        setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
+      }, 5000);
     }
   };
 
   const handleDisconnectOne = async (mac: string) => {
-    setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: 'disconnect' } }));
+    // Show loading indicator overlay on the speaker card
+    setLoadingSpeakers(prev => ({ ...prev, [mac]: { 
+      action: 'disconnect',
+      statusMessage: "Disconnecting speaker..."
+    }}));
     
     if (!connectedDevice) {
       console.log('No BLE device connected');
@@ -332,22 +485,53 @@ export default function SpeakerConfigScreen() {
     try {
       await bleDisconnectOne(connectedDevice, mac);
       
-      // Update local state
-      const updatedSettings = { ...settings };
-      updatedSettings[mac].isConnected = false;
-      setSettings(updatedSettings);
-      
-      // Update database if we have a config ID
-      if (configIDParam) {
-        updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
-      }
-      
-      Alert.alert("Success", `${connectedSpeakers[mac]} disconnected successfully.`);
+      // Set a fallback timeout in case no notification is received - changed to 2 minutes
+      setTimeout(() => {
+        setLoadingSpeakers(prev => {
+          // Only update if still in the initial state
+          if (prev[mac]?.action === 'disconnect' && prev[mac]?.statusMessage === "Disconnecting speaker...") {
+            // Update the speaker connection state in settings to disconnected
+            setSettings(prevSettings => {
+              const updated = { ...prevSettings };
+              if (updated[mac]) {
+                updated[mac].isConnected = false;
+              }
+              return updated;
+            });
+            
+            // Update the database if needed
+            if (configIDParam) {
+              updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
+            }
+            
+            return { ...prev, [mac]: { 
+              action: 'disconnect',
+              statusMessage: "Speaker disconnected successfully",
+              success: true
+            }};
+          }
+          return prev;
+        });
+        
+        // And clear it after 2 more seconds
+        setTimeout(() => {
+          setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
+        }, 2000);
+      }, 120000); // 2 minute timeout (120000ms)
     } catch (error) {
       console.error("Error disconnecting speaker:", error);
-      Alert.alert("Disconnection Error", "Failed to disconnect speaker.");
-    } finally {
-      setLoadingSpeakers(prev => ({ ...prev, [mac]: { action: null } }));
+      
+      // Show error in the overlay
+      setLoadingSpeakers(prev => ({ ...prev, [mac]: { 
+        action: 'disconnect',
+        statusMessage: "Disconnection failed",
+        error: "Failed to disconnect speaker. Please try again."
+      }}));
+      
+      // Clear error after 5 seconds
+      setTimeout(() => {
+        setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
+      }, 5000);
     }
   };
 
@@ -445,6 +629,9 @@ export default function SpeakerConfigScreen() {
                   elevation: themeName === 'dark' ? 15 : 10,
                   position: 'relative'
                 }}>
+                  {/* Connection status overlay - appears on top of the card when connecting/disconnecting */}
+                  {loadingSpeakers[mac] && <SpeakerCardOverlay mac={mac} status={loadingSpeakers[mac]} />}
+                  
                   <View style={{
                     position: 'absolute',
                     top: 20,
@@ -543,6 +730,7 @@ export default function SpeakerConfigScreen() {
                     <TouchableOpacity 
                       onPress={() => handleConnectOne(mac)}
                       disabled={!!loadingSpeakers[mac]?.action}
+                      style={{ flex: 1, alignItems: 'center' }}
                     >
                       <Text style={{ 
                         fontFamily: 'Finlandica', 
@@ -550,10 +738,36 @@ export default function SpeakerConfigScreen() {
                         fontWeight: "bold", 
                         color: !!loadingSpeakers[mac]?.action ? stc : themeName === 'dark' ? '#FFFFFF' : '#3E0094'
                       }}>
-                        {loadingSpeakers[mac]?.action === 'connect' ? 'Connecting...' : 'Connect'}
+                        {loadingSpeakers[mac]?.action === 'connect' 
+                          ? 'Connecting...' 
+                          : loadingSpeakers[mac]?.statusMessage && loadingSpeakers[mac]?.action === null && loadingSpeakers[mac]?.success
+                          ? 'Connected'
+                          : 'Connect'}
                       </Text>
+                      {loadingSpeakers[mac]?.statusMessage && loadingSpeakers[mac]?.action === 'connect' && (
+                        <Text style={{ 
+                          fontFamily: 'Finlandica', 
+                          fontSize: 10, 
+                          color: themeName === 'dark' ? '#CCCCCC' : '#666666',
+                          textAlign: 'center',
+                          marginTop: 4
+                        }}>
+                          {loadingSpeakers[mac]?.statusMessage}
+                        </Text>
+                      )}
+                      {loadingSpeakers[mac]?.error && (
+                        <Text style={{ 
+                          fontFamily: 'Finlandica', 
+                          fontSize: 10, 
+                          color: '#FF0055',
+                          textAlign: 'center',
+                          marginTop: 4
+                        }}>
+                          {loadingSpeakers[mac]?.error}
+                        </Text>
+                      )}
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleMuteToggle(mac)}>
+                    <TouchableOpacity onPress={() => handleMuteToggle(mac)} style={{ flex: 0.5, alignItems: 'center' }}>
                       {sliderValues[mac]?.isMuted ? (
                         <VolumeX size={24} color="#FF0055" />
                       ) : (
@@ -563,6 +777,7 @@ export default function SpeakerConfigScreen() {
                     <TouchableOpacity 
                       onPress={() => handleDisconnectOne(mac)}
                       disabled={!!loadingSpeakers[mac]?.action}
+                      style={{ flex: 1, alignItems: 'center' }}
                     >
                       <Text style={{ 
                         fontFamily: 'Finlandica', 
@@ -570,8 +785,34 @@ export default function SpeakerConfigScreen() {
                         fontWeight: "bold", 
                         color: !!loadingSpeakers[mac]?.action ? stc : '#FF0055'
                       }}>
-                        {loadingSpeakers[mac]?.action === 'disconnect' ? 'Disconnecting...' : 'Disconnect'}
+                        {loadingSpeakers[mac]?.action === 'disconnect' 
+                          ? 'Disconnecting...' 
+                          : loadingSpeakers[mac]?.statusMessage && loadingSpeakers[mac]?.action === null && !loadingSpeakers[mac]?.success
+                          ? 'Disconnected'
+                          : 'Disconnect'}
                       </Text>
+                      {loadingSpeakers[mac]?.statusMessage && loadingSpeakers[mac]?.action === 'disconnect' && (
+                        <Text style={{ 
+                          fontFamily: 'Finlandica', 
+                          fontSize: 10, 
+                          color: themeName === 'dark' ? '#CCCCCC' : '#666666',
+                          textAlign: 'center',
+                          marginTop: 4
+                        }}>
+                          {loadingSpeakers[mac]?.statusMessage}
+                        </Text>
+                      )}
+                      {loadingSpeakers[mac]?.error && (
+                        <Text style={{ 
+                          fontFamily: 'Finlandica', 
+                          fontSize: 10, 
+                          color: '#FF0055',
+                          textAlign: 'center',
+                          marginTop: 4
+                        }}>
+                          {loadingSpeakers[mac]?.error}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </SafeAreaView>

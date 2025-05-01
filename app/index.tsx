@@ -132,6 +132,7 @@ export default function Index() {
 
       deviceConnection = await connectToDevice(piDevice);
       console.log("✅ Scanned & connected to Pi", piDevice.id);
+      setConnecting(false);
     }
   }
 

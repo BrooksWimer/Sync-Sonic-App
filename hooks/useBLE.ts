@@ -89,66 +89,6 @@ function updateDatabaseConnectionStates(connectedMacs: string[], onUpdate?: () =
   }
 }
 
-const handleNotification: NotificationHandler = (error, characteristic) => {
-  if (error) {
-    // Check if the error is a disconnection
-    if (error.message?.includes('disconnected')) {
-      Alert.alert(
-        "Disconnected",
-        "Phone connection was lost.",
-        [{ text: "OK" }]
-      );
-    }
-    return;
-  }
-
-  if (!characteristic?.value) {
-    console.warn("[BLE] Empty notification received");
-    return;
-  }
-
-  try {
-    const rawBytes = atob(characteristic.value);
-
-    if (rawBytes.length < 2) {
-      console.warn("[BLE] Notification payload too short");
-      return;
-    }
-
-    const opcode = rawBytes.charCodeAt(0);      // first byte
-    const jsonString = rawBytes.slice(1);        // rest is JSON
-    const payload = JSON.parse(jsonString);
-
-    console.log("[BLE] Received notification:", { opcode, payload });
-
-    switch (opcode) {
-      case MESSAGE_TYPES.SUCCESS:
-        if (payload.connected) {
-          updateDatabaseConnectionStates(payload.connected);
-        }
-        break;
-      
-      case MESSAGE_TYPES.CONNECTION_STATUS_UPDATE:
-        // Handle connection status update
-        if (payload.status) {
-          setConnectionStatus({
-            status: payload.status,
-            progress: payload.progress,
-            error: payload.error,
-            mac: payload.mac
-          });
-        }
-        break;
-      
-      default:
-        console.warn(`[BLE] Unexpected opcode: ${opcode}`);
-    }
-
-  } catch (err) {
-    console.error("[BLE] Failed to decode notification:", err);
-  }
-};
-
 export function useBLE(onNotification?: NotificationHandler) {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
@@ -160,6 +100,132 @@ export function useBLE(onNotification?: NotificationHandler) {
   const clearConnectionStatus = useCallback(() => {
     setConnectionStatus(null);
   }, []);
+
+  // Define handleNotification here so it has access to setConnectionStatus
+  const handleNotification: NotificationHandler = (error, characteristic) => {
+    if (error) {
+      // Check if the error is a disconnection
+      if (error.message?.includes('disconnected')) {
+        Alert.alert(
+          "Disconnected",
+          "Phone connection was lost.",
+          [{ text: "OK" }]
+        );
+      }
+      return;
+    }
+
+    if (!characteristic?.value) {
+      console.warn("[BLE] Empty notification received");
+      return;
+    }
+
+    try {
+      const rawBytes = atob(characteristic.value);
+
+      if (rawBytes.length < 2) {
+        console.warn("[BLE] Notification payload too short");
+        return;
+      }
+
+      const opcode = rawBytes.charCodeAt(0);      // first byte
+      const jsonString = rawBytes.slice(1);        // rest is JSON
+      const payload = JSON.parse(jsonString);
+
+      console.log("[BLE] Received notification:", { opcode, payload });
+
+      switch (opcode) {
+        case MESSAGE_TYPES.SUCCESS:
+          if (payload.connected) {
+            updateDatabaseConnectionStates(payload.connected);
+          }
+          break;
+        
+        case MESSAGE_TYPES.CONNECTION_STATUS_UPDATE:
+          // Handle connection status update
+          if (payload.phase) {
+            let statusMessage = "";
+            let progress = undefined;
+            let error = undefined;
+
+            switch (payload.phase) {
+              case "fsm_start":
+                statusMessage = "Starting connection process...";
+                break;
+              case "fsm_state":
+                statusMessage = `Connecting (${payload.state})...`;
+                progress = (payload.attempt / 3) * 100;
+                break;
+              case "discovery_start":
+                statusMessage = "Discovering speaker...";
+                break;
+              case "discovery_complete":
+                statusMessage = "Speaker found!";
+                break;
+              case "pairing_start":
+                statusMessage = "Pairing with speaker...";
+                break;
+              case "pairing_success":
+                statusMessage = "Pairing successful!";
+                break;
+              case "trusting":
+                statusMessage = "Establishing trust...";
+                break;
+              case "connect_start":
+                statusMessage = "Connecting to speaker...";
+                break;
+              case "connect_success":
+                statusMessage = "Connection successful!";
+                break;
+            }
+
+            setConnectionStatus({
+              status: statusMessage,
+              progress: progress,
+              error: error,
+              mac: payload.device
+            });
+          }
+          break;
+        
+        case MESSAGE_TYPES.ERROR:
+          // Handle error messages
+          if (payload.phase) {
+            let errorMessage = "";
+            
+            switch (payload.phase) {
+              case "discovery_timeout":
+                errorMessage = "Could not find speaker. Please ensure it's in pairing mode.";
+                break;
+              case "pairing_failed":
+                errorMessage = `Pairing failed (attempt ${payload.attempt}/3). Please try again.`;
+                break;
+              case "connect_failed":
+                errorMessage = `Connection failed (attempt ${payload.attempt}/3). Please try again.`;
+                break;
+              case "loopback creation failed":
+                errorMessage = "Connection successful but audio routing failed. Please try connecting again.";
+                break;
+              default:
+                errorMessage = `Error: ${payload.phase}`;
+            }
+
+            setConnectionStatus({
+              status: "Connection failed",
+              error: errorMessage,
+              mac: payload.device
+            });
+          }
+          break;
+        
+        default:
+          console.warn(`[BLE] Unexpected opcode: ${opcode}`);
+      }
+
+    } catch (err) {
+      console.error("[BLE] Failed to decode notification:", err);
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
