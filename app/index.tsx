@@ -6,6 +6,17 @@ import {
 import LottieView   from "lottie-react-native";
 import { Alert }    from "react-native";
 import { router }   from "expo-router";
+import { useState, useEffect } from "react"
+import { YStack, Text, Button, H1, Image, useThemeName, useTheme } from "tamagui"
+import * as Linking from "expo-linking"
+import { router } from "expo-router"
+import { PI_API_URL } from "../utils/constants"
+import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "./database"
+import { TopBarStart } from "../components/TopBarStart"
+import colors from '../assets/colors/colors'
+import LottieView from "lottie-react-native"
+import { Alert, Platform } from "react-native"
+import * as Font from 'expo-font';
 
 import { TopBarStart }       from "../components/TopBarStart";
 import { setupDatabase }     from "./database";
@@ -36,6 +47,38 @@ export default function Index() {
     : require('../assets/images/welcomeGraphicLight.png');
 
 
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    async function loadFonts() {
+      await Font.loadAsync({
+        'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
+        'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
+        'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
+        'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
+        'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
+        'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
+        'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
+      });
+      setFontsLoaded(true);
+    }
+
+    loadFonts();
+  }, []);
+
+
+   //if android
+      let abuffer = 20
+      let iosbuffer=0
+      //else, 
+      if (Platform.OS === 'ios') {
+            abuffer = 0
+            iosbuffer=20
+        }
+
+  const loaderSource = themeName === 'dark'
+  ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
+  : require('../assets/animations/SyncSonic_Loading_Dark_nbg.json');
 
   /* -------------------------------------------------------------- */
   /*  theme + BLE helpers                                           */
@@ -150,15 +193,14 @@ export default function Index() {
       <TopBarStart/>
 
       {/* Middle Content */}
-      <YStack alignItems="center" paddingTop="$4">
+      <YStack alignItems="center" paddingTop={40}>
         <H1
-          style={{ color: tc, fontFamily: "Finlandica" }}
-          fontSize={36}
+          style={{ color: tc, fontFamily: "Finlandica-Medium" }}
+          fontSize={40}
           lineHeight={44}
-          fontWeight="700"
           letterSpacing={1}
         >
-          Connect Your Phone
+          Welcome
         </H1>
 
         <Text
@@ -166,7 +208,7 @@ export default function Index() {
           fontSize={16}
           textAlign="center"
           marginTop={16}
-          marginBottom={32}
+          //marginBottom={32}
           paddingHorizontal={20}
         >
           To stream music from your phone, please turn on Bluetooth and pair it with the box.
@@ -191,7 +233,7 @@ export default function Index() {
             backgroundColor: pc,
             width: '90%',
             height: 50,
-            borderRadius: 999,
+            borderRadius: 15,
             alignSelf: 'center',
             justifyContent: 'center',
             alignItems: 'center',
@@ -211,7 +253,7 @@ export default function Index() {
             backgroundColor: pc,
             width: '90%',
             height: 50,
-            borderRadius: 999,
+            borderRadius: 15,
             alignSelf: 'center',
           }}
           pressStyle={{ opacity: 0.8 }}

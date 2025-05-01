@@ -1,7 +1,7 @@
 import { useSearchParams } from 'expo-router/build/hooks';
 import {Wifi, WifiOff, Bluetooth, BluetoothOff, Volume2, VolumeX } from '@tamagui/lucide-icons'
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions } from 'react-native';
+import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter, useNavigation, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +19,7 @@ import {
   getSpeakersFull
 } from './database';
 import {PI_API_URL, KNOWN_CONTROLLERS} from '../utils/constants'
-import { useTheme, useThemeName, YStack, Text } from 'tamagui';
+import { useTheme, useThemeName, YStack, Text, H1 } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { 
   handleVolumeChange,
@@ -31,10 +31,13 @@ import {
   handleConnect,
   handleSave
 } from '../utils/ConfigurationFunctions';
-import LottieView from 'lottie-react-native';
-import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
-import { useBLEContext, } from '@/contexts/BLEContext';
 import { MESSAGE_TYPES, CHARACTERISTIC_UUID } from '@/utils/ble_constants';
+import { useBLEContext, } from '@/contexts/BLEContext';
+import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
+import LottieView from 'lottie-react-native';
+import * as Font from 'expo-font';
+import { useFocusEffect } from '@react-navigation/native';
+import { Bluetooth, BluetoothOff, Volume2, VolumeX } from '@tamagui/lucide-icons';
 
 export const SERVICE_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0000';
 
@@ -47,6 +50,25 @@ export default function SpeakerConfigScreen() {
   const speakersStr = params.get('speakers'); // JSON string or null
   const configNameParam = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // may be undefined for a new config
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+    
+      useEffect(() => {
+        async function loadFonts() {
+          await Font.loadAsync({
+            'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
+            'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
+            'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
+            'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
+            'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
+            'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
+            'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
+          });
+          setFontsLoaded(true);
+        }
+    
+        loadFonts();
+      }, []);
+  
 
   // Use only piStatus from BLEContext
   const { dbUpdateTrigger, connectedDevice, piStatus } = useBLEContext();
@@ -640,12 +662,19 @@ export default function SpeakerConfigScreen() {
         ? require('../assets/images/welcomeGraphicDark.png')
         : require('../assets/images/welcomeGraphicLight.png')
      
-      const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-      const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-      const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-      const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-      const green = themeName === 'dark' ? '#00FF6A' : '#34A853'
-      const red = themeName === 'dark' ? 'black' : '#E8004D'
+        const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'   //background
+        const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'   //primary (pink/purple)
+        const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'   // text color
+        const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'    // subtext color
+        const green = themeName === 'dark' ? '#00FF6A' : '#34A853'    // green is *slightly* different on light/dark 
+        const red = themeName === 'dark' ? '' : '#E8004D'  // red is actually black on dark mode due to similarity of pc
+
+        //if android
+            let buffer = 20
+            //else, 
+            if (Platform.OS === 'ios') {
+              buffer = 0
+            }
 
       const { width: screenWidth } = Dimensions.get('window');
 
@@ -657,12 +686,18 @@ export default function SpeakerConfigScreen() {
       return (
         <YStack flex={1} backgroundColor={bg}>
           <TopBar/>
-          <Text style={{ fontFamily: 'Finlandica', fontSize: 25, fontWeight: "bold", color: tc, marginBottom: 10, marginTop: 20, alignSelf: 'center' }}>
-            {configNameParam}
-          </Text>
+          {/* Header */}
+          <View style={{
+                    paddingTop: 20,
+                    paddingBottom: 10,
+                    alignItems: "center",
+                    backgroundColor: bg
+                }}>
+          <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginBottom: 5, marginTop: 15, letterSpacing: 1 }}>
+                    {configNameParam}
+          </H1>
+          </View>
           
-          {/* LEAVE THIS EMPTY */}
-          <Text>  </Text>
           <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
             
             
@@ -670,28 +705,24 @@ export default function SpeakerConfigScreen() {
               <Text style={{ fontFamily: 'Finlandica' }}>No connected speakers found.</Text>
             ) : (
               Object.keys(connectedSpeakers).map((mac, index) => (
-                <SafeAreaView key={mac} style={{ 
-                  width:"90%",
-                  alignSelf:"center", 
-                  marginTop: index === 0 ? 7 : 0,
-                  marginBottom: 15, 
-                  paddingLeft: 20, 
-                  paddingRight: 20, 
-                  paddingBottom: 5, 
-                  paddingTop: 5,
-                  backgroundColor: bg,
-                  borderWidth: 1, 
-                  borderColor: stc,
-                  borderRadius: 8, 
+                <SafeAreaView key={mac} style={{ width:"90%",
+                                                alignSelf:"center", 
+                                                marginTop: index === 0 ? 15 : 0, // 👈 only the first item gets top margin
+                                                marginBottom: 15, 
+                                                paddingLeft: 20, 
+                                                paddingRight: 20, 
+                                                paddingBottom: 5 + buffer, 
+                                                paddingTop: 5 + buffer,
+                                                backgroundColor: bg,
+                                                borderWidth: 1, 
+                                                borderColor: stc,
+                                                borderRadius: 8, 
                   shadowColor: themeName === 'dark' ? '#000000' : stc,
-                  shadowOffset: { width: 0, height: 0 },
+                                                shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: themeName === 'dark' ? 0.9 : 0.5,
                   shadowRadius: themeName === 'dark' ? 12 : 8,
                   elevation: themeName === 'dark' ? 15 : 10,
-                  position: 'relative'
                 }}>
-                  {/* Connection status overlay - appears on top of the card when connecting/disconnecting */}
-                  {loadingSpeakers[mac] && <SpeakerCardOverlay mac={mac} status={loadingSpeakers[mac]} />}
                   
                   <View style={{
                     position: 'absolute',
@@ -741,7 +772,10 @@ export default function SpeakerConfigScreen() {
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
-                  <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc, marginTop: 6 }}>Latency: {settings[mac]?.latency ?? 100} ms</Text>
+                  
+                  <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 18, letterSpacing: 1, color: tc, marginTop: 6 }}>
+                    Latency: {settings[mac]?.latency ?? 100} ms
+                  </Text>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -898,7 +932,7 @@ export default function SpeakerConfigScreen() {
       saveButton: { backgroundColor: '#3E0094', padding: 15, borderRadius: 8 },
       disconnectButton: { backgroundColor: "#FFFFFF", padding: 15, borderRadius: 8 },
       deleteButton: { backgroundColor: '#FF0055', padding: 15, borderRadius: 8 },
-      buttonText: { color: '#fff', fontSize: 16,alignSelf: 'center', },
+      buttonText: { color: '#fff', fontSize: 18, fontFamily: "Finlandica", alignSelf: 'center', },
       homeButton: {
         position: 'absolute',
         bottom: 20,

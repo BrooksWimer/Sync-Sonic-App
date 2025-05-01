@@ -25,6 +25,7 @@ import { TopBar } from '@/components/TopBar';
 import { AlignCenter } from '@tamagui/lucide-icons';
 import { Device } from 'react-native-ble-plx';
 import LottieView from 'lottie-react-native';
+import * as Font from 'expo-font';
 import { Shadow } from 'react-native-shadow-2';
 import { useBLEContext } from '../contexts/BLEContext';
 import { fetchPairedDevices } from '../utils/ble_functions';
@@ -191,6 +192,17 @@ export default function DeviceSelectionScreen() {
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
   const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
   const svbg = themeName === 'dark' ? '#350066' : '#F9F5FF'
+
+  //if android
+            let abuffer = 20
+            let iosbuffer=0
+            //else, 
+            if (Platform.OS === 'ios') {
+                abuffer = 0
+                iosbuffer=20
+            }
+
+  
 
   // Debounce function with state tracking
   const debounce = (func: Function, wait: number) => {
