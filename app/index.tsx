@@ -3,23 +3,10 @@ import {
   YStack, Text, Button, H1, Image,
   useThemeName, useTheme
 } from "tamagui";
-import LottieView   from "lottie-react-native";
-import { Alert }    from "react-native";
+import { Platform }    from "react-native";
 import { router }   from "expo-router";
-import { useState, useEffect } from "react"
-import { YStack, Text, Button, H1, Image, useThemeName, useTheme } from "tamagui"
-import * as Linking from "expo-linking"
-import { router } from "expo-router"
-import { PI_API_URL } from "../utils/constants"
 import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "./database"
 import { TopBarStart } from "../components/TopBarStart"
-import colors from '../assets/colors/colors'
-import LottieView from "lottie-react-native"
-import { Alert, Platform } from "react-native"
-import * as Font from 'expo-font';
-
-import { TopBarStart }       from "../components/TopBarStart";
-import { setupDatabase }     from "./database";
 
 import { useBLEContext }     from "@/contexts/BLEContext";
 import { SERVICE_UUID }      from "@/utils/ble_constants";
@@ -45,26 +32,6 @@ export default function Index() {
   const imageSource = themeName === 'dark'
     ? require('../assets/images/welcomeGraphicDark.png')
     : require('../assets/images/welcomeGraphicLight.png');
-
-
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-
-  useEffect(() => {
-    async function loadFonts() {
-      await Font.loadAsync({
-        'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
-        'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
-        'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
-        'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
-        'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
-        'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
-        'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
-      });
-      setFontsLoaded(true);
-    }
-
-    loadFonts();
-  }, []);
 
 
    //if android
@@ -108,7 +75,7 @@ export default function Index() {
     setConnecting(true);
     let deviceConnection = null;
   
-    // 1) Fast-path: check cached ID’s advertised services _before_ connect
+    // 1) Fast-path: check cached ID's advertised services _before_ connect
     const lastId = await getLastConnectedDevice();
     if (lastId) {
       try {
@@ -116,7 +83,7 @@ export default function Index() {
         if (cached) {
           console.log("🔍 cached device info:", cached.id, cached.name, cached.serviceUUIDs);
   
-          // only proceed if it’s actually our Pi (by UUID & optional name)
+          // only proceed if it's actually our Pi (by UUID & optional name)
           const hasSvc = cached.serviceUUIDs?.includes(SERVICE_UUID);
           const isPi   = cached.name?.startsWith("Sync-Sonic");  // or whatever your Pi advertises
           if (hasSvc && isPi) {
@@ -126,7 +93,7 @@ export default function Index() {
             deviceConnection = conn;
             await ensurePiNotifications(conn, handleNotification);
           } else {
-            console.warn("⚠️ Cached device isn’t our Pi—dropping it");
+            console.warn("⚠️ Cached device isn't our Pi—dropping it");
             await removeLastConnectedDevice();  // clear bad cache
           }
         }
@@ -143,38 +110,39 @@ export default function Index() {
       // 🛑 STOP any existing scan first
       manager.stopDeviceScan();
 
-      let piDevice: Device | null = null;
-      manager.startDeviceScan(
-        [SERVICE_UUID],
-        { allowDuplicates: false },
-        (error, device) => {
-          if (error) {
-            console.error("Scan error", error);
-            return;
+      const foundDevice = await new Promise<Device | null>((resolve) => {
+        manager.startDeviceScan(
+          [SERVICE_UUID],
+          { allowDuplicates: false },
+          (error, device) => {
+            if (error) {
+              console.error("Scan error", error);
+              return;
+            }
+            if (
+              device &&
+              device.serviceUUIDs?.includes(SERVICE_UUID) &&
+              device.name?.startsWith("Sync-Sonic")
+            ) {
+              console.log("🔔 Found Pi during scan:", device.id, device.name);
+              manager.stopDeviceScan();
+              resolve(device);
+            }
           }
-          if (
-            device &&
-            device.serviceUUIDs?.includes(SERVICE_UUID) &&
-            device.name?.startsWith("Sync-Sonic")
-          ) {
-            console.log("🔔 Found Pi during scan:", device.id, device.name);
-            piDevice = device;
-            manager.stopDeviceScan();
-          }
-        }
-      );
-      // give it enough time to see your Pi
-      await new Promise(r => setTimeout(r, 3000));
+        );
+        // Timeout after 3 seconds
+        setTimeout(() => resolve(null), 3000);
+      });
 
-      if (!piDevice) {
+      if (!foundDevice) {
         console.error("❌ Could not find Pi advertising our GATT service");
         setConnecting(false);
         router.push('/connect-device');
         return;
       }
 
-      deviceConnection = await connectToDevice(piDevice);
-      console.log("✅ Scanned & connected to Pi", piDevice.id);
+      deviceConnection = await connectToDevice(foundDevice);
+      console.log("✅ Scanned & connected to Pi", foundDevice.id);
       setConnecting(false);
     }
   }
@@ -204,7 +172,7 @@ export default function Index() {
         </H1>
 
         <Text
-          style={{ color: tc, fontFamily: "Finlandica" }}
+          style={{ color: tc, fontFamily: "Inter-Regular" }}
           fontSize={16}
           textAlign="center"
           marginTop={16}

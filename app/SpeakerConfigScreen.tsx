@@ -1,5 +1,5 @@
 import { useSearchParams } from 'expo-router/build/hooks';
-import {Wifi, WifiOff, Bluetooth, BluetoothOff, Volume2, VolumeX } from '@tamagui/lucide-icons'
+import {Wifi, WifiOff, Bluetooth, BluetoothOff, Volume, Volume1, Volume2, VolumeX } from '@tamagui/lucide-icons'
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
@@ -37,7 +37,6 @@ import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/bl
 import LottieView from 'lottie-react-native';
 import * as Font from 'expo-font';
 import { useFocusEffect } from '@react-navigation/native';
-import { Bluetooth, BluetoothOff, Volume2, VolumeX } from '@tamagui/lucide-icons';
 
 export const SERVICE_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0000';
 
@@ -789,13 +788,114 @@ export default function SpeakerConfigScreen() {
                     thumbTintColor="white" 
                   />
                   <View style={styles.soundFieldContainer}>
-                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>
-                      {Math.round((sliderValues[mac]?.balance ?? 0.5) >= 0.5 ? (settings[mac]?.volume ?? 50) * (1 - (sliderValues[mac]?.balance ?? 0.5)) * 2 : (settings[mac]?.volume ?? 50))}%
-                    </Text>
-                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>Sound Field</Text>
-                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>
-                      {Math.round((sliderValues[mac]?.balance ?? 0.5) <= 0.5 ? (settings[mac]?.volume ?? 50) * (sliderValues[mac]?.balance ?? 0.5) * 2 : (settings[mac]?.volume ?? 50))}%
-                    </Text>
+                    {/* Left Side */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: tc,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginRight: 6
+                      }}>
+                        <Text style={{
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          fontWeight: 'bold',
+                          color: tc,
+                        }}>
+                          L
+                        </Text>
+                      </View>
+                      <View style={[styles.speakerIconContainer]}>
+                        {(() => {
+                          const balance = sliderValues[mac]?.balance ?? 0.5;
+                          // Left side is active when balance is < 0.5
+                          if (balance < 0.5) {
+                            return <Volume2 size={20} color={tc} />;
+                          } else {
+                            const rightValue = (balance - 0.5) * 2;
+                            if (rightValue > 0.8) return <VolumeX size={20} color={tc} />;
+                            if (rightValue > 0.3) return <Volume1 size={20} color={tc} />;
+                            return <Volume2 size={20} color={tc} />;
+                          }
+                        })()}
+                        <View style={styles.soundWaves}>
+                          {[3, 2, 1].map((i) => (
+                            <View 
+                              key={i} 
+                              style={[
+                                styles.soundWaveBar,
+                                { 
+                                  opacity: (sliderValues[mac]?.balance ?? 0.5) <= 0.5 ? 
+                                    (0.5 - (sliderValues[mac]?.balance ?? 0.5)) * 2 * i : 0,
+                                  backgroundColor: tc
+                                }
+                              ]} 
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Middle */}
+                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>Balance</Text>
+
+                    {/* Right */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={[styles.speakerIconContainer]}>
+                        <View style={styles.soundWaves}>
+                          {[1, 2, 3].map((i) => (
+                            <View 
+                              key={i} 
+                              style={[
+                                styles.soundWaveBar,
+                                { 
+                                  opacity: (sliderValues[mac]?.balance ?? 0.5) >= 0.5 ? 
+                                    ((sliderValues[mac]?.balance ?? 0.5) - 0.5) * 2 * i : 0,
+                                  backgroundColor: tc
+                                }
+                              ]} 
+                            />
+                          ))}
+                        </View>
+                        <View style={{ transform: [{ scaleX: -1 }] }}>
+                          {(() => {
+                            const balance = sliderValues[mac]?.balance ?? 0.5;
+                            // Right side is active when balance is > 0.5
+                            if (balance > 0.5) {
+                              return <Volume2 size={20} color={tc} />;
+                            } else {
+                              const leftValue = (0.5 - balance) * 2;
+                              if (leftValue > 0.8) return <VolumeX size={20} color={tc} />;
+                              if (leftValue > 0.3) return <Volume1 size={20} color={tc} />;
+                              return <Volume2 size={20} color={tc} />;
+                            }
+                          })()}
+                        </View>
+                      </View>
+                      <View style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: tc,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginLeft: 6,
+                      }}>
+                        <Text style={{
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          fontWeight: 'bold',
+                          color: tc,
+                        }}>
+                          R
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                   <Slider
                     style={styles.slider}
@@ -804,20 +904,28 @@ export default function SpeakerConfigScreen() {
                     step={0.01}
                     value={sliderValues[mac]?.balance ?? 0.5}
                     onValueChange={(value: number) => {
+                      // Add "magnetic" effect to center with visual snap
+                      const magneticRange = 0.05; // 5% range around center where it will snap
+                      const adjustedValue = Math.abs(value - 0.5) < magneticRange ? 0.5 : value;
+                      
                       setSliderValues(prev => ({
                         ...prev,
-                        [mac]: { ...prev[mac], balance: value }
+                        [mac]: { ...prev[mac], balance: adjustedValue }
                       }));
-                      handleSoundFieldChange(mac, value, false);
+                      handleSoundFieldChange(mac, adjustedValue, false);
                     }}
                     onSlidingComplete={(value: number) => {
+                      // Also apply magnetic effect on slide complete
+                      const magneticRange = 0.05;
+                      const adjustedValue = Math.abs(value - 0.5) < magneticRange ? 0.5 : value;
+                      
                       setSliderValues(prev => ({
                         ...prev,
-                        [mac]: { ...prev[mac], balance: value }
+                        [mac]: { ...prev[mac], balance: adjustedValue }
                       }));
-                      handleSoundFieldChange(mac, value, true);
+                      handleSoundFieldChange(mac, adjustedValue, true);
                     }}
-                    minimumTrackTintColor={pc}
+                    minimumTrackTintColor="#000000"
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white"
                   />
@@ -961,5 +1069,21 @@ export default function SpeakerConfigScreen() {
         justifyContent: 'space-between',
         marginTop: 10,
         marginBottom: 5,
+        alignItems: 'center',
+      },
+      speakerIconContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+      },
+      soundWaves: {
+        flexDirection: 'row',
+        marginLeft: 4,
+        marginRight: 2
+      },
+      soundWaveBar: {
+        width: 3,
+        height: 10,
+        marginRight: 2,
+        borderRadius: 1,
       },
     });

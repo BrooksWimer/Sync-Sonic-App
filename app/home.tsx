@@ -19,7 +19,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useBLEContext } from '../contexts/BLEContext';
 import LottieView from 'lottie-react-native';
-import * as Font from 'expo-font';
+import * as Haptics from 'expo-haptics';
 
 
 
@@ -31,24 +31,6 @@ export default function Home() {
   const [speakerStatuses, setSpeakerStatuses] = useState<{ [key: number]: boolean[] }>({});
   const [connecting, setConnecting] = useState(false);
   const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient)
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-  
-    useEffect(() => {
-      async function loadFonts() {
-        await Font.loadAsync({
-          'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
-          'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
-          'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
-          'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
-          'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
-          'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
-          'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
-        });
-        setFontsLoaded(true);
-      }
-  
-      loadFonts();
-    }, []);
 
    //if android
           let abuffer = 20
@@ -170,7 +152,10 @@ export default function Home() {
                 params: { configID: config.id.toString(), configName: config.name }
               })}
               onLongPress={() => {
-                Alert.alert(
+                if (Platform.OS === "ios") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                }
+                  Alert.alert(
                   "Delete Configuration?",
                   `Are you sure you want to delete "${config.name}"?`,
                   [

@@ -8,7 +8,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSearchParams } from 'expo-router/build/hooks';

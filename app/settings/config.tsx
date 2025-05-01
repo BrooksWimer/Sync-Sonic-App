@@ -140,12 +140,6 @@ export default function Config() {
 
     const themeName = useThemeName();
     const theme = useTheme();
-      
-    const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-    const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-    const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-    const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-    const dc = themeName === 'dark' ? 'white' : '#26004E'
 
         const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
         const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
