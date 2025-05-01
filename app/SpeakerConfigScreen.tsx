@@ -48,7 +48,8 @@ export default function SpeakerConfigScreen() {
   const configNameParam = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // may be undefined for a new config
 
-  const { dbUpdateTrigger, connectedDevice, connectionStatus, clearConnectionStatus } = useBLEContext();
+  // Use only piStatus from BLEContext
+  const { dbUpdateTrigger, connectedDevice, piStatus } = useBLEContext();
 
   // State to hold connected speakers (mapping from mac to name)
   const [connectedSpeakers, setConnectedSpeakers] = useState<{ [mac: string]: string }>({});
@@ -69,6 +70,12 @@ export default function SpeakerConfigScreen() {
       success?: boolean;
     } | null
   }>({});
+
+  // Track which connections have been processed
+  const [processedConnections, setProcessedConnections] = useState<Set<string>>(new Set());
+  
+  // Add state to track which disconnections have been processed
+  const [processedDisconnections, setProcessedDisconnections] = useState<Set<string>>(new Set());
 
   // Speaker card overlay component - define inside the main component to access state and props
   const SpeakerCardOverlay = ({ mac, status }: { 
@@ -245,53 +252,46 @@ export default function SpeakerConfigScreen() {
     }
   }, [configIDParam, speakersStr, dbUpdateTrigger]);
   
-  // Listen for connection status updates from BLEContext and update the overlay
+  // Listen for piStatus updates to track connection changes
   useEffect(() => {
-    if (!connectionStatus) return;
+    if (!piStatus || piStatus.connected === undefined) return;
     
-    const mac = connectionStatus.mac;
-    if (!mac) return;
+    // Get the list of connected MACs from piStatus
+    const connectedMacs = (piStatus.connected || []).map((mac: string) => mac.toUpperCase());
+    console.log('[Speaker] Connected MACs from piStatus:', connectedMacs);
     
-    console.log(`Received connection status update for ${mac}:`, connectionStatus);
-    
-    // If we get a status update for a speaker that's part of this configuration
-    if (connectedSpeakers[mac]) {
-      if (connectionStatus.error) {
-        // Handle error
-        setLoadingSpeakers(prev => ({
-          ...prev,
-          [mac]: {
-            action: 'connect',
-            statusMessage: "Connection failed",
-            error: connectionStatus.error
-          }
-        }));
-        
-        // Clear error after 5 seconds
-        setTimeout(() => {
-          setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
-        }, 5000);
-      } else {
-        // Handle status update
-        const statusMessage = connectionStatus.status;
-        
-        if (statusMessage === "Discovering speaker...") {
-          // Special case for discovery - add instructions
+    // Check all speakers in our configuration
+    Object.keys(connectedSpeakers).forEach(mac => {
+      const upperMac = mac.toUpperCase();
+      const isConnected = connectedMacs.includes(upperMac);
+      const currentStatus = loadingSpeakers[mac]?.action;
+      
+      // Speaker connected
+      if (isConnected) {
+        // Only update if:
+        // 1. The speaker is in 'connect' action
+        // 2. We haven't processed this connection yet
+        // 3. It's not already showing success
+        if (
+          currentStatus === 'connect' && 
+          !processedConnections.has(mac) &&
+          loadingSpeakers[mac]?.statusMessage !== "Connection successful!"
+        ) {
+          console.log(`[Speaker] Confirming connection success for ${mac}`);
+          
+          // Mark as processed
+          setProcessedConnections(prev => {
+            const newSet = new Set(prev);
+            newSet.add(mac);
+            return newSet;
+          });
+          
+          // Show success status
           setLoadingSpeakers(prev => ({
             ...prev,
             [mac]: {
               action: 'connect',
-              statusMessage,
-              instructions: "Please put your speaker in pairing mode"
-            }
-          }));
-        } else if (statusMessage === "Connection successful!") {
-          // Success case
-          setLoadingSpeakers(prev => ({
-            ...prev,
-            [mac]: {
-              action: 'connect',
-              statusMessage,
+              statusMessage: "Connection successful!",
               success: true
             }
           }));
@@ -312,21 +312,76 @@ export default function SpeakerConfigScreen() {
           
           // Clear after 3 seconds
           setTimeout(() => {
+            console.log(`[Speaker] Clearing success overlay for ${mac}`);
             setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
+            
+            // Also clear from processed list after a delay to allow reconnections
+            setTimeout(() => {
+              setProcessedConnections(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(mac);
+                return newSet;
+              });
+            }, 5000);
           }, 3000);
-        } else {
-          // Regular status update
+        }
+      }
+      
+      // Speaker disconnected
+      else if (!isConnected && currentStatus === 'disconnect') {
+        // Prevent processing the same disconnection multiple times
+        if (!processedDisconnections.has(mac)) {
+          console.log(`[Speaker] Confirming disconnection success for ${mac}`);
+          
+          // Mark this disconnection as processed
+          setProcessedDisconnections(prev => {
+            const newSet = new Set(prev);
+            newSet.add(mac);
+            return newSet;
+          });
+          
+          // Show success status
           setLoadingSpeakers(prev => ({
             ...prev,
             [mac]: {
-              action: 'connect',
-              statusMessage
+              action: 'disconnect',
+              statusMessage: "Speaker disconnected successfully",
+              success: true
             }
           }));
+          
+          // Update local state
+          setSettings(prev => {
+            const updatedSettings = { ...prev };
+            if (updatedSettings[mac]) {
+              updatedSettings[mac].isConnected = false;
+            }
+            return updatedSettings;
+          });
+          
+          // Update database
+          if (configIDParam) {
+            updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
+          }
+          
+          // Clear after 2 seconds
+          setTimeout(() => {
+            console.log(`[Speaker] Clearing disconnect overlay for ${mac}`);
+            setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
+            
+            // Also clear from processed list after a delay to allow reconnections
+            setTimeout(() => {
+              setProcessedDisconnections(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(mac);
+                return newSet;
+              });
+            }, 5000);
+          }, 2000);
         }
       }
-    }
-  }, [connectionStatus, connectedSpeakers, configIDParam]);
+    });
+  }, [piStatus, connectedSpeakers, configIDParam, loadingSpeakers, processedConnections, processedDisconnections]);
 
   const handleVolumeChangeWrapper = async (mac: string, newVolume: number, isSlidingComplete: boolean) => {
     await handleVolumeChange(
@@ -398,6 +453,13 @@ export default function SpeakerConfigScreen() {
   };
 
   const handleConnectOne = async (mac: string) => {
+    // Reset the processed state for this MAC when starting a new connect
+    setProcessedConnections(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(mac);
+      return newSet;
+    });
+    
     console.log('handleConnectOne triggered for mac:', mac);
     
     if (!connectedDevice) {
@@ -439,10 +501,10 @@ export default function SpeakerConfigScreen() {
           latency: settings[mac]?.latency || 100,
           balance: sliderValues[mac]?.balance || 0.5
         },
-        allowedMacs  // Pass the allowed MACs
+        allowedMacs
       );
       
-      // Set a fallback timeout in case no notification is received - changed to 2 minutes
+      // Set a fallback timeout in case no notification is received
       setTimeout(() => {
         setLoadingSpeakers(prev => {
           // Only clear if still in the initial state
@@ -451,7 +513,7 @@ export default function SpeakerConfigScreen() {
           }
           return prev;
         });
-      }, 120000); // 2 minute timeout (120000ms)
+      }, 120000); // 2 minute timeout
     } catch (error) {
       console.error("Error connecting speaker:", error);
       
@@ -470,6 +532,13 @@ export default function SpeakerConfigScreen() {
   };
 
   const handleDisconnectOne = async (mac: string) => {
+    // Reset the processed state for this MAC when starting a new disconnect
+    setProcessedDisconnections(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(mac);
+      return newSet;
+    });
+    
     // Show loading indicator overlay on the speaker card
     setLoadingSpeakers(prev => ({ ...prev, [mac]: { 
       action: 'disconnect',
@@ -485,39 +554,31 @@ export default function SpeakerConfigScreen() {
     try {
       await bleDisconnectOne(connectedDevice, mac);
       
-      // Set a fallback timeout in case no notification is received - changed to 2 minutes
+      // Set a fallback timeout in case no notification is received
       setTimeout(() => {
         setLoadingSpeakers(prev => {
-          // Only update if still in the initial state
+          // Only update if still in the initial disconnecting state
           if (prev[mac]?.action === 'disconnect' && prev[mac]?.statusMessage === "Disconnecting speaker...") {
-            // Update the speaker connection state in settings to disconnected
-            setSettings(prevSettings => {
-              const updated = { ...prevSettings };
-              if (updated[mac]) {
-                updated[mac].isConnected = false;
-              }
-              return updated;
-            });
-            
-            // Update the database if needed
-            if (configIDParam) {
-              updateSpeakerConnectionStatus(Number(configIDParam), mac, false);
-            }
-            
+            console.log(`[Speaker] Disconnect fallback timeout triggered for ${mac}`);
             return { ...prev, [mac]: { 
               action: 'disconnect',
-              statusMessage: "Speaker disconnected successfully",
-              success: true
+              statusMessage: "Disconnect may have failed. Please try again.",
+              error: "No confirmation received from device."
             }};
           }
           return prev;
         });
         
-        // And clear it after 2 more seconds
+        // Clear the error after 5 seconds
         setTimeout(() => {
-          setLoadingSpeakers(prev => ({ ...prev, [mac]: null }));
-        }, 2000);
-      }, 120000); // 2 minute timeout (120000ms)
+          setLoadingSpeakers(prev => {
+            if (prev[mac]?.error === "No confirmation received from device.") {
+              return { ...prev, [mac]: null };
+            }
+            return prev;
+          });
+        }, 5000);
+      }, 120000); // 2 minute timeout
     } catch (error) {
       console.error("Error disconnecting speaker:", error);
       
