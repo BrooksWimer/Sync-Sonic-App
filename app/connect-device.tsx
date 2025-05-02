@@ -4,8 +4,8 @@ import { TouchableOpacity, FlatList, Alert, View, StyleSheet } from "react-nativ
 import { router } from "expo-router"
 import { useBLEContext } from "../contexts/BLEContext"
 import { Device } from "react-native-ble-plx"
-import { TopBar } from "../components/TopBar"
-import { Loader } from '../components/Loader';
+import { TopBar } from "../components/topbar-variants/TopBar"
+import { Loader } from '../components/loaders/Loader';
 
 
 

@@ -4,16 +4,16 @@ import { Platform } from 'react-native';
 import { Alert } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
 import { deleteConfiguration, getConfigurations, getSpeakersFull } from '@/utils/database';
-import { TopBar } from '@/components/TopBar';
+import { TopBar } from '@/components/topbar-variants/TopBar';
 import Animated from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useBLEContext } from '../contexts/BLEContext';
 import * as Haptics from 'expo-haptics';
-import { Header } from '@/components/TitleText';
-import { Body } from '@/components/BodyText';
-import { ConfigurationCard } from '@/components/ConfigurationCard';
+import { Header } from '@/components/texts/TitleText';
+import { Body } from '@/components/texts/BodyText';
+import { ConfigurationCard } from '@/components/cards/ConfigurationCard';
 import { useAppColors } from '@/styles/useAppColors';
-import { FloatingAddButton } from '@/components/AddButton';
+import { FloatingAddButton } from '@/components/buttons/AddButton';
 
 export default function Home() {
   const router = useRouter(); // page changing

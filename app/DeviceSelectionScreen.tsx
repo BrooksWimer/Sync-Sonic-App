@@ -14,15 +14,15 @@ import {
 } from '@/utils/database';
 import { H1, useThemeName, YStack, View } from 'tamagui';
 import { useBLEContext } from '../contexts/BLEContext';
-import { BottomButton } from '@/components/BottomButton';
+import { BottomButton } from '@/components/buttons/BottomButton';
 import {
   startScanDevices,
   stopScanDevices,
   fetchPairedDevices
 } from '../utils/ble_functions';
-import { TopBar } from '@/components/TopBar';
-import { Body } from '@/components/BodyText';
-import { Header } from '@/components/TitleText';
+import { TopBar } from '@/components/topbar-variants/TopBar';
+import { Body } from '@/components/texts/BodyText';
+import { Header } from '@/components/texts/TitleText';
 
 type SpeakerDevice = {
   mac: string;

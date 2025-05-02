@@ -6,7 +6,7 @@ import {
 import { Platform, SafeAreaView }    from "react-native";
 import { router }   from "expo-router";
 import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "../utils/database"
-import { TopBarStart } from "../components/TopBarStart"
+import { TopBarStart } from "../components/topbar-variants/TopBarStart"
 
 import { useBLEContext }     from "@/contexts/BLEContext";
 import { SERVICE_UUID }      from "@/utils/ble_constants";
@@ -16,10 +16,10 @@ import {
   removeLastConnectedDevice
 } from "@/utils/database";
 import { Device } from 'react-native-ble-plx';
-import { BottomButton } from "@/components/BottomButton";
-import { Body } from '@/components/BodyText';
+import { BottomButton } from "@/components/buttons/BottomButton";
+import { Body } from '@/components/texts/BodyText';
 import { useAppColors } from '@/styles/useAppColors';
-import { Header } from "@/components/TitleText";
+import { Header } from "@/components/texts/TitleText";
 
 
 export default function Index() {

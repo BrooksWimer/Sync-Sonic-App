@@ -1,7 +1,7 @@
 // components/DeviceCard.tsx
 import { H1, YStack, XStack, Button } from 'tamagui';
 import { Wifi, SquareX } from '@tamagui/lucide-icons';
-import { useAppColors } from '../styles/useAppColors';
+import { useAppColors } from '../../styles/useAppColors';
 
 export const DeviceCard = ({ device, onRemove }: { device: any, onRemove: () => void }) => {
   const { bg, tc, stc } = useAppColors();

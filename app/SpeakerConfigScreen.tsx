@@ -12,7 +12,7 @@ import {
   getSpeakersFull
 } from '@/utils/database';
 import { useTheme, useThemeName, YStack, Text } from 'tamagui';
-import { TopBar } from '@/components/TopBar';
+import { TopBar } from '@/components/topbar-variants/TopBar';
 import { 
   handleVolumeChange,
   handleLatencyChange
@@ -21,8 +21,8 @@ import { useBLEContext, } from '@/contexts/BLEContext';
 import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
 import LottieView from 'lottie-react-native';
 import { Audio } from 'expo-av';
-import { Header } from '@/components/TitleText';
-import { Body } from '@/components/BodyText';
+import { Header } from '@/components/texts/TitleText';
+import { Body } from '@/components/texts/BodyText';
 
 
 export default function SpeakerConfigScreen() {

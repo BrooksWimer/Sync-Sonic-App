@@ -4,10 +4,10 @@ import { router, useFocusEffect } from "expo-router";
 import { useState, useCallback } from 'react';
 import { Platform } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { TopBar } from '@/components/TopBar';
-import { BottomButton } from '@/components/BottomButton';
-import { Header } from '@/components/TitleText';
-import { DeviceCard } from '@/components/DeviceCard';
+import { TopBar } from '@/components/topbar-variants/TopBar';
+import { BottomButton } from '@/components/buttons/BottomButton';
+import { Header } from '@/components/texts/TitleText';
+import { DeviceCard } from '@/components/cards/DeviceCard';
 import { useAppColors } from '@/styles/useAppColors';
 
 export default function Config() {

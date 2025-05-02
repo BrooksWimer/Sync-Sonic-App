@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, ViewStyle } from 'react-native';
-import { useAppColors } from '../styles/useAppColors';
+import { useAppColors } from '../../styles/useAppColors';
 
 type LoaderProps = {
   size?: number | 'small' | 'large';

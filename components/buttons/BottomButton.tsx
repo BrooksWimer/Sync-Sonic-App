@@ -1,7 +1,7 @@
 // components/BottomButton.tsx
 import { Button } from 'tamagui';
 import { ActivityIndicator, Text } from 'react-native';
-import { useAppColors } from '../styles/useAppColors';
+import { useAppColors } from '../../styles/useAppColors';
 import React from 'react';
 
 type BottomButtonProps = {

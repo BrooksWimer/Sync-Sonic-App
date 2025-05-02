@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text } from 'tamagui';
-import { useAppColors } from '../styles/useAppColors';
+import { useAppColors } from '../../styles/useAppColors';
 
 type BodyProps = {
   children: React.ReactNode;
