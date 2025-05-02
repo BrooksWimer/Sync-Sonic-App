@@ -719,10 +719,10 @@ export default function SpeakerConfigScreen() {
                                                 borderWidth: 1, 
                                                 borderColor: stc,
                                                 borderRadius: 8, 
-                  shadowColor: themeName === 'dark' ? '#000000' : stc,
+                                                shadowColor: tc,
                                                 shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: themeName === 'dark' ? 0.9 : 0.5,
-                  shadowRadius: themeName === 'dark' ? 12 : 8,
+                  shadowOpacity: 0.5,
+                  shadowRadius: 8,
                   elevation: themeName === 'dark' ? 15 : 10,
                 }}>
                   

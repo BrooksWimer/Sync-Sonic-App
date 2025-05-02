@@ -74,11 +74,6 @@ export const ConfigurationCard = ({ config, index, speakerStatuses, onDelete }: 
         alignItems: 'center',
         marginTop: index === 0 ? 15 : 0,
         transform: [{ scale: isPressed ? 1.03 : 1 }],
-        shadowColor: index === 0 ? green : tc,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: isPressed ? 1 : 0.8,
-        shadowRadius: isPressed ? 20 : 8,
-        elevation: isPressed ? 10 : 5,
         overflow: 'hidden',
       }}
     >

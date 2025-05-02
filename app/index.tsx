@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
 import {
-  YStack, Text, Button, Image,
+  YStack, Text, Button, H1, Image,
   useThemeName, useTheme
 } from "tamagui";
-import { Platform }    from "react-native";
+import { Platform, SafeAreaView }    from "react-native";
 import { router }   from "expo-router";
-import { setupDatabase } from "../utils/database"
+import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "../utils/database"
 import { TopBarStart } from "../components/TopBarStart"
 
 import { useBLEContext }     from "@/contexts/BLEContext";
 import { SERVICE_UUID }      from "@/utils/ble_constants";
 import {
   getLastConnectedDevice,
+  saveLastConnectedDevice,
   removeLastConnectedDevice
 } from "@/utils/database";
 import { Device } from 'react-native-ble-plx';
@@ -132,27 +133,29 @@ export default function Index() {
         setTimeout(() => resolve(null), 3000);
       });
 
-        if (!foundDevice) {
-          console.error("❌ Could not find Pi advertising our GATT service");
-          setConnecting(false);
-          router.push('/connect-device');
-          return;
-        }
-
-        deviceConnection = await connectToDevice(foundDevice);
-        console.log("✅ Scanned & connected to Pi", foundDevice.id);
-        await ensurePiNotifications(deviceConnection, handleNotification);
+      if (!foundDevice) {
+        console.error("❌ Could not find Pi advertising our GATT service");
         setConnecting(false);
         router.push('/connect-device');
+        return;
+      }
+
+      deviceConnection = await connectToDevice(foundDevice);
+      console.log("✅ Scanned & connected to Pi", foundDevice.id);
+      setConnecting(false);
     }
   }
+
+  const goHome = () => {
+    router.push('/home');
+  }
+
 
   return (
       <YStack flex={1} justifyContent="space-between" backgroundColor={bg as any}>
         {/* Top Bar without Back Button -----------------------------------------------------------------*/}
         <TopBarStart/>
 
-       
         <YStack alignItems="center" paddingTop="$6" paddingBottom="$4" space="$4">
           {/* Header -----------------------------------------------------------------------------------*/}
           <Header title="Welcome"/>
@@ -162,12 +165,14 @@ export default function Index() {
             To stream music from your phone, please turn on Bluetooth and pair it with the box.
           </Body>
 
+          {/* Graphic -----------------------------------------------------------------------------------*/}
           <Image
             source={imageSource}
             style={{ width: 250, height: 250 }}
             resizeMode="contain"
           />
-        </YStack>
+
+      </YStack>
 
        
         

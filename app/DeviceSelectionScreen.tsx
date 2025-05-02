@@ -21,6 +21,7 @@ import {
   fetchPairedDevices
 } from '../utils/ble_functions';
 import { TopBar } from '@/components/TopBar';
+import { Body } from '@/components/BodyText';
 
 type SpeakerDevice = {
   mac: string;
@@ -188,41 +189,49 @@ export default function DeviceSelectionScreen() {
         <H1 style={{ color: tc, fontFamily: 'Finlandica', fontSize: 18 }}>Available Speakers</H1>
       </View>
 
-      {scanLoading ? (
-        <ActivityIndicator size="large" color={pc} />
-      ) : scanError ? (
-        <View style={{ padding: 10, alignItems: 'center' }}>
-          <Text style={{ color: 'red' }}>{scanError}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={scannedDevices}
-          keyExtractor={(d: SpeakerDevice) => d.mac}
-          renderItem={({ item }: { item: SpeakerDevice }) => renderItem(item, selectedScanned, toggleScanned)}
-          ListEmptyComponent={<Text style={{ textAlign: 'center', padding: 10 }}>No devices found</Text>}
-          style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
-        />
-      )}
+      <FlatList
+      data={scannedDevices}
+      keyExtractor={(d: SpeakerDevice) => d.mac}
+      renderItem={({ item }: { item: SpeakerDevice }) => renderItem(item, selectedScanned, toggleScanned)}
+      ListEmptyComponent={
+        scanLoading ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={pc} />
+          </View>
+        ) : scanError ? (
+          <Text style={{ color: 'red', textAlign: 'center', padding: 10 }}>{scanError}</Text>
+        ) : (
+          <Text style={{ textAlign: 'center', padding: 10 }}>No devices found</Text>
+        )
+      }
+      style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
+    />
 
       <View style={{ padding: 10, alignItems: 'center' }}>
         <H1 style={{ color: tc, fontFamily: 'Finlandica', fontSize: 18 }}>Paired Speakers</H1>
       </View>
 
       {pairedLoading ? (
-        <ActivityIndicator size="large" color={pc} />
-      ) : pairedError ? (
-        <View style={{ padding: 10, alignItems: 'center' }}>
-          <Text style={{ color: 'red' }}>{pairedError}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={pairedDevices}
-          keyExtractor={(d: SpeakerDevice) => d.mac}
-          renderItem={({ item }: { item: SpeakerDevice }) => renderItem(item, selectedSaved, toggleSaved)}
-          ListEmptyComponent={<Text style={{ textAlign: 'center', padding: 10 }}>No paired speakers found</Text>}
-          style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
-        />
-      )}
+      <ActivityIndicator size="large" color={pc} />
+    ) : pairedError ? (
+      <View style={{ padding: 10, alignItems: 'center' }}>
+        <Text style={{ color: 'red' }}>{pairedError}</Text>
+      </View>
+    ) : (
+      <FlatList
+        data={pairedDevices}
+        keyExtractor={(d: SpeakerDevice) => d.mac}
+        renderItem={({ item }: { item: SpeakerDevice }) => renderItem(item, selectedSaved, toggleSaved)}
+        ListEmptyComponent={
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20 }}>
+            <Body>No paired speakers found</Body>
+          </View>
+        }
+        style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
+        contentContainerStyle={pairedDevices.length === 0 ? { flexGrow: 1 } : undefined}
+      />
+    )}
+
 
       <BottomButton
         onPress={handleCreate}

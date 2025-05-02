@@ -89,7 +89,13 @@ export default function Home() {
 
 
       {/* ScrollView for Configurations ------------------------------------------------------------*/}
-      <ScrollView style={{ paddingHorizontal: 20, marginBottom: 98 }}>
+      <ScrollView style={{ paddingHorizontal: 20, 
+              marginBottom: 98, 
+              shadowColor: tc,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.5,
+              shadowRadius: 8,
+              elevation: 15,}}>
           {configurations.length === 0 ? (
             <H1
               style={{
