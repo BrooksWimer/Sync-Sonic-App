@@ -56,6 +56,7 @@ export default function Config() {
         if (configID) {
             deleteSpeakerById(device.id);
         }
+        
         // Just update the local state to remove the device - no backend calls
         setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
     };

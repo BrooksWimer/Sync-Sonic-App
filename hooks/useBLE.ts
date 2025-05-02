@@ -97,6 +97,8 @@ export function useBLE(onNotification?: NotificationHandler) {
   const [updateTimeout, setUpdateTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
+  const [scannedDevices, setScannedDevices] = useState<Array<{ mac: string; name: string; paired?: boolean }>>([]);
+  const [pairedDevices, setPairedDevices] = useState<Array<{ mac: string; name: string; paired?: boolean }>>([]);
 
   const clearConnectionStatus = useCallback(() => {
     setConnectionStatus(null);
@@ -137,10 +139,32 @@ export function useBLE(onNotification?: NotificationHandler) {
 
       switch (opcode) {
         case MESSAGE_TYPES.SUCCESS:
-          if (payload.connected) {
+          if (payload.scanning !== undefined) {
+            // ACK for SCAN_START/STOP – nothing to do
+          } else if (payload.connected) {
+            // List of currently connected speakers
             updateDatabaseConnectionStates(payload.connected);
+          } else {
+            // Assume this is the paired-device list coming from GET_PAIRED_DEVICES (0x64)
+            const list: { mac: string; name: string; paired?: boolean }[] =
+              Object.entries(payload).map(([mac, name]) => ({
+                mac,
+                name: name as string,
+                paired: true,
+              }));
+            setPairedDevices(list);
           }
           break;
+
+        case MESSAGE_TYPES.SCAN_DEVICES: {
+            // payload.device === { mac, name, paired }
+            const dev = payload.device as { mac: string; name: string; paired: boolean };
+            setScannedDevices(old => {
+              if (old.find(d => d.mac === dev.mac)) return old;
+              return [...old, { mac: dev.mac, name: dev.name }];
+            });
+            break;
+          }
         
         case MESSAGE_TYPES.CONNECTION_STATUS_UPDATE:
           // Handle connection status update
@@ -350,6 +374,8 @@ export function useBLE(onNotification?: NotificationHandler) {
     );
   };
 
+  
+
   const stopScan = () => {
     console.log('Stopping BLE scan...');
     if (updateTimeout) {
@@ -487,6 +513,8 @@ const waitForPi = (): Promise<Device> =>
     connectionStatus,
     setConnectionStatus,
     clearConnectionStatus,
+    scannedDevices,
+    pairedDevices,
   };
 }
 

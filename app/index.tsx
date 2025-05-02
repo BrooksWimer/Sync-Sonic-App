@@ -160,6 +160,7 @@ export default function Index() {
 
         deviceConnection = await connectToDevice(foundDevice);
         console.log("✅ Scanned & connected to Pi", foundDevice.id);
+        await ensurePiNotifications(deviceConnection, handleNotification);
         setConnecting(false);
       }
     } catch (error) {
