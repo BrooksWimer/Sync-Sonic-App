@@ -14,8 +14,8 @@ export const TopBar = () => {
   const theme = useTheme();
   
   const logo = themeName === 'dark'
-    ? require('../assets/images/horizontalLogoDark.png')
-    : require('../assets/images/horizontalLogoLight.png')
+    ? require('../../assets/images/horizontalLogoDark.png')
+    : require('../../assets/images/horizontalLogoLight.png')
   
   const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
   const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
