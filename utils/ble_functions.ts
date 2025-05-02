@@ -160,60 +160,12 @@ export async function bleDisconnectOne(
     return bleWrite(device, MESSAGE_TYPES.DISCONNECT, payload);
   }
 
-export async function fetchPairedDevices(device: Device): Promise<Record<string, string>> {
-  try {
-    console.log('=== Fetching Paired Devices ===');
-    console.log('Using opcode:', MESSAGE_TYPES.GET_PAIRED_DEVICES);
-    console.log('Opcode in hex:', '0x' + MESSAGE_TYPES.GET_PAIRED_DEVICES.toString(16).padStart(2, '0'));
-    
-    // Send the GET_PAIRED_DEVICES message with an empty payload
+   // utils/ble_functions.ts
+export async function fetchPairedDevices(device: Device): Promise<void> {
+    // just fire-and-forget
     await bleWrite(device, MESSAGE_TYPES.GET_PAIRED_DEVICES, {});
-    
-    // Wait for the response
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for paired devices response'));
-      }, 5000);
-
-      const handleResponse = (error: any, characteristic: any) => {
-        if (error) {
-          clearTimeout(timeout);
-          reject(error);
-          return;
-        }
-
-        try {
-          const decoded = decodeMessage(characteristic.value);
-          if (!decoded) return;
-
-          console.log('Received paired devices response:', decoded);
-
-          if (decoded.messageType === MESSAGE_TYPES.SUCCESS) {
-            clearTimeout(timeout);
-            // The devices are in the data object directly
-            resolve(decoded.data);
-          } else if (decoded.messageType === MESSAGE_TYPES.FAILURE) {
-            clearTimeout(timeout);
-            reject(new Error('Failed to get paired devices'));
-          }
-        } catch (error) {
-          clearTimeout(timeout);
-          reject(error);
-        }
-      };
-
-      // Monitor for the response
-      device.monitorCharacteristicForService(
-        SERVICE_UUID,
-        CHARACTERISTIC_UUID,
-        handleResponse
-      );
-    });
-  } catch (error) {
-    console.error('Error fetching paired devices:', error);
-    return {};
   }
-}
+  
 
 /**
  * Sets the latency for a specific speaker
@@ -317,3 +269,63 @@ export const startClassicPairing = async (device: Device): Promise<void> => {
 };
 
 
+
+/**
+ * Fetch list of nearby classic-BT devices via Pi's GATT SCAN_DEVICES endpoint
+ * @param {Device} device BLE Device connected to the Pi
+ * @returns {Promise<{devices:Array<{mac:string,name:string,paired:boolean}>}>}
+ */
+export async function fetchScanDevices(
+  device: Device
+): Promise<{ devices: Array<{ mac: string; name: string; paired: boolean }> }> {
+  return new Promise(async (resolve, reject) => {
+    // Subscribe to notifications
+    const subscription = device.monitorCharacteristicForService(
+      SERVICE_UUID,
+      CHARACTERISTIC_UUID,
+      (error, characteristic) => {
+        if (error) {
+          subscription.remove();
+          return reject(error);
+        }
+        if (characteristic?.value) {
+          const decoded = decodeMessage(characteristic.value);
+          if (decoded && decoded.messageType === MESSAGE_TYPES.SCAN_DEVICES) {
+            subscription.remove();
+            return resolve(decoded.data as { devices: Array<{ mac: string; name: string; paired: boolean }> });
+          }
+        }
+      }
+    );
+
+    // Build and send the SCAN_DEVICES command (no payload)
+    const cmdBuf = Buffer.from([MESSAGE_TYPES.SCAN_DEVICES]);
+    const base64 = cmdBuf.toString('base64');
+    try {
+      await device.writeCharacteristicWithResponseForService(
+        SERVICE_UUID,
+        CHARACTERISTIC_UUID,
+        base64
+      );
+    } catch (err) {
+      subscription.remove();
+      reject(err);
+    }
+  });
+}
+
+/**
+ * Send the SCAN_START opcode to the Pi to begin streaming discovered devices.
+ */
+export async function startScanDevices(device: Device): Promise<void> {
+  console.log('🛫 Starting streaming scan');
+  return bleWrite(device, MESSAGE_TYPES.SCAN_START, {});
+}
+
+/**
+ * Send the SCAN_STOP opcode to the Pi to stop streaming discovered devices.
+ */
+export async function stopScanDevices(device: Device): Promise<void> {
+  console.log('🛑 Stopping streaming scan');
+  return bleWrite(device, MESSAGE_TYPES.SCAN_STOP, {});
+}

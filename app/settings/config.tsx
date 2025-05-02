@@ -49,29 +49,8 @@ export default function Config() {
         if (configID) {
             deleteSpeakerById(device.id);
         }
-        // Build payload to disconnect only this speaker.
-        const payload = {
-            configID: configID,
-            configName: configName,
-            speakers: { [device.mac]: device.name },
-            settings: {} // Assuming no settings needed for disconnecting a single speaker.
-        };
-        try {
-            const response = await fetch(PI_API_URL+"/disconnect", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            const result = await response.json();
-            console.log("Disconnect result:", result);
-        } catch (error) {
-            console.error("Error disconnecting device:", error);
-            Alert.alert("Error", "There was an error disconnecting the device.");
-        }
-        // Update the local state to remove the device.
+        
+        // Just update the local state to remove the device - no backend calls
         setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
     };
 
