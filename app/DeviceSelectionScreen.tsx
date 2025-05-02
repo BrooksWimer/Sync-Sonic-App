@@ -26,7 +26,6 @@ import { TopBar } from '@/components/TopBar';
 import { AlignCenter } from '@tamagui/lucide-icons';
 import { Device } from 'react-native-ble-plx';
 import LottieView from 'lottie-react-native';
-import * as Font from 'expo-font';
 import { Shadow } from 'react-native-shadow-2';
 import { useBLEContext } from '../contexts/BLEContext';
 import { fetchPairedDevices } from '../utils/ble_functions';

@@ -9,7 +9,7 @@ import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSetting
 import { TopBarStart } from "../components/TopBarStart"
 
 import { useBLEContext }     from "@/contexts/BLEContext";
-import { SERVICE_UUID }      from "@/utils/ble_constants";
+import { SERVICE_UUID, BLE_DEVICE_NAME }      from "@/utils/ble_constants";
 import {
   getLastConnectedDevice,
   saveLastConnectedDevice,
@@ -17,6 +17,7 @@ import {
 } from "@/utils/database";
 import { Device } from 'react-native-ble-plx';
 import { BottomButton } from "@/components/BottomButton";
+import { Alert } from "react-native";
 
 
 export default function Index() {
@@ -35,14 +36,14 @@ export default function Index() {
     : require('../assets/images/welcomeGraphicLight.png');
 
 
-   //if android
-      let abuffer = 20
-      let iosbuffer=0
-      //else, 
-      if (Platform.OS === 'ios') {
-            abuffer = 0
-            iosbuffer=20
-        }
+  //if android
+  let abuffer = 20
+  let iosbuffer = 0
+  //else, 
+  if (Platform.OS === 'ios') {
+    abuffer = 0
+    iosbuffer = 20
+  }
 
   const loaderSource = themeName === 'dark'
   ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
@@ -59,7 +60,8 @@ export default function Index() {
     allDevices,              // filled by the scan
     waitForPi,
     ensurePiNotifications,
-    handleNotification
+    handleNotification,
+    requestPermissions
   } = useBLEContext();
 
   const [connecting, setConnecting] = useState(false);
@@ -74,77 +76,100 @@ export default function Index() {
   /* -------------------------------------------------------------- */
   const handleConnect = async () => {
     setConnecting(true);
-    let deviceConnection = null;
-  
-    // 1) Fast-path: check cached ID's advertised services _before_ connect
-    const lastId = await getLastConnectedDevice();
-    if (lastId) {
-      try {
-        const [cached] = await manager.devices([lastId]);
-        if (cached) {
-          console.log("🔍 cached device info:", cached.id, cached.name, cached.serviceUUIDs);
-  
-          // only proceed if it's actually our Pi (by UUID & optional name)
-          const hasSvc = cached.serviceUUIDs?.includes(SERVICE_UUID);
-          const isPi   = cached.name?.startsWith("Sync-Sonic");  // or whatever your Pi advertises
-          if (hasSvc && isPi) {
-            console.log("✅ Fast-path: cached device looks good, connecting...");
-            const conn = await connectToDevice(cached);
-            await conn.discoverAllServicesAndCharacteristics();
-            deviceConnection = conn;
-            await ensurePiNotifications(conn, handleNotification);
-          } else {
-            console.warn("⚠️ Cached device isn't our Pi—dropping it");
-            await removeLastConnectedDevice();  // clear bad cache
-          }
-        }
-      } catch (e) {
-        console.log("⚠️ Fast reconnect attempt threw:", e);
-        await removeLastConnectedDevice();    // clear cache on error
-      }
-    }
-  
-       // 2) Full scan if fast path failed
-    if (!deviceConnection) {
-      console.log("🔎 Scanning for Pi advertising SERVICE_UUID…");
-      
-      // 🛑 STOP any existing scan first
-      manager.stopDeviceScan();
-
-      const foundDevice = await new Promise<Device | null>((resolve) => {
-        manager.startDeviceScan(
-          [SERVICE_UUID],
-          { allowDuplicates: false },
-          (error, device) => {
-            if (error) {
-              console.error("Scan error", error);
-              return;
-            }
-            if (
-              device &&
-              device.serviceUUIDs?.includes(SERVICE_UUID) &&
-              device.name?.startsWith("Sync-Sonic")
-            ) {
-              console.log("🔔 Found Pi during scan:", device.id, device.name);
-              manager.stopDeviceScan();
-              resolve(device);
-            }
-          }
-        );
-        // Timeout after 3 seconds
-        setTimeout(() => resolve(null), 3000);
-      });
-
-      if (!foundDevice) {
-        console.error("❌ Could not find Pi advertising our GATT service");
+    
+    try {
+      // First check permissions
+      const permissionsGranted = await requestPermissions();
+      if (!permissionsGranted) {
         setConnecting(false);
-        router.push('/connect-device');
+        Alert.alert(
+          "Bluetooth Permissions Required",
+          "Please enable Bluetooth permissions to connect to your SyncBox.",
+          [{ text: "OK" }]
+        );
         return;
       }
 
-      deviceConnection = await connectToDevice(foundDevice);
-      console.log("✅ Scanned & connected to Pi", foundDevice.id);
+      let deviceConnection = null;
+    
+      // 1) Fast-path: check cached ID's advertised services _before_ connect
+      const lastId = await getLastConnectedDevice();
+      if (lastId) {
+        try {
+          const [cached] = await manager.devices([lastId]);
+          if (cached) {
+            console.log("🔍 cached device info:", cached.id, cached.name, cached.serviceUUIDs);
+    
+            // only proceed if it's actually our Pi (by UUID & optional name)
+            const hasSvc = cached.serviceUUIDs?.includes(SERVICE_UUID);
+            const isPi = cached.name?.startsWith(BLE_DEVICE_NAME);
+            if (hasSvc && isPi) {
+              console.log("✅ Fast-path: cached device looks good, connecting...");
+              const conn = await connectToDevice(cached);
+              await conn.discoverAllServicesAndCharacteristics();
+              deviceConnection = conn;
+              await ensurePiNotifications(conn, handleNotification);
+            } else {
+              console.warn("⚠️ Cached device isn't our Pi—dropping it");
+              await removeLastConnectedDevice();  // clear bad cache
+            }
+          }
+        } catch (e) {
+          console.log("⚠️ Fast reconnect attempt threw:", e);
+          await removeLastConnectedDevice();    // clear cache on error
+        }
+      }
+    
+         // 2) Full scan if fast path failed
+      if (!deviceConnection) {
+        console.log("🔎 Scanning for Pi advertising SERVICE_UUID…");
+        
+        // 🛑 STOP any existing scan first
+        manager.stopDeviceScan();
+
+        const foundDevice = await new Promise<Device | null>((resolve) => {
+          manager.startDeviceScan(
+            [SERVICE_UUID],
+            { allowDuplicates: false },
+            (error, device) => {
+              if (error) {
+                console.error("Scan error", error);
+                return;
+              }
+              if (
+                device &&
+                device.serviceUUIDs?.includes(SERVICE_UUID) &&
+                device.name?.startsWith(BLE_DEVICE_NAME)
+              ) {
+                console.log("🔔 Found Pi during scan:", device.id, device.name);
+                manager.stopDeviceScan();
+                resolve(device);
+              }
+            }
+          );
+          // Timeout after 3 seconds
+          setTimeout(() => resolve(null), 3000);
+        });
+
+        if (!foundDevice) {
+          console.error("❌ Could not find Pi advertising our GATT service");
+          setConnecting(false);
+          router.push('/connect-device');
+          return;
+        }
+
+        deviceConnection = await connectToDevice(foundDevice);
+        console.log("✅ Scanned & connected to Pi", foundDevice.id);
+        setConnecting(false);
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
       setConnecting(false);
+      Alert.alert(
+        "Connection Error",
+        "Failed to connect to SyncBox. Please try again.",
+        [{ text: "OK" }]
+      );
     }
   }
 
@@ -193,10 +218,6 @@ export default function Index() {
       {/* Bottom Buttons */}
       <YStack space="$4" paddingBottom="$4">
 
-
-
-        
-
         {/* REMOVE THIS EVENTUALLY */}
         <Button
           onPress={goHome}
@@ -219,7 +240,7 @@ export default function Index() {
           onPress={handleConnect}
           disabled={connecting}
           isLoading={connecting}
-          text={connecting ? "Connecting..." : "Connect to Pi"}
+          text={connecting ? "Connecting..." : "Connect to SyncBox"}
           fontFamily="Inter"
         />
 

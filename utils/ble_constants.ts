@@ -1,5 +1,5 @@
 // BLE Constants
-export const RPI_DEVICE_NAME = "Sync-Sonic";
+export const BLE_DEVICE_NAME = "Sync-Sonic";
 export const SERVICE_UUID = "19b10000-e8f2-537e-4f6c-d104768a1214";
 export const CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1217";
 

@@ -34,7 +34,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: '#ffffff',
     },
     permissions: [
-      // You already have BLUETOOTH_CONNECT; add SCAN if you need it:
       'android.permission.BLUETOOTH',
       'android.permission.BLUETOOTH_ADMIN',
       'android.permission.BLUETOOTH_CONNECT',

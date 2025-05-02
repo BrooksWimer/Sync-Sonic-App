@@ -1,9 +1,9 @@
 import { useSearchParams } from 'expo-router/build/hooks';
-import {Wifi, WifiOff, Bluetooth, BluetoothOff, Volume, Volume1, Volume2, VolumeX } from '@tamagui/lucide-icons'
+import { Volume1, Volume2, VolumeX } from '@tamagui/lucide-icons'
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Alert, TouchableOpacity, ScrollView, ActivityIndicator, View, Dimensions, Platform } from 'react-native';
+import { StyleSheet, Alert, TouchableOpacity, ScrollView, View, Dimensions, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { useRouter, useNavigation, Link } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   addConfiguration, 
@@ -24,14 +24,10 @@ import {
   handleVolumeChange,
   handleLatencyChange
 } from '../utils/SpeakerFunctions';
-import { MESSAGE_TYPES, CHARACTERISTIC_UUID } from '@/utils/ble_constants';
 import { useBLEContext, } from '@/contexts/BLEContext';
 import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
 import LottieView from 'lottie-react-native';
-import * as Font from 'expo-font';
 import { useFocusEffect } from '@react-navigation/native';
-
-export const SERVICE_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0000';
 
 
 export default function SpeakerConfigScreen() {
@@ -42,24 +38,6 @@ export default function SpeakerConfigScreen() {
   const speakersStr = params.get('speakers'); // JSON string or null
   const configNameParam = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // may be undefined for a new config
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-    
-      useEffect(() => {
-        async function loadFonts() {
-          await Font.loadAsync({
-            'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
-            'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
-            'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
-            'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
-            'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
-            'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
-            'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
-          });
-          setFontsLoaded(true);
-        }
-    
-        loadFonts();
-      }, []);
   
 
   // Use only piStatus from BLEContext
@@ -107,7 +85,7 @@ export default function SpeakerConfigScreen() {
     if (!status || !status.action) return null;
     
     // Make overlay more opaque - reduced transparency
-    const bgColor = themeName === 'dark' ? 'rgba(37, 0, 71, 0.95)' : 'rgba(242, 232, 255, 0.95)';
+    const bgColor = themeName === 'dark' ? 'rgba(37, 0, 71, 0.85)' : 'rgba(242, 232, 255, 0.85)';
     const textColor = themeName === 'dark' ? '#F2E8FF' : '#26004E';
     
     // Use the same Lottie animation sources as ConnectionStatusOverlay
@@ -134,7 +112,7 @@ export default function SpeakerConfigScreen() {
           source={loaderSource}
           autoPlay
           loop
-          style={{ width: 120, height: 120 }}
+          style={{ width: 300, height: 300 }}
         />
         <Text style={{ 
           fontFamily: 'Finlandica', 
@@ -142,7 +120,7 @@ export default function SpeakerConfigScreen() {
           fontWeight: "bold", 
           color: textColor,
           textAlign: 'center',
-          marginTop: 16
+          marginTop: 10
         }}>
           {status.statusMessage || (status.action === 'connect' ? 'Connecting...' : 'Disconnecting...')}
         </Text>
@@ -764,6 +742,9 @@ export default function SpeakerConfigScreen() {
                     maximumTrackTintColor="#000000"
                     thumbTintColor="white" 
                   />
+
+                  {/* Connection status overlay - appears on top of the card when connecting/disconnecting */}
+                  {loadingSpeakers[mac] && <SpeakerCardOverlay mac={mac} status={loadingSpeakers[mac]} />}
                   
                   <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 18, letterSpacing: 1, color: tc, marginTop: 6 }}>
                     Latency: {settings[mac]?.latency ?? 100} ms

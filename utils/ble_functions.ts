@@ -33,27 +33,6 @@ function decodeMessage(value: any): { messageType: number; data: any } | null {
 
 /*
  * ────────────────────────────────────────────────────
- *  UUIDs (must match the Pi backend)
- * ────────────────────────────────────────────────────
- */
-export const BLE_DEVICE_NAME = 'SyncSonic';
-
-const VOLUME_UUID     = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0001';
-const CONNECT_UUID    = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0002';
-const DISCONNECT_UUID = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0003';
-const MUTE_UUID       = 'd8282b50-274e-4e5e-9b5c-e6c2cddd0004';
-
-/*
- * ────────────────────────────────────────────────────
- *  Cache the single BLE connection while music plays
- * ────────────────────────────────────────────────────
- */
-let connectedDevice: Device | null = null;
-
-
-
-/*
- * ────────────────────────────────────────────────────
  *  Generic write helper
  * ────────────────────────────────────────────────────
  */

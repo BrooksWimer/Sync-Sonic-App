@@ -10,12 +10,6 @@ import {
 } from "react-native-ble-plx";
 import { SERVICE_UUID, CHARACTERISTIC_UUID, MESSAGE_TYPES } from "@/utils/ble_constants";
 
-const bleManager = new BleManager({
-  restoreStateIdentifier: 'sync-sonic-ble',
-  restoreStateFunction: (restoredState) => {
-    console.log('BLE Manager state restored:', restoredState);
-  }
-});
 import { getConfigurations, getSpeakers, updateConnectionStatus, updateSpeakerConnectionStatus } from "@/utils/database";
 
 type NotificationHandler = (error: BleError | null, characteristic: Characteristic | null) => void;
@@ -90,6 +84,13 @@ function updateDatabaseConnectionStates(connectedMacs: string[], onUpdate?: () =
 }
 
 export function useBLE(onNotification?: NotificationHandler) {
+  const [bleManager] = useState(() => new BleManager({
+    restoreStateIdentifier: 'sync-sonic-ble',
+    restoreStateFunction: (restoredState) => {
+      console.log('BLE Manager state restored:', restoredState);
+    }
+  }));
+
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [pendingDevices, setPendingDevices] = useState<Device[]>([]);

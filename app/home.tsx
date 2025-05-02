@@ -8,7 +8,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteConfiguration, getConfigurations, getSpeakersFull } from '@/utils/database';
 import { TopBar } from '@/components/TopBar';
-import { handleDeleteConfig } from '@/utils/ConfigurationFunctions'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -31,14 +30,14 @@ export default function Home() {
   const [connecting, setConnecting] = useState(false);
   const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient)
 
-   //if android
-          let abuffer = 20
-          let iosbuffer=0
-          //else, 
-          if (Platform.OS === 'ios') {
-              abuffer = 0
-              iosbuffer=20
-          }
+  //if android
+  let abuffer = 20
+  let iosbuffer=0
+  //else, 
+  if (Platform.OS === 'ios') {
+      abuffer = 0
+      iosbuffer=20
+  }
 
   // Fetch configurations and their speaker statuses
   useFocusEffect(
