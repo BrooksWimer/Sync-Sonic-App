@@ -22,6 +22,7 @@ import {
 } from '../utils/ble_functions';
 import { TopBar } from '@/components/TopBar';
 import { Body } from '@/components/BodyText';
+import { Header } from '@/components/TitleText';
 
 type SpeakerDevice = {
   mac: string;
@@ -181,9 +182,7 @@ export default function DeviceSelectionScreen() {
   return (
     <YStack style={{ flex: 1, backgroundColor: bg }}>
       <TopBar />
-      <View style={{ padding: 10, alignItems: 'center' }}>
-        <H1 style={{ color: tc, fontFamily: 'Finlandica' }}>Select Speaker</H1>
-      </View>
+      <Header title={"Select Speaker"}/>
 
       <View style={{ padding: 10, alignItems: 'center' }}>
         <H1 style={{ color: tc, fontFamily: 'Finlandica', fontSize: 18 }}>Available Speakers</H1>
