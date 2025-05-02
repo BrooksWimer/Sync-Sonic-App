@@ -1,6 +1,6 @@
 import { useSearchParams } from 'expo-router/build/hooks';
 import { Volume1, Volume2, VolumeX } from '@tamagui/lucide-icons'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Alert, TouchableOpacity, ScrollView, View, Dimensions, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter, useNavigation } from 'expo-router';
@@ -27,7 +27,7 @@ import {
 import { useBLEContext, } from '@/contexts/BLEContext';
 import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
 import LottieView from 'lottie-react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 
 
 export default function SpeakerConfigScreen() {
@@ -38,7 +38,47 @@ export default function SpeakerConfigScreen() {
   const speakersStr = params.get('speakers'); // JSON string or null
   const configNameParam = params.get('configName') || 'Unnamed Configuration';
   const configIDParam = params.get('configID'); // may be undefined for a new config
-  
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  const playSound = async () => {
+    try {
+      console.log("Attempting to play sound");
+      
+      // First unload any existing sound
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+
+      // Create and load the new sound
+      const { sound } = await Audio.Sound.createAsync(
+        require('@/assets/sound/beep.wav'),
+        { 
+          shouldPlay: false, // Don't play immediately
+          volume: 1.0, // Ensure full volume
+          isMuted: false // Ensure not muted
+        }
+      );
+      
+      soundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        console.log("Playback status update:", status);
+        if (status.isLoaded && typeof status.positionMillis === 'number' && typeof status.durationMillis === 'number' && status.positionMillis >= status.durationMillis) {
+          console.log("Sound finished playing, unloading");
+          sound.unloadAsync();
+        }
+      });
+      
+      // Play the sound
+      console.log("Starting playback");
+      await sound.setVolumeAsync(1.0); // Ensure full volume
+      await sound.setIsMutedAsync(false); // Ensure not muted
+      await sound.playAsync();
+      console.log("Sound played successfully");
+    } catch (error) {
+      console.error("Error playing sound:", error);
+    }
+  };
 
   // Use only piStatus from BLEContext
   const { dbUpdateTrigger, connectedDevice, piStatus } = useBLEContext();
@@ -399,6 +439,9 @@ export default function SpeakerConfigScreen() {
       isSlidingComplete,
       connectedDevice
     );
+    if (isSlidingComplete) {
+      await playSound();
+    }
   };
 
   const handleSoundFieldChange = async (mac: string, newBalance: number, isSlidingComplete: boolean) => {
