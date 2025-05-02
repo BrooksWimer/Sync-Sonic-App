@@ -11,7 +11,6 @@ import { TopBar } from '@/components/TopBar';
 import * as Font from 'expo-font';
 import { BottomButton } from '@/components/BottomButton';
 import { Header } from '@/components/TitleText';
-import { DeviceCard } from '@/components/DeviceCard';
 
 export default function Config() {
     const params = useLocalSearchParams();
@@ -164,20 +163,65 @@ export default function Config() {
 
             {/* List of Added Bluetooth Devices ---------------------------------------------------------------------*/}
             <ScrollView style={{ maxHeight: 300, marginTop: 10, paddingHorizontal: 20 }}>
-                {devices.length === 0 ? (
-                    <H1 style={{ color: stc, fontFamily: "Finlandica", letterSpacing: 1 }} alignSelf="center">
+            {devices.length === 0 ? (
+                <H1 style={{ color: stc, fontFamily: "Finlandica", letterSpacing:1 }} alignSelf="center">
                     No devices connected. Please connect devices
-                    </H1>
-                ) : (
-                    devices.map((device) => (
-                    <DeviceCard
-                        key={device.id}
-                        device={device}
-                        onRemove={() => removeDevice(device)}
-                    />
-                    ))
-                )}
-                </ScrollView>
+                </H1>
+            ) : (
+                devices.map((device) => (
+                <YStack
+                    key={device.id}
+                    borderWidth={1}
+                    borderColor={stc}
+                    borderRadius={12}
+                    padding={12}
+                    marginBottom={10}
+                    backgroundColor="transparent"
+                >
+                    <XStack justifyContent="space-between" alignItems="center">
+                        {/* Left block: text lines stacked vertically */}
+                        <YStack flex={1}>
+                            <H1
+                            style={{
+                                fontSize: 16,
+                                fontWeight: "600",
+                                color: tc,
+                                fontFamily: "Finlandica",
+                            }}
+                            >
+                            {device.name}
+                            </H1>
+                            <XStack alignItems="center" marginTop={6}>
+                            <Wifi size={20} color={tc} style={{ marginRight: 8 }} />
+                            <H1
+                                style={{
+                                fontSize: 12,
+                                color: tc,
+                                marginLeft: 6,
+                                fontFamily: "Finlandica",
+                                }}
+                            >
+                                {device.mac}
+                            </H1>
+                            </XStack>
+                        </YStack>
+                        {/* Right side: Delete button vertically centered */}
+                        <Button
+                            size={50}
+                            backgroundColor="transparent"
+                            onPress={() => removeDevice(device)}
+                            padding={0}
+                            height={50} // match visual height of the text block
+                            minWidth={40}
+                            alignItems="center"
+                            justifyContent="center"
+                            icon={<SquareX size={24} strokeWidth={1} color={dc} />}
+                        />
+                    </XStack>
+                </YStack>
+                ))
+            )}
+            </ScrollView>
             {/* List of Added Bluetooth Devices ---------------------------------------------------------------------*/}
             
             {/* Save Button---------------------------------------------------------------------*/}
