@@ -164,7 +164,7 @@ export default function DeviceSelectionScreen() {
       return;
     }
     const newId = create_configuration(configName, combined);
-    router.push({ pathname: '/SpeakerConfigScreen', params: { configID: newId.toString(), configName } });
+    router.replace({ pathname: '/SpeakerConfigScreen', params: { configID: newId.toString(), configName } });
   };
 
   const renderItem = (item: SpeakerDevice, selectedMap: Record<string, any>, toggle: (d: SpeakerDevice) => void) => {
