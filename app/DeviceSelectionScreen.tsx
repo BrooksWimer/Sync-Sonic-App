@@ -384,7 +384,7 @@ export default function DeviceSelectionScreen() {
         color="white"
         fontSize={18}
         alignSelf="center"
-        fontFamily="Finlandica"
+        fontFamily="Inter-Regular"
         letterSpacing={1}
       >
         Create Configuration

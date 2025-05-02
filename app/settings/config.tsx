@@ -11,6 +11,8 @@ import { TopBar } from '@/components/TopBar';
 import * as Font from 'expo-font';
 import { BottomButton } from '@/components/BottomButton';
 import { Header } from '@/components/TitleText';
+import { DeviceCard } from '@/components/DeviceCard';
+import { useAppColors } from '@/styles/useAppColors';
 
 export default function Config() {
     const params = useLocalSearchParams();
@@ -21,6 +23,7 @@ export default function Config() {
     const [configName, setConfigName] = useState(initialConfigName);
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
     const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
+    
     
     let abuffer = 20
     let iosbuffer=0
@@ -98,15 +101,17 @@ export default function Config() {
             setIsSaveDisabled(disabled);
         }, [configName, devices])
     );
-    const themeName = useThemeName();
-    const theme = useTheme();
-    const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-    const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-    const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-    const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-    const dc = themeName === 'dark' ? 'white' : '#26004E'
+
+    const { bg, pc, tc, stc} = useAppColors();
+
+
+
+
+
+
+
     return (
-        <YStack flex={1} backgroundColor={bg}>
+        <YStack flex={1} backgroundColor={bg as any}>
             {/* Top Bar with Back Button -----------------------------------------------------------------*/}
             <TopBar/>
             {/* Header -----------------------------------------------------------------------------------*/}
@@ -129,9 +134,9 @@ export default function Config() {
                     onChangeText={setConfigName}
                     placeholder="Name"
                     placeholderTextColor={stc}
-                    color={tc}
+                    color={tc as any}
                     borderWidth={1}
-                    borderColor={stc}
+                    borderColor={stc as any}
                     borderRadius={12}
                     padding={10}
                     fontSize={16}
@@ -147,7 +152,7 @@ export default function Config() {
                 <Button
                     onPress={onSelectDevicesPress}
                     onLongPress={() => insertDummyData()}
-                    backgroundColor={pc}
+                    backgroundColor={pc as any}
                     color="white"
                     borderRadius={5}
                     padding={10}
@@ -157,71 +162,27 @@ export default function Config() {
                     </H1>
                 </Button>
                 {/* Select Devices Button ---------------------------------------------------------------------*/}
+
             </YStack>
 
 
 
             {/* List of Added Bluetooth Devices ---------------------------------------------------------------------*/}
             <ScrollView style={{ maxHeight: 300, marginTop: 10, paddingHorizontal: 20 }}>
-            {devices.length === 0 ? (
-                <H1 style={{ color: stc, fontFamily: "Finlandica", letterSpacing:1 }} alignSelf="center">
+                {devices.length === 0 ? (
+                    <H1 style={{ color: stc, fontFamily: "Finlandica", letterSpacing: 1 }} alignSelf="center">
                     No devices connected. Please connect devices
-                </H1>
-            ) : (
-                devices.map((device) => (
-                <YStack
-                    key={device.id}
-                    borderWidth={1}
-                    borderColor={stc}
-                    borderRadius={12}
-                    padding={12}
-                    marginBottom={10}
-                    backgroundColor="transparent"
-                >
-                    <XStack justifyContent="space-between" alignItems="center">
-                        {/* Left block: text lines stacked vertically */}
-                        <YStack flex={1}>
-                            <H1
-                            style={{
-                                fontSize: 16,
-                                fontWeight: "600",
-                                color: tc,
-                                fontFamily: "Finlandica",
-                            }}
-                            >
-                            {device.name}
-                            </H1>
-                            <XStack alignItems="center" marginTop={6}>
-                            <Wifi size={20} color={tc} style={{ marginRight: 8 }} />
-                            <H1
-                                style={{
-                                fontSize: 12,
-                                color: tc,
-                                marginLeft: 6,
-                                fontFamily: "Finlandica",
-                                }}
-                            >
-                                {device.mac}
-                            </H1>
-                            </XStack>
-                        </YStack>
-                        {/* Right side: Delete button vertically centered */}
-                        <Button
-                            size={50}
-                            backgroundColor="transparent"
-                            onPress={() => removeDevice(device)}
-                            padding={0}
-                            height={50} // match visual height of the text block
-                            minWidth={40}
-                            alignItems="center"
-                            justifyContent="center"
-                            icon={<SquareX size={24} strokeWidth={1} color={dc} />}
-                        />
-                    </XStack>
-                </YStack>
-                ))
-            )}
-            </ScrollView>
+                    </H1>
+                ) : (
+                    devices.map((device) => (
+                    <DeviceCard
+                        key={device.id}
+                        device={device}
+                        onRemove={() => removeDevice(device)}
+                    />
+                    ))
+                )}
+                </ScrollView>
             {/* List of Added Bluetooth Devices ---------------------------------------------------------------------*/}
             
             {/* Save Button---------------------------------------------------------------------*/}

@@ -1,20 +1,24 @@
-import { TouchableOpacity, Image, View } from 'react-native'
-import { GestureResponderEvent } from 'react-native'
-import { useTheme, useThemeName } from 'tamagui';
+// components/FloatingAddButton.tsx
+import React from 'react';
+import { View, TouchableOpacity, Platform } from 'react-native';
+import { CirclePlus } from '@tamagui/lucide-icons';
+import { useAppColors } from '@/styles/useAppColors';
 
-type AddButtonProps = {
-  onPress?: (event: GestureResponderEvent) => void
-}
+type Props = {
+  onPress: () => void;
+};
 
+export const FloatingAddButton = ({ onPress }: Props) => {
+  const { green } = useAppColors();
+  const g = green as any;
 
-//NOT NEEDED
+  const iosBuffer = Platform.OS === 'ios' ? 20 : 0;
 
-export const AddButton = ({ onPress }: AddButtonProps) => {
   return (
     <View
       style={{
         position: 'absolute',
-        bottom: 32,
+        bottom: 15 + iosBuffer,
         left: 0,
         right: 0,
         alignItems: 'center',
@@ -22,20 +26,16 @@ export const AddButton = ({ onPress }: AddButtonProps) => {
       }}
     >
       <TouchableOpacity
+        onPress={onPress}
         style={{
           width: 60,
           height: 60,
           justifyContent: 'center',
           alignItems: 'center',
         }}
-        onPress={onPress} // 👈 use the passed-in handler
       >
-        <Image
-          source={require('../assets/images/greenAdd.png')}
-          style={{ width: 50, height: 50, tintColor: '#00FF6A' }}
-          resizeMode="contain"
-        />
+        <CirclePlus size={60} strokeWidth={1} color={g} />
       </TouchableOpacity>
     </View>
-  )
-}
+  );
+};

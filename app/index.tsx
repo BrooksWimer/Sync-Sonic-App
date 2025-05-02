@@ -18,18 +18,15 @@ import {
 import { Device } from 'react-native-ble-plx';
 import { BottomButton } from "@/components/BottomButton";
 import { Body } from '@/components/BodyText';
+import { useAppColors } from '@/styles/useAppColors';
+import { Header } from "@/components/TitleText";
 
 
 export default function Index() {
-  const themeName = useThemeName();
-  const theme = useTheme();
-  
-  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF';
-  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094';
-  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E';
-  const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D';
-  const green = themeName === 'dark' ? '#00FF6A' : '#34A853';
-  const red = themeName === 'dark' ? 'black' : '#E8004D';
+    const themeName = useThemeName();
+    const theme = useTheme();
+    const { bg, pc, tc, stc, green} = useAppColors();
+    const g = green as any;
 
   const imageSource = themeName === 'dark'
     ? require('../assets/images/welcomeGraphicDark.png')
@@ -50,7 +47,7 @@ export default function Index() {
   : require('../assets/animations/SyncSonic_Loading_Dark_nbg.json');
 
   /* -------------------------------------------------------------- */
-  /*  theme + BLE helpers                                           */
+  /* BLE helpers                                                    */
   /* -------------------------------------------------------------- */
   const {
     manager,                 // BleManager instance from context
@@ -71,7 +68,7 @@ export default function Index() {
   useEffect(() => { setupDatabase(); }, []);
 
   /* -------------------------------------------------------------- */
-  /*  connect Phone button                                                */
+  /*  connect Phone button                                          */
   /* -------------------------------------------------------------- */
   const handleConnect = async () => {
     setConnecting(true);
@@ -155,20 +152,16 @@ export default function Index() {
 
 
   return (
-      <YStack flex={1} justifyContent="space-between" backgroundColor={bg}>
-
+      <YStack flex={1} justifyContent="space-between" backgroundColor={bg as any}>
+        {/* Top Bar without Back Button -----------------------------------------------------------------*/}
         <TopBarStart/>
 
-        {/* Content Section */}
+       
         <YStack alignItems="center" paddingTop="$6" paddingBottom="$4" space="$4">
-          <H1
-            style={{ color: tc, fontFamily: "Finlandica-Medium" }}
-            fontSize={40}
-            letterSpacing={1}
-          >
-            Welcome
-          </H1>
-
+          {/* Header -----------------------------------------------------------------------------------*/}
+          <Header title="Welcome"/>
+          
+          {/* Instructions -----------------------------------------------------------------------------------*/}
           <Body>
             To stream music from your phone, please turn on Bluetooth and pair it with the box.
           </Body>
@@ -180,7 +173,7 @@ export default function Index() {
           />
         </YStack>
 
-        {/* Bottom Buttons */}
+       
         
         <YStack paddingBottom={Platform.OS === 'ios' ? 100 : 100} space="$4">
           {/* remove this later (do NOT remove the Ystack*/}
@@ -207,7 +200,7 @@ export default function Index() {
             onPress={handleConnect}
             disabled={connecting}
             isLoading={connecting}
-            text={connecting ? "Connecting..." : "Connect to Pi"}
+            text={connecting ? "Connecting..." : "Connect to SyncBox"}
             fontFamily="Inter"
           />
       </YStack>

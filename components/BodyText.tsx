@@ -5,10 +5,11 @@ import { useAppColors } from '../styles/useAppColors';
 type BodyProps = {
   children: React.ReactNode;
   center?: boolean;
+  bold?: boolean;
   style?: object;
 };
 
-export const Body = ({ children, center = true, style = {} }: BodyProps) => {
+export const Body = ({ children, center = true, bold = false, style = {} }: BodyProps) => {
   const { tc } = useAppColors();
 
   return (
@@ -16,7 +17,7 @@ export const Body = ({ children, center = true, style = {} }: BodyProps) => {
       style={[
         {
           color: tc,
-          fontFamily: 'Inter-Regular',
+          fontFamily: bold ? 'Inter-Bold' : 'Inter-Regular',
         },
         style,
       ]}
