@@ -7,15 +7,12 @@ import {
   Alert,
   StyleSheet,
   Dimensions,
-  Platform
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   create_configuration,
-  getSpeakers
 } from '@/utils/database';
-import { Button, H1, useThemeName, YStack, View } from 'tamagui';
-import { Device, BleError, Characteristic } from 'react-native-ble-plx';
+import { H1, useThemeName, YStack, View } from 'tamagui';
 import { useBLEContext } from '../contexts/BLEContext';
 import { BottomButton } from '@/components/BottomButton';
 import {
@@ -23,7 +20,6 @@ import {
   stopScanDevices,
   fetchPairedDevices
 } from '../utils/ble_functions';
-import { MESSAGE_TYPES } from '../utils/ble_constants';
 import { TopBar } from '@/components/TopBar';
 
 type SpeakerDevice = {

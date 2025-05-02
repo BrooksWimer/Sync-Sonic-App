@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from "react"
-import { YStack, Text, Button, H1, useThemeName, useTheme, XStack } from "tamagui"
-import { TouchableOpacity, FlatList, ActivityIndicator, Alert, View, StyleSheet } from "react-native"
-import { router, useFocusEffect } from "expo-router"
+import { useState, useEffect } from "react"
+import { YStack, Text, Button, H1, useThemeName, XStack } from "tamagui"
+import { TouchableOpacity, FlatList, Alert, View, StyleSheet } from "react-native"
+import { router } from "expo-router"
 import { useBLEContext } from "../contexts/BLEContext"
 import { Device } from "react-native-ble-plx"
 import { TopBar } from "../components/TopBar"
-import LottieView from "lottie-react-native"
 import { Loader } from '../components/Loader';
 
 

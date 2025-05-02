@@ -3,7 +3,6 @@ import { useTheme, useThemeName, XStack, YStack } from 'tamagui'
 import { ArrowLeft } from '@tamagui/lucide-icons'
 import { Image, TouchableOpacity, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useNavigation } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export const TopBar = () => {

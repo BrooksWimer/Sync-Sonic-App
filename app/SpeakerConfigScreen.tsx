@@ -6,19 +6,12 @@ import Slider from '@react-native-community/slider';
 import { useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
-  addConfiguration, 
-  updateConfiguration, 
-  deleteConfiguration, 
-  addSpeaker, 
-  getSpeakers, 
-  getConfigurationStatus, 
-  getConfigurationSettings, 
-  updateConnectionStatus, 
+  getConfigurationStatus,
   updateSpeakerSettings,
   updateSpeakerConnectionStatus,
   getSpeakersFull
 } from '@/utils/database';
-import { useTheme, useThemeName, YStack, Text, H1 } from 'tamagui';
+import { useTheme, useThemeName, YStack, Text } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { 
   handleVolumeChange,
@@ -28,6 +21,8 @@ import { useBLEContext, } from '@/contexts/BLEContext';
 import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
 import LottieView from 'lottie-react-native';
 import { Audio } from 'expo-av';
+import { Header } from '@/components/TitleText';
+import { Body } from '@/components/BodyText';
 
 
 export default function SpeakerConfigScreen() {
@@ -577,7 +572,7 @@ export default function SpeakerConfigScreen() {
     // Show loading indicator overlay on the speaker card
     setLoadingSpeakers(prev => ({ ...prev, [mac]: { 
       action: 'disconnect',
-      statusMessage: "Disconnecting speaker..."
+      statusMessage: ""
     }}));
     
     if (!connectedDevice) {
@@ -593,7 +588,7 @@ export default function SpeakerConfigScreen() {
       setTimeout(() => {
         setLoadingSpeakers(prev => {
           // Only update if still in the initial disconnecting state
-          if (prev[mac]?.action === 'disconnect' && prev[mac]?.statusMessage === "Disconnecting speaker...") {
+          if (prev[mac]?.action === 'disconnect' && prev[mac]?.statusMessage === "Disconnecting Speaker...") {
             console.log(`[Speaker] Disconnect fallback timeout triggered for ${mac}`);
             return { ...prev, [mac]: { 
               action: 'disconnect',
@@ -698,18 +693,12 @@ export default function SpeakerConfigScreen() {
 
       return (
         <YStack flex={1} backgroundColor={bg}>
+          
+          {/* Top Bar with Back Button -----------------------------------------------------------------*/}
           <TopBar/>
-          {/* Header */}
-          <View style={{
-                    paddingTop: 20,
-                    paddingBottom: 10,
-                    alignItems: "center",
-                    backgroundColor: bg
-                }}>
-          <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginBottom: 5, marginTop: 15, letterSpacing: 1 }}>
-                    {configNameParam}
-          </H1>
-          </View>
+          
+          {/* Header -----------------------------------------------------------------------------------*/}
+          <Header title={configNameParam}/>
           
           <ScrollView contentContainerStyle={{ paddingBottom: 15 }}>
             
@@ -764,15 +753,9 @@ export default function SpeakerConfigScreen() {
                   }}>
                     {connectedSpeakers[mac]}
                   </Text>
-                  <Text style={{ 
-                    fontFamily: 'Finlandica', 
-                    fontSize: 18, 
-                    fontWeight: "bold", 
-                    color: tc, 
-                    marginTop: 20
-                  }}>
+                  <Body center={false} bold={true} style={{fontSize: 18, letterSpacing: 1}}>
                     Volume: {settings[mac]?.volume || 50}%
-                  </Text>
+                  </Body>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -788,10 +771,9 @@ export default function SpeakerConfigScreen() {
 
                   {/* Connection status overlay - appears on top of the card when connecting/disconnecting */}
                   {loadingSpeakers[mac] && <SpeakerCardOverlay mac={mac} status={loadingSpeakers[mac]} />}
-                  
-                  <Text style={{ fontFamily: 'Finlandica-Medium', fontSize: 18, letterSpacing: 1, color: tc, marginTop: 6 }}>
+                  <Body center={false} bold={true} style={{fontSize: 18, letterSpacing: 1}}>
                     Latency: {settings[mac]?.latency ?? 100} ms
-                  </Text>
+                  </Body>
                   <Slider
                     style={styles.slider}
                     minimumValue={0}
@@ -858,7 +840,9 @@ export default function SpeakerConfigScreen() {
                     </View>
 
                     {/* Middle */}
-                    <Text style={{ fontFamily: 'Finlandica', fontSize: 18, fontWeight: "bold", color: tc }}>Balance</Text>
+                  <Body center={false} bold={true} style={{fontSize: 18, letterSpacing: 1}}>
+                    Balance
+                  </Body>
 
                     {/* Right */}
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1006,7 +990,7 @@ export default function SpeakerConfigScreen() {
                         color: !!loadingSpeakers[mac]?.action ? stc : '#FF0055'
                       }}>
                         {loadingSpeakers[mac]?.action === 'disconnect' 
-                          ? 'Disconnecting...' 
+                          ? 'Disconnecting' 
                           : loadingSpeakers[mac]?.statusMessage && loadingSpeakers[mac]?.action === null && !loadingSpeakers[mac]?.success
                           ? 'Disconnected'
                           : 'Disconnect'}

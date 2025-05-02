@@ -1,6 +1,5 @@
 // components/TopBar.tsx
-import { useTheme, useThemeName, XStack, YStack } from 'tamagui'
-import { ArrowLeft } from '@tamagui/lucide-icons'
+import { useTheme, useThemeName, XStack } from 'tamagui'
 import { Image, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
