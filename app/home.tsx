@@ -6,9 +6,8 @@ import { Plus, Pencil } from '@tamagui/lucide-icons';
 import { Image, Alert, StyleSheet } from "react-native";
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { deleteConfiguration, getConfigurations, getSpeakersFull } from './database';
+import { deleteConfiguration, getConfigurations, getSpeakersFull } from '@/utils/database';
 import { TopBar } from '@/components/TopBar';
-import { PI_API_URL } from '../utils/constants'
 import { handleDeleteConfig } from '@/utils/ConfigurationFunctions'
 import Animated, {
   useSharedValue,

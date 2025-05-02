@@ -1,39 +1,9 @@
 import { Alert } from "react-native";
-import { KNOWN_CONTROLLERS } from "./constants";
-import { PI_API_URL } from '../utils/constants';
-import { addConfiguration, addSpeaker, deleteConfiguration, updateConfiguration, updateSpeakerConnectionStatus, updateConnectionStatus } from "@/app/database";
+import { addConfiguration, addSpeaker, deleteConfiguration, updateConfiguration, updateSpeakerConnectionStatus, updateConnectionStatus } from "@/utils/database";
 import { setLatency, setVolume } from './ble_functions';
 import { Device } from 'react-native-ble-plx';
 
 type SpeakerSettings = { [mac: string]: { volume: number; latency: number; isConnected: boolean } };
-
-export const adjustVolume = async (mac: string, volume: number): Promise<void> => {
-  try {
-    const response = await fetch(`${PI_API_URL}/volume`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mac, volume })
-    });
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-  } catch (error) {
-    console.error(`Error setting volume for ${mac}:`, error);
-    Alert.alert("Volume Error", `Failed to set volume for speaker ${mac}`);
-  }
-};
-
-export const adjustLatency = async (mac: string, latency: number): Promise<void> => {
-  try {
-    const response = await fetch(`${PI_API_URL}/latency`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mac, latency })
-    });
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-  } catch (error) {
-    console.error(`Error setting latency for ${mac}:`, error);
-    Alert.alert("Latency Error", `Failed to set latency for speaker ${mac}`);
-  }
-};
 
 export const handleVolumeChange = async (
   mac: string,

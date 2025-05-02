@@ -1,47 +1,9 @@
 import { Alert } from 'react-native';
-import { PI_API_URL } from './constants';
 
 export interface Device {
   mac: string;
   name: string;
 }
-
-// Poll the device queue
-export const fetchDeviceQueue = async (): Promise<Device[]> => {
-  try {
-    const response = await fetch(`${PI_API_URL}/device-queue`);
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-    const data: Record<string, unknown> = await response.json();
-
-    // Use type assertion to ensure correct types
-    const deviceArray: Device[] = Object.entries(data).map(([mac, name]) => ({
-      mac,
-      name: name as string,
-    }));
-
-    const now = new Date();
-    console.log(now.toTimeString() + ", found devices: " + deviceArray);
-    
-    return deviceArray;
-  } catch (err) {
-    console.error("Error fetching device queue:", err);
-    return [];
-  }
-};
-
-// Fetch paired devices from the API
-export const fetchPairedDevices = async (): Promise<Record<string, string>> => {
-  try {
-    const response = await fetch(`${PI_API_URL}/paired-devices`);
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-    const pairedDevicesData = await response.json();
-    return pairedDevicesData;
-  } catch (error) {
-    console.error('Error fetching paired devices:', error);
-    Alert.alert('Error', 'Could not fetch paired devices.');
-    return {};
-  }
-};
 
 // Toggle selection of a paired device using its MAC as unique key
 export const togglePairedSelection = (

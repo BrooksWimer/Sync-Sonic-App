@@ -20,7 +20,7 @@ import {
   addSpeaker, 
   getSpeakers,
   create_configuration
-} from './database';
+} from '@/utils/database';
 import { Button, H1, useTheme, useThemeName, YStack, View } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { AlignCenter } from '@tamagui/lucide-icons';

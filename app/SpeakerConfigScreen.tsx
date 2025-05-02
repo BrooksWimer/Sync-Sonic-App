@@ -17,20 +17,13 @@ import {
   updateSpeakerSettings,
   updateSpeakerConnectionStatus,
   getSpeakersFull
-} from './database';
-import {PI_API_URL, KNOWN_CONTROLLERS} from '../utils/constants'
+} from '@/utils/database';
 import { useTheme, useThemeName, YStack, Text, H1 } from 'tamagui';
 import { TopBar } from '@/components/TopBar';
 import { 
   handleVolumeChange,
   handleLatencyChange
 } from '../utils/SpeakerFunctions';
-import { 
-  handleDelete, 
-  handleDisconnect, 
-  handleConnect,
-  handleSave
-} from '../utils/ConfigurationFunctions';
 import { MESSAGE_TYPES, CHARACTERISTIC_UUID } from '@/utils/ble_constants';
 import { useBLEContext, } from '@/contexts/BLEContext';
 import { bleConnectOne, bleDisconnectOne, setVolume, setMute } from '../utils/ble_functions';
