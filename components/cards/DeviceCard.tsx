@@ -1,4 +1,6 @@
-// components/DeviceCard.tsx
+// THIS IS THE EDIT CONFIG SETTINGS SCREEN
+
+
 import { H1, YStack, XStack, Button } from 'tamagui';
 import { Wifi, SquareX } from '@tamagui/lucide-icons';
 import { useAppColors } from '../../styles/useAppColors';

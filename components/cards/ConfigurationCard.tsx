@@ -21,7 +21,7 @@ type Props = {
 
 export const ConfigurationCard = ({ config, index, speakerStatuses, onDelete }: Props) => {
   const router = useRouter();
-  const { bg, tc, green } = useAppColors();
+  const { bg, tc, green, red} = useAppColors();
   const fontsLoaded = useCustomFonts();
   const [isPressed, setIsPressed] = useState(false);
 
@@ -97,8 +97,8 @@ export const ConfigurationCard = ({ config, index, speakerStatuses, onDelete }: 
                 height: 10,
                 borderRadius: 5,
                 marginRight: 6,
-                backgroundColor: connected ? green : '#FF0055',
-                shadowColor: tc,
+                backgroundColor: connected ? green : "red",
+                shadowColor: connected ? green : "red",
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.8,
                 shadowRadius: 8,

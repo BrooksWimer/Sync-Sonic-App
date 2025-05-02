@@ -54,11 +54,13 @@ export default function Config() {
         console.log("Removing device " + device.id);
         // If editing an existing configuration, update the DB immediately.
         if (configID) {
+            console.log("fire")
             deleteSpeakerById(device.id);
         }
         
         // Just update the local state to remove the device - no backend calls
         setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
+        console.log("local fire")
     };
     // updating the DB when creating a new configuration.
     const saveChanges = () => {
