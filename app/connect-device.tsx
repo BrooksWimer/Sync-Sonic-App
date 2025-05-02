@@ -4,8 +4,10 @@ import { TouchableOpacity, FlatList, ActivityIndicator, Alert, View, StyleSheet 
 import { router, useFocusEffect } from "expo-router"
 import { useBLEContext } from "../contexts/BLEContext"
 import { Device } from "react-native-ble-plx"
-import { TopBarStart } from "../components/TopBarStart"
+import { TopBar } from "../components/TopBar"
 import LottieView from "lottie-react-native"
+import { Loader } from '../components/Loader';
+
 
 
 const SignalStrengthIndicator = ({ rssi }: { rssi: number }) => {
@@ -133,7 +135,7 @@ export default function ConnectDevice() {
       style={{ backgroundColor: themeName === 'dark' ? '#250047' : '#F2E8FF' }}
       justifyContent="space-between"
     >
-      <TopBarStart/>
+      <TopBar/>
 
       <YStack flex={1} paddingBottom="$4" space="$4" marginTop="$4">
         <H1
@@ -182,6 +184,7 @@ export default function ConnectDevice() {
         />
       </YStack>
 
+
       <Button 
         onPress={handleScanPress}
         disabled={loading}
@@ -204,19 +207,16 @@ export default function ConnectDevice() {
         </Text>
 
         {isScanning && (
-          <LottieView
-            source={loaderSource}
-            autoPlay
-            loop
+          <Loader
+            size={40}
             style={{
-              width: 100,
-              height: 100,
               position: 'absolute',
-              right: -10
+              right: -10,
             }}
           />
         )}
       </Button>
+
     </YStack>
   )
 }

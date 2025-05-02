@@ -16,6 +16,7 @@ import {
   removeLastConnectedDevice
 } from "@/app/database";
 import { Device } from 'react-native-ble-plx';
+import { BottomButton } from "@/components/BottomButton";
 
 
 export default function Index() {
@@ -194,27 +195,9 @@ export default function Index() {
 
 
 
-        <Button
-          onPress={handleConnect}
-          disabled={connecting}
-          style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 15,
-            alignSelf: 'center',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative', // <- KEY for absolute child
-          }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
-            {connecting ? "Connecting..." : "Connect Phone"}
-          </Text>
-        </Button>
+        
 
-
+        {/* REMOVE THIS EVENTUALLY */}
         <Button
           onPress={goHome}
           style={{
@@ -223,6 +206,7 @@ export default function Index() {
             height: 50,
             borderRadius: 15,
             alignSelf: 'center',
+            
           }}
           pressStyle={{ opacity: 0.8 }}
         >
@@ -230,6 +214,15 @@ export default function Index() {
             Continue to Home
           </Text>
         </Button>
+
+        <BottomButton
+          onPress={handleConnect}
+          disabled={connecting}
+          isLoading={connecting}
+          text={connecting ? "Connecting..." : "Connect to Pi"}
+          fontFamily="Inter"
+        />
+
       </YStack>
     </YStack>
   )

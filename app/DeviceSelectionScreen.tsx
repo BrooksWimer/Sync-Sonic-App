@@ -30,6 +30,7 @@ import * as Font from 'expo-font';
 import { Shadow } from 'react-native-shadow-2';
 import { useBLEContext } from '../contexts/BLEContext';
 import { fetchPairedDevices } from '../utils/ble_functions';
+import { BottomButton } from '@/components/BottomButton';
 
 
 
@@ -371,21 +372,26 @@ export default function DeviceSelectionScreen() {
         </H1>}
       />
 
-      <Button
-        onPress={handleCreateConfiguration}
-        style={[styles.pairButton,
-          {
-          backgroundColor: pc,
-        }]}
+    <BottomButton
+      onPress={handleCreateConfiguration}
+      isLoading={isPairing}
+      disabled={
+        Object.keys(selectedDevices).length === 0 &&
+        Object.keys(selectedPairedDevices).length === 0
+      }
+      style={{ marginTop: 30 }}
+    >
+      <H1
+        color="white"
+        fontSize={18}
+        alignSelf="center"
+        fontFamily="Finlandica"
+        letterSpacing={1}
       >
-        {isPairing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Finlandica" letterSpacing={1}>
-            Create Configuration
-          </H1>
-        )}
-      </Button>
+        Create Configuration
+      </H1>
+    </BottomButton>
+
     </YStack>
   );
 }

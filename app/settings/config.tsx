@@ -11,6 +11,7 @@ import { TopBar } from '@/components/TopBar';
 import { PI_API_URL } from '../../utils/constants';
 import { removeDevice, saveChanges } from '@/utils/ConfigurationFunctions';
 import * as Font from 'expo-font';
+import { BottomButton } from '@/components/BottomButton';
 
 export default function Config() {
     const params = useLocalSearchParams();
@@ -284,25 +285,13 @@ export default function Config() {
             </ScrollView>
 
             {/* Bottom Button */}
-            <Button
-                onPress={saveChanges}
-                disabled={isSaveDisabled}
-                style={{
-                    backgroundColor: pc,
-                    width: '90%',
-                    height: 50,
-                    borderRadius: 15,
-                    marginBottom: 20,
-                    marginTop: 50 +iosbuffer,
-                    alignSelf: 'center',
-                    opacity: !isSaveDisabled ? 1 : 0.5,
-                }}
-                pressStyle={{ opacity: !isSaveDisabled ? 0.8 : 0.5 }}
-            >
-                <H1 style={{ color: "white", fontSize: 18, fontFamily: "Inter" }}>
-                    Save
-                </H1>
-            </Button>
+            <BottomButton
+            text="Save"
+            onPress={saveChanges}
+            disabled={isSaveDisabled}
+            iosBuffer={iosbuffer}
+            />
+
         </YStack>
     );
 }
