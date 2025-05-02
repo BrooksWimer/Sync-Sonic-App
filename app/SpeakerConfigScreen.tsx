@@ -534,7 +534,7 @@ export default function SpeakerConfigScreen() {
     // Show loading indicator overlay on the speaker card
     setLoadingSpeakers(prev => ({ ...prev, [mac]: { 
       action: 'disconnect',
-      statusMessage: "Disconnecting speaker..."
+      statusMessage: ""
     }}));
     
     if (!connectedDevice) {
@@ -550,7 +550,7 @@ export default function SpeakerConfigScreen() {
       setTimeout(() => {
         setLoadingSpeakers(prev => {
           // Only update if still in the initial disconnecting state
-          if (prev[mac]?.action === 'disconnect' && prev[mac]?.statusMessage === "Disconnecting speaker...") {
+          if (prev[mac]?.action === 'disconnect' && prev[mac]?.statusMessage === "Disconnecting Speaker . . .") {
             console.log(`[Speaker] Disconnect fallback timeout triggered for ${mac}`);
             return { ...prev, [mac]: { 
               action: 'disconnect',
@@ -963,7 +963,7 @@ export default function SpeakerConfigScreen() {
                         color: !!loadingSpeakers[mac]?.action ? stc : '#FF0055'
                       }}>
                         {loadingSpeakers[mac]?.action === 'disconnect' 
-                          ? 'Disconnecting...' 
+                          ? 'Disconnecting' 
                           : loadingSpeakers[mac]?.statusMessage && loadingSpeakers[mac]?.action === null && !loadingSpeakers[mac]?.success
                           ? 'Disconnected'
                           : 'Disconnect'}

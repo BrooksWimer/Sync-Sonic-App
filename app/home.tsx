@@ -18,6 +18,11 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useBLEContext } from '../contexts/BLEContext';
 import LottieView from 'lottie-react-native';
 import * as Haptics from 'expo-haptics';
+import { Header } from '@/components/TitleText';
+import { Body } from '@/components/BodyText';
+
+
+
 
 
 
@@ -94,18 +99,7 @@ export default function Home() {
      <TopBar/>
 
       {/* Header */}
-      <View style={{
-          paddingTop: 20,
-          paddingBottom: 10,
-          alignItems: "center",
-          backgroundColor: bg,
-          justifyContent: "center",
-          paddingHorizontal: 20
-      }}>
-        <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginBottom: 5, marginTop: 15, letterSpacing: 1 }}>
-          Configurations
-        </H1>
-      </View>
+      <Header title="Configurations"/>
       <ScrollView style={{ paddingHorizontal: 20, marginBottom: 98 }}>
         {configurations.length === 0 ? (
           <H1 style={{ textAlign: "center", color: stc, fontFamily: "Finlandica", marginVertical: 10 }}>
@@ -196,12 +190,13 @@ export default function Home() {
                             />
                           )} */}
               <YStack>
-                <H1 style={{ fontSize: 18, color: tc, fontWeight: "400", fontFamily: "Inter"}}>{config.name}</H1>
+              <Body style={{fontSize: 18}} center={false}>{config.name}</Body>
+
 
 
                
                             
-                {/* Speaker dots */}
+                {/* Speaker dots -----------------------------------------------------------------*/}
                 <XStack marginTop={4}>
                     {Array.from({ length: config.speakerCount }).map((_, i) => (
                       <View
@@ -213,14 +208,16 @@ export default function Home() {
                         }]}
                       />
                     ))}
-                  </XStack>
+                </XStack>
+                {/* Speaker dots -----------------------------------------------------------------*/}
 
                   
 
-                {/* Connection status */}
+                {/* Connection status -------------------------------------------------------------*/}
                 <H1 style={{ fontSize: 14, color: config.isConnected ? green : "#FF0055", marginTop: 6, fontFamily: "Finlandica", letterSpacing: 1}}>
                   {config.isConnected ? "Connected" : "Not Connected"}
                 </H1>
+                {/* Connection status -------------------------------------------------------------*/}
               </YStack>
 
               <Button

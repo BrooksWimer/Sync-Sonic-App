@@ -33,20 +33,22 @@ export const BottomButton = ({
 
   return (
     <Button
-      onPress={onPress}
-      disabled={disabled || isLoading}
-      style={[
+        onPress={onPress}
+        disabled={disabled || isLoading}
+        style={[
         {
-          backgroundColor: pc,
-          width: '90%',
-          height: 50,
-          borderRadius: 15,
-          alignSelf: 'center',
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginBottom: 20,
-          marginTop: 50 + iosBuffer,
-          opacity: disabled || isLoading ? 0.5 : 1,
+            position: 'absolute',
+            bottom: 20,
+            backgroundColor: pc,
+            width: '90%',
+            height: 50,
+            borderRadius: 15,
+            alignSelf: 'center',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 20,
+            marginTop: 50 + iosBuffer,
+            opacity: disabled || isLoading ? 0.5 : 1,
         },
         style,
       ]}
