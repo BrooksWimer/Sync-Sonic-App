@@ -1,4 +1,4 @@
-import { ExpoConfig, ConfigContext } from '@expo/config'
+import { ExpoConfig, ConfigContext } from '@expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -12,11 +12,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   ios: {
+    ...config.ios,
     supportsTablet: true,
     bundleIdentifier: 'com.sync-sonic.sync-sonic',
     userInterfaceStyle: 'automatic',
+
+    // ← Add these two keys for BLE on iOS
+    newArchEnabled: false,
+    infoPlist: {
+      ...(config.ios?.infoPlist || {}),
+      NSBluetoothAlwaysUsageDescription: 'Sync-Sonic needs Bluetooth to connect to speakers',
+      NSBluetoothPeripheralUsageDescription:
+        'Sync-Sonic needs Bluetooth to connect to speakers',
+        ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: {
+    ...config.android,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#ffffff',
@@ -25,6 +37,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.BLUETOOTH',
       'android.permission.BLUETOOTH_ADMIN',
       'android.permission.BLUETOOTH_CONNECT',
+      'android.permission.BLUETOOTH_SCAN',
+      'android.permission.ACCESS_COARSE_LOCATION',
     ],
     package: 'com.syncsonic.SyncSonic',
     userInterfaceStyle: 'automatic',
@@ -42,9 +56,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         image: './assets/images/splash-icon.png',
         imageWidth: 200,
         resizeMode: 'contain',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#F2E8FF',
       },
     ],
+
+    // ← BLE module (already present)  
     [
       'react-native-ble-plx',
       {
@@ -54,13 +70,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Allow $(PRODUCT_NAME) to connect to bluetooth devices',
       },
     ],
-    'expo-sqlite',
+
+    // ← Add this to enable the permissions plugin
     [
-      "expo-font",
+      'react-native-permissions',
       {
-        "fonts": ["./assets/fonts/Finlandica-VariableFont_wght.ttf"]
-      }
-    ]
+        iosPermissions: [
+          'NSBluetoothAlwaysUsageDescription',
+          'NSBluetoothPeripheralUsageDescription',
+        ],
+        androidPermissions: [
+          'android.permission.BLUETOOTH_SCAN',
+          'android.permission.BLUETOOTH_CONNECT',
+          'android.permission.ACCESS_COARSE_LOCATION',
+        ],
+      },
+    ],
+    
+
+    'expo-sqlite',
   ],
   experiments: {
     typedRoutes: true,
@@ -73,4 +101,4 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       projectId: 'a3f49fa9-2789-40b4-9826-bf1dcfe0049e',
     },
   },
-})
+});

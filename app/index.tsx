@@ -1,47 +1,36 @@
-import { useState, useEffect } from "react"
-import { YStack, Text, Button, H1, Image, useThemeName, useTheme } from "tamagui"
-import * as Linking from "expo-linking"
-import { router } from "expo-router"
-import { PI_API_URL } from "../utils/constants"
-import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "./database"
-import { TopBarStart } from "../components/TopBarStart"
-import colors from '../assets/colors/colors'
-import LottieView from "lottie-react-native"
-import { Alert, Platform } from "react-native"
-import * as Font from 'expo-font';
+import { useState, useEffect } from "react";
+import {
+  YStack, Text, Button, H1, Image,
+  useThemeName, useTheme
+} from "tamagui";
+import { Platform, SafeAreaView }    from "react-native";
+import { router }   from "expo-router";
+import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "../utils/database"
+import { TopBarStart } from "../components/topbar-variants/TopBarStart"
 
-export default function ConnectPhone() {
-  const [connecting, setConnecting] = useState(false)
-  const [resetting, setResetting] = useState(false)
-  const themeName = useThemeName();
-  const theme = useTheme();
+import { useBLEContext }     from "@/contexts/BLEContext";
+import { SERVICE_UUID }      from "@/utils/ble_constants";
+import {
+  getLastConnectedDevice,
+  saveLastConnectedDevice,
+  removeLastConnectedDevice
+} from "@/utils/database";
+import { Device } from 'react-native-ble-plx';
+import { BottomButton } from "@/components/buttons/BottomButton";
+import { Body } from '@/components/texts/BodyText';
+import { useAppColors } from '@/styles/useAppColors';
+import { Header } from "@/components/texts/TitleText";
+
+
+export default function Index() {
+    const themeName = useThemeName();
+    const theme = useTheme();
+    const { bg, pc, tc, stc, green} = useAppColors();
+    const g = green as any;
 
   const imageSource = themeName === 'dark'
     ? require('../assets/images/welcomeGraphicDark.png')
-    : require('../assets/images/welcomeGraphicLight.png')
-
-  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-
-  useEffect(() => {
-    async function loadFonts() {
-      await Font.loadAsync({
-        'Finlandica-Regular': require('../assets/fonts/Finlandica-Regular.ttf'),
-        'Finlandica-Medium': require('../assets/fonts/Finlandica-Medium.ttf'),
-        'Finlandica-SemiBold': require('../assets/fonts/Finlandica-SemiBold.ttf'),
-        'Finlandica-Bold': require('../assets/fonts/Finlandica-Bold.ttf'),
-        'Finlandica-Italic': require('../assets/fonts/Finlandica-Italic.ttf'),
-        'Finlandica-SemiBoldItalic': require('../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
-        'Finlandica-BoldItalic': require('../assets/fonts/Finlandica-BoldItalic.ttf'),
-      });
-      setFontsLoaded(true);
-    }
-
-    loadFonts();
-  }, []);
+    : require('../assets/images/welcomeGraphicLight.png');
 
 
    //if android
@@ -57,252 +46,164 @@ export default function ConnectPhone() {
   ? require('../assets/animations/SyncSonic_Loading_Light_nbg.json')
   : require('../assets/animations/SyncSonic_Loading_Dark_nbg.json');
 
+  /* -------------------------------------------------------------- */
+  /* BLE helpers                                                    */
+  /* -------------------------------------------------------------- */
+  const {
+    manager,                 // BleManager instance from context
+    scanForPeripherals,      // starts a scan (15 s timeout handled below)
+    stopScan,
+    connectToDevice,         // Device → Promise<Device>
+    allDevices,              // filled by the scan
+    waitForPi,
+    ensurePiNotifications,
+    handleNotification
+  } = useBLEContext();
 
-  useEffect(() => {
-    setupDatabase();
-  }, []);
+  const [connecting, setConnecting] = useState(false);
 
+  /* -------------------------------------------------------------- */
+  /*  initial DB setup                                              */
+  /* -------------------------------------------------------------- */
+  useEffect(() => { setupDatabase(); }, []);
+
+  /* -------------------------------------------------------------- */
+  /*  connect Phone button                                          */
+  /* -------------------------------------------------------------- */
   const handleConnect = async () => {
-    setConnecting(true)
-
-    // Open Bluetooth settings
-    Linking.openSettings()
-
-    // Fire off the pairing request (no need to wait for success right now)
-    try {
-      await fetch(`${PI_API_URL}/connect_phone`, { method: "POST" })
-    } catch (err) {
-      console.error("⚠️ Failed to call /connect_phone:", err)
+    setConnecting(true);
+    let deviceConnection = null;
+  
+    // 1) Fast-path: check cached ID's advertised services _before_ connect
+    const lastId = await getLastConnectedDevice();
+    if (lastId) {
+      try {
+        const [cached] = await manager.devices([lastId]);
+        if (cached) {
+          console.log("🔍 cached device info:", cached.id, cached.name, cached.serviceUUIDs);
+  
+          // only proceed if it's actually our Pi (by UUID & optional name)
+          const hasSvc = cached.serviceUUIDs?.includes(SERVICE_UUID);
+          const isPi   = cached.name?.startsWith("Sync-Sonic");  // or whatever your Pi advertises
+          if (hasSvc && isPi) {
+            console.log("✅ Fast-path: cached device looks good, connecting...");
+            const conn = await connectToDevice(cached);
+            await conn.discoverAllServicesAndCharacteristics();
+            deviceConnection = conn;
+            await ensurePiNotifications(conn, handleNotification);
+          } else {
+            console.warn("⚠️ Cached device isn't our Pi—dropping it");
+            await removeLastConnectedDevice();  // clear bad cache
+          }
+        }
+      } catch (e) {
+        console.log("⚠️ Fast reconnect attempt threw:", e);
+        await removeLastConnectedDevice();    // clear cache on error
+      }
     }
+  
+       // 2) Full scan if fast path failed
+    if (!deviceConnection) {
+      console.log("🔎 Scanning for Pi advertising SERVICE_UUID…");
+      
+      // 🛑 STOP any existing scan first
+      manager.stopDeviceScan();
 
-    setConnecting(false)
+      const foundDevice = await new Promise<Device | null>((resolve) => {
+        manager.startDeviceScan(
+          [SERVICE_UUID],
+          { allowDuplicates: false },
+          (error, device) => {
+            if (error) {
+              console.error("Scan error", error);
+              return;
+            }
+            if (
+              device &&
+              device.serviceUUIDs?.includes(SERVICE_UUID) &&
+              device.name?.startsWith("Sync-Sonic")
+            ) {
+              console.log("🔔 Found Pi during scan:", device.id, device.name);
+              manager.stopDeviceScan();
+              resolve(device);
+            }
+          }
+        );
+        // Timeout after 3 seconds
+        setTimeout(() => resolve(null), 3000);
+      });
+
+      if (!foundDevice) {
+        console.error("❌ Could not find Pi advertising our GATT service");
+        setConnecting(false);
+        router.push('/connect-device');
+        return;
+      }
+
+      deviceConnection = await connectToDevice(foundDevice);
+      console.log("✅ Scanned & connected to Pi", foundDevice.id);
+      setConnecting(false);
+    }
   }
 
   const goHome = () => {
-    router.push("/home")
+    router.push('/home');
   }
 
-  const handleResetAdapters = async () => {
-    // Show adapter count input dialog
-    Alert.prompt(
-      "Setup/Reset Box",
-      "How many Bluetooth connections does your Pi support (including phone)?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Next",
-          onPress: (adapterCount) => {
-            if (!adapterCount || isNaN(Number(adapterCount))) {
-              Alert.alert("Error", "Please enter a valid number");
-              return;
-            }
-            
-            // Show reset type selection
-            Alert.alert(
-              "Reset Type",
-              "Choose reset type:",
-              [
-                {
-                  text: "Soft Reset",
-                  onPress: () => performReset(adapterCount, false)
-                },
-                {
-                  text: "Full Reset",
-                  onPress: () => performReset(adapterCount, true)
-                },
-                {
-                  text: "Cancel",
-                  style: "cancel"
-                }
-              ]
-            );
-          }
-        }
-      ],
-      "plain-text",
-      "4"
-    );
-  };
-
-  const performReset = async (adapterCount: string, deepReset: boolean) => {
-    setResetting(true);
-    try {
-      const response = await fetch(`${PI_API_URL}/reset-adapters`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          expectedAdapterCount: Number(adapterCount),
-          deepReset: deepReset
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to reset adapters");
-      }
-
-      const result = await response.json();
-
-      // Reset all configurations and speakers in the database
-      const configurations = getConfigurations();
-      for (const config of configurations) {
-        // Set configuration to disconnected
-        updateConnectionStatus(config.id, 0);
-        
-        // Get all speakers for this configuration
-        const speakers = getSpeakersFull(config.id);
-        for (const speaker of speakers) {
-          // Reset speaker connection status and settings
-          updateSpeakerConnectionStatus(config.id, speaker.mac, false);
-          updateSpeakerSettings(
-            config.id,
-            speaker.mac,
-            50, // Reset volume to 50%
-            100, // Reset latency to 100ms
-            0.5, // Reset balance to middle
-            false // Unmute
-          );
-        }
-      }
-
-      Alert.alert("Success", "Box reset complete. All speakers have been disconnected and reset to default settings.");
-    } catch (err) {
-      console.error("⚠️ Failed to reset adapters:", err);
-      Alert.alert("Error", "Failed to reset adapters. Please try again.");
-    } finally {
-      setResetting(false);
-    }
-  };
 
   return (
-    <YStack
-      flex={1}
-      style={{ backgroundColor: bg }}
-      justifyContent="space-between"
-    >
-      <TopBarStart/>
+      <YStack flex={1} justifyContent="space-between" backgroundColor={bg as any}>
+        {/* Top Bar without Back Button -----------------------------------------------------------------*/}
+        <TopBarStart/>
 
-      {/* Middle Content */}
-      <YStack alignItems="center" paddingTop={40}>
-        <H1
-          style={{ color: tc, fontFamily: "Finlandica-Medium" }}
-          fontSize={40}
-          lineHeight={44}
-          letterSpacing={1}
-        >
-          Welcome
-        </H1>
+        <YStack alignItems="center" paddingTop="$6" paddingBottom="$4" space="$4">
+          {/* Header -----------------------------------------------------------------------------------*/}
+          <Header title="Welcome"/>
+          
+          {/* Instructions -----------------------------------------------------------------------------------*/}
+          <Body>
+            To stream music from your phone, please turn on Bluetooth and pair it with the box.
+          </Body>
 
-        <Text
-          style={{ color: tc, fontFamily: "Finlandica" }}
-          fontSize={16}
-          textAlign="center"
-          marginTop={16}
-          //marginBottom={32}
-          paddingHorizontal={20}
-        >
-          To stream music from your phone, please turn on Bluetooth and pair it with the box.
-        </Text>
+          {/* Graphic -----------------------------------------------------------------------------------*/}
+          <Image
+            source={imageSource}
+            style={{ width: 250, height: 250 }}
+            resizeMode="contain"
+          />
 
-        <Image
-          source={imageSource}
-          style={{ width: 250, height: 250, marginBottom: 40 }}
-          resizeMode="contain"
-        />
       </YStack>
 
-      {/* Bottom Buttons */}
-      <YStack space="$4" paddingBottom={36}>
+       
+        
+        <YStack paddingBottom={Platform.OS === 'ios' ? 100 : 100} space="$4">
+          {/* remove this later (do NOT remove the Ystack*/}
         <Button
-          onPress={handleResetAdapters}
-          disabled={resetting}
-          style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 15,
-            alignSelf: 'center',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative',
-          }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
-            {resetting ? "Resetting..." : "Setup/Reset Box"}
-          </Text>
-
-          {resetting && (
-            <LottieView
-              source={loaderSource}
-              autoPlay
-              loop
-              style={{
-                width: 100,
-                height: 100,
-                position: 'absolute',
-                right: -10, // spacing from the edge
-              }}
-            />
-          )}
-        </Button>
-
-
-        <Button
-          onPress={handleConnect}
-          disabled={connecting}
-          style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 15,
-            alignSelf: 'center',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative', // <- KEY for absolute child
-          }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
-            {connecting ? "Connecting..." : "Connect Phone"}
-          </Text>
-
-          {connecting && (
-            <LottieView
-              source={loaderSource}
-              autoPlay
-              loop
-              style={{
-                width: 100,
-                height: 100,
-                position: 'absolute',
-                right: -10, // spacing from the edge
-              }}
-            />
-          )}
-        </Button>
-
-
-        <Button
-          onPress={goHome}
-          style={{
-            backgroundColor: pc,
-            width: '90%',
-            height: 50,
-            borderRadius: 15,
-            alignSelf: 'center',
-          }}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter"}}>
-            Continue to Home
-          </Text>
-        </Button>
+            onPress={() => router.push('/home')}
+            style={{
+              backgroundColor: pc,
+              width: '90%',
+              height: 50,
+              borderRadius: 15,
+              alignSelf: 'center',
+            }}
+            pressStyle={{ opacity: 0.8 }}
+          >
+            <Text style={{ color: 'white', fontSize: 18, fontFamily: "Inter" }}>
+              Continue to Home
+            </Text>
+          </Button>
+          {/* remove up to here */}
+         
+        </YStack>
+        
+        <BottomButton
+            onPress={handleConnect}
+            disabled={connecting}
+            isLoading={connecting}
+            text={connecting ? "Connecting..." : "Connect to SyncBox"}
+            fontFamily="Inter"
+          />
       </YStack>
-    </YStack>
   )
 }
