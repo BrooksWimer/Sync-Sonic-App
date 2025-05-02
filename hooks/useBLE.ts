@@ -16,7 +16,7 @@ const bleManager = new BleManager({
     console.log('BLE Manager state restored:', restoredState);
   }
 });
-import { getConfigurations, getSpeakers, updateConnectionStatus, updateSpeakerConnectionStatus } from "@/app/database";
+import { getConfigurations, getSpeakers, updateConnectionStatus, updateSpeakerConnectionStatus } from "@/utils/database";
 
 type NotificationHandler = (error: BleError | null, characteristic: Characteristic | null) => void;
 

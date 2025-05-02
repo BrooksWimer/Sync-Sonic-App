@@ -1,5 +1,5 @@
 import { SquareX, ArrowLeftSquare, Wifi } from '@tamagui/lucide-icons'
-import { addSpeaker, getSpeakers, deleteSpeaker, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, deleteConfiguration, updateSpeakerConnectionStatus } from '../database';
+import { addSpeaker, getSpeakers, deleteSpeaker, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, deleteConfiguration, updateSpeakerConnectionStatus } from '@/utils/database';
 import { Button, H1, YStack, View, Input, Label, ScrollView, XStack, useThemeName, useTheme } from "tamagui";
 import { router, useFocusEffect } from "expo-router";
 import { useState, useEffect, useCallback } from 'react';
@@ -8,8 +8,6 @@ import { useRouter } from 'expo-router';
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TopBar } from '@/components/TopBar';
-import { PI_API_URL } from '../../utils/constants';
-import { removeDevice, saveChanges } from '@/utils/ConfigurationFunctions';
 import * as Font from 'expo-font';
 import { BottomButton } from '@/components/BottomButton';
 
@@ -22,25 +20,14 @@ export default function Config() {
     const [configName, setConfigName] = useState(initialConfigName);
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
     const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
-    const [fontsLoaded, setFontsLoaded] = useState(false);
-      
-        useEffect(() => {
-          async function loadFonts() {
-            await Font.loadAsync({
-              'Finlandica-Regular': require('../../assets/fonts/Finlandica-Regular.ttf'),
-              'Finlandica-Medium': require('../../assets/fonts/Finlandica-Medium.ttf'),
-              'Finlandica-SemiBold': require('../../assets/fonts/Finlandica-SemiBold.ttf'),
-              'Finlandica-Bold': require('../../assets/fonts/Finlandica-Bold.ttf'),
-              'Finlandica-Italic': require('../../assets/fonts/Finlandica-Italic.ttf'),
-              'Finlandica-SemiBoldItalic': require('../../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
-              'Finlandica-BoldItalic': require('../../assets/fonts/Finlandica-BoldItalic.ttf'),
-            });
-            setFontsLoaded(true);
-          }
-      
-          loadFonts();
-        }, []);
     
+    let abuffer = 20
+    let iosbuffer=0
+    //else, 
+    if (Platform.OS === 'ios') {
+        abuffer = 0
+        iosbuffer=20
+    }
 
     // Only load speakers when we have a valid configID
     useFocusEffect(
@@ -51,7 +38,6 @@ export default function Config() {
             }
         }, [configID])
     );
-
     // Function to insert dummy data
     const insertDummyData = () => {
         console.log("inserting fake data into visible list")
@@ -62,7 +48,6 @@ export default function Config() {
         ];
         setDevices(dummyDevices);
     };
-
     // In edit mode, immediately remove a speaker:
     // Update the DB, and call the backend disconnect endpoint for that speaker.
     const removeDevice = async (device: { id: number, name: string, mac: string }) => {
@@ -71,32 +56,9 @@ export default function Config() {
         if (configID) {
             deleteSpeakerById(device.id);
         }
-        // Build payload to disconnect only this speaker.
-        const payload = {
-            configID: configID,
-            configName: configName,
-            speakers: { [device.mac]: device.name },
-            settings: {} // Assuming no settings needed for disconnecting a single speaker.
-        };
-        try {
-            const response = await fetch(PI_API_URL+"/disconnect", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            const result = await response.json();
-            console.log("Disconnect result:", result);
-        } catch (error) {
-            console.error("Error disconnecting device:", error);
-            Alert.alert("Error", "There was an error disconnecting the device.");
-        }
-        // Update the local state to remove the device.
+        // Just update the local state to remove the device - no backend calls
         setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
     };
-
     // updating the DB when creating a new configuration.
     const saveChanges = () => {
         if (!configName.trim() || devices.length === 0) return; // don't save without name or devices
@@ -115,69 +77,47 @@ export default function Config() {
         logDatabaseContents();
         router.replace('/home'); // navigate back to home
     };
-
     // The "Find Bluetooth Devices" button is now conditionally labeled.
     // When editing, it becomes "Add Bluetooth Devices".
     const onSelectDevicesPress = () => {
         // Pass along current devices (existing configuration speakers)
         router.replace({
             pathname: '/DeviceSelectionScreen',
-            params: { 
-                configID: configID.toString(), 
-                configName, 
-                existingDevices: JSON.stringify(devices) 
+            params: {
+                configID: configID.toString(),
+                configName,
+                existingDevices: JSON.stringify(devices)
             }
         });
     };
-
     const [isSaveDisabled, setIsSaveDisabled] = useState(true);
-
     useFocusEffect(
         useCallback(() => {
             const disabled = !configName.trim() || devices.length === 0;
             setIsSaveDisabled(disabled);
         }, [configName, devices])
     );
-
     const themeName = useThemeName();
     const theme = useTheme();
-
-        const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-        const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-        const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-        const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-        const dc = themeName === 'dark' ? 'white' : '#26004E'
-         //if android
-        let abuffer = 20
-        let iosbuffer=0
-        //else, 
-        if (Platform.OS === 'ios') {
-            abuffer = 0
-            iosbuffer=50
-        }
-      
-    
-
+    const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
+    const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
+    const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
+    const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
+    const dc = themeName === 'dark' ? 'white' : '#26004E'
     return (
         <YStack flex={1} backgroundColor={bg}>
             {/* Top Bar with Back Button */}
             <TopBar/>
-
             {/* Header */}
-                  <View style={{
-                      paddingTop: 20,
-                      paddingBottom: 10,
-                      alignItems: "center",
-                      backgroundColor: bg
-                  }}>
-                    <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginTop: 15, letterSpacing: 1 }}>
-                      Edit Configuration
-                    </H1>
-                    
-                  </View>
-
+            <View style={{
+                paddingTop: 20,
+                paddingBottom: 10,
+                alignItems: "center",
+            }}>
+                <H1 style={{ fontSize: 32, fontWeight: "bold", color: tc, fontFamily: "Finlandica" }}>{editHeader}</H1>
+            </View>
             {/* Configuration Name Input Field */}
-            <YStack marginHorizontal={20} marginTop={5} marginBottom={5} gap={10}>
+            <YStack marginHorizontal={20} marginTop={1} gap={10}>
                 <H1
                     style={{ color: tc, fontFamily: "Finlandica" }}
                     alignSelf='center'
@@ -197,17 +137,14 @@ export default function Config() {
                     borderWidth={1}
                     borderColor={stc}
                     borderRadius={12}
-                    marginTop={5}
-                    marginBottom={5}
                     padding={10}
                     fontSize={16}
                     fontFamily="Finlandica"
                     letterSpacing={1}
                     maxLength={20}
                 />
-
                 {/* Select Devices */}
-                <Button 
+                <Button
                     onPress={onSelectDevicesPress}
                     onLongPress={() => insertDummyData()}
                     backgroundColor={pc}
@@ -220,7 +157,6 @@ export default function Config() {
                     </H1>
                 </Button>
             </YStack>
-
             {/* List of Found Bluetooth Devices */}
             <ScrollView style={{ maxHeight: 300, marginTop: 10, paddingHorizontal: 20 }}>
             {devices.length === 0 ? (
@@ -265,7 +201,6 @@ export default function Config() {
                             </H1>
                             </XStack>
                         </YStack>
-
                         {/* Right side: Delete button vertically centered */}
                         <Button
                             size={50}
@@ -283,7 +218,6 @@ export default function Config() {
                 ))
             )}
             </ScrollView>
-
             {/* Bottom Button */}
             <BottomButton
             text="Save"

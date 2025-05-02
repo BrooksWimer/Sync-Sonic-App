@@ -5,7 +5,7 @@ import {
 } from "tamagui";
 import { Platform }    from "react-native";
 import { router }   from "expo-router";
-import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "./database"
+import { setupDatabase, getConfigurations, getSpeakersFull, updateSpeakerSettings, updateConnectionStatus, updateSpeakerConnectionStatus } from "../utils/database"
 import { TopBarStart } from "../components/TopBarStart"
 
 import { useBLEContext }     from "@/contexts/BLEContext";
@@ -14,7 +14,7 @@ import {
   getLastConnectedDevice,
   saveLastConnectedDevice,
   removeLastConnectedDevice
-} from "@/app/database";
+} from "@/utils/database";
 import { Device } from 'react-native-ble-plx';
 import { BottomButton } from "@/components/BottomButton";
 
