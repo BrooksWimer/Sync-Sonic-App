@@ -11,6 +11,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   create_configuration,
+  addSpeaker,
+  updateSpeakerConnectionStatus
 } from '@/utils/database';
 import { H1, useThemeName, YStack, View } from 'tamagui';
 import { useBLEContext } from '../contexts/BLEContext';
@@ -163,8 +165,36 @@ export default function DeviceSelectionScreen() {
       Alert.alert('No speakers', 'Please select at least one speaker.');
       return;
     }
-    const newId = create_configuration(configName, combined);
-    router.replace({ pathname: '/SpeakerConfigScreen', params: { configID: newId.toString(), configName } });
+
+    // If we're editing an existing configuration
+    if (!isNaN(configID) && configID > 0) {
+      // Add new devices to existing configuration
+      combined.forEach(device => {
+        addSpeaker(configID, device.name, device.mac);
+        updateSpeakerConnectionStatus(configID, device.mac, false);
+      });
+    } else {
+      // Create new configuration
+      const newId = create_configuration(configName, combined);
+      // Route back to config screen with new ID
+      router.replace({ 
+        pathname: '/settings/config', 
+        params: { 
+          configID: newId.toString(), 
+          configName 
+        } 
+      });
+      return;
+    }
+
+    // For existing configuration, route back to config screen with same ID
+    router.replace({ 
+      pathname: '/settings/config', 
+      params: { 
+        configID: configID.toString(), 
+        configName 
+      } 
+    });
   };
 
   const renderItem = (item: SpeakerDevice, selectedMap: Record<string, any>, toggle: (d: SpeakerDevice) => void) => {

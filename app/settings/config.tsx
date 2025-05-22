@@ -64,7 +64,7 @@ export default function Config() {
     };
     // updating the DB when creating a new configuration.
     const saveChanges = () => {
-        if (!configName.trim() || devices.length === 0) return; // don't save without name or devices
+        if (!configName.trim() || devices.length === 0) return;
         if (configID) {
             // In edit mode, configuration updates happen immediately on deletion.
             console.log("Updating configuration name: " + configName);
@@ -78,7 +78,15 @@ export default function Config() {
             });
         }
         logDatabaseContents();
-        router.replace('/home'); // navigate back to home
+        
+        // Route to SpeakerConfigScreen instead of home
+        router.replace({ 
+            pathname: '/SpeakerConfigScreen', 
+            params: { 
+                configID: configID.toString(), 
+                configName 
+            } 
+        });
     };
     // The "Find Bluetooth Devices" button is now conditionally labeled.
     // When editing, it becomes "Add Bluetooth Devices".
