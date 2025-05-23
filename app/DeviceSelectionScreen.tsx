@@ -1,435 +1,324 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Text, 
-  TouchableOpacity, 
-  FlatList, 
-  ActivityIndicator, 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Text,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
   Alert,
   StyleSheet,
-  SafeAreaView,
-  Platform
+  Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSearchParams } from 'expo-router/build/hooks';
-import { 
-  addConfiguration, 
-  updateConnectionStatus,
-  updateSpeakerConnectionStatus,
-  addSpeaker, 
-  getSpeakers
-} from './database';
-import { Button, H1, useTheme, useThemeName, YStack, View } from 'tamagui';
-import { TopBar } from '@/components/TopBar';
-import { AlignCenter } from '@tamagui/lucide-icons';
-import { PI_API_URL } from '../utils/constants';
-import { 
-  Device,
-  fetchDeviceQueue,
-  fetchPairedDevices,
-  togglePairedSelection,
-  toggleSelection,
-  pairSelectedDevices
-} from '../utils/PairingFunctions';
-import LottieView from 'lottie-react-native';
-import { Shadow } from 'react-native-shadow-2'
-import * as Font from 'expo-font';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import {
+  create_configuration,
+  addSpeaker,
+  updateSpeakerConnectionStatus
+} from '@/utils/database';
+import { H1, useThemeName, YStack, View } from 'tamagui';
+import { useBLEContext } from '../contexts/BLEContext';
+import { BottomButton } from '@/components/buttons/BottomButton';
+import {
+  startScanDevices,
+  stopScanDevices,
+  fetchPairedDevices
+} from '../utils/ble_functions';
+import { TopBar } from '@/components/topbar-variants/TopBar';
+import { Body } from '@/components/texts/BodyText';
+import { Header } from '@/components/texts/TitleText';
 
-const testerDev: Device = {
-  mac: "test-mac",
-  name: "tester speaker"
+type SpeakerDevice = {
+  mac: string;
+  name: string;
+  paired?: boolean;
 };
 
 export default function DeviceSelectionScreen() {
-  const params = useSearchParams();
-  const configName = params.get('configName') || 'Unnamed Configuration';
-  const configIDParam = params.get('configID'); // might be undefined if new
-  const [scanInterval, setScanInterval] = useState<NodeJS.Timeout | null>(null);
-
-  // Get existing devices (object mapping mac -> name) if provided
-  const existingDevicesParam = params.get('existingDevices') || "{}";
-  let parsedExistingDevices = {};
-  try {
-    parsedExistingDevices = JSON.parse(existingDevicesParam);
-  } catch (e) {
-    console.error("Error parsing existingDevices:", e);
-  }
-  
-  // Store selected devices as an object keyed by MAC to guarantee uniqueness.
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [selectedDevices, setSelectedDevices] = useState<Record<string, Device>>(parsedExistingDevices);
-  const [loading, setLoading] = useState(false);
-  const [pairing, setPairing] = useState(false);
-  const [pairedDevices, setPairedDevices] = useState<Record<string, string>>({}); // State for paired devices
-  const [selectedPairedDevices, setSelectedPairedDevices] = useState<Record<string, Device>>({});
-  const router = useRouter();
-  const [isPairing, setIsPairing] = useState(false);
-  const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
-  const [isDebouncing, setIsDebouncing] = useState(false);
-
-  // Start scanning and set up polling for device queue
-  useEffect(() => {
-    let mounted = true;
-    const initializeScanning = async () => {
-      try {
-        // Fetch paired devices first
-        const pairedDevicesData = await fetchPairedDevices();
-        if (mounted) {
-          setPairedDevices(pairedDevicesData);
-        }
-        
-        // Start scanning
-        await fetch(`${PI_API_URL}/start-scan`);
-        console.log("Started scanning");
-
-        // Start polling device queue
-        const interval = setInterval(async () => {
-          if (mounted) {
-            const deviceArray = await fetchDeviceQueue();
-            setDevices(deviceArray);
-          }
-        }, 1000);
-        setScanInterval(interval);
-      } catch (err) {
-        console.error("Failed to initialize scanning:", err);
-      }
-    };
-  
-    initializeScanning();
-  
-    return () => {
-      mounted = false;
-      // Clean up the interval
-      if (scanInterval) {
-        clearInterval(scanInterval);
-        setScanInterval(null);
-      }
-      
-      // Stop the scanning process
-      fetch(`${PI_API_URL}/stop-scan`).catch(err => {
-        console.error("Failed to stop scanning:", err);
-      });
-    };
-  }, []);
-
-  // Render each device as a clickable item.
-  const renderItem = ({ item }: { item: Device }) => {
-    const isSelected = selectedDevices[item.mac] !== undefined;
-    return (
-      <TouchableOpacity
-        onPress={() => toggleSelection(item, selectedDevices, setSelectedDevices)}
-        style={[
-          styles.deviceItem,
-          {shadowColor: tc, borderColor: tc, },
-          isSelected && {backgroundColor: pc}
-        ]}
-      >
-        <Text style={[styles.deviceName, isSelected && styles.selectedDeviceText]}>{item.name}</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  // Render paired devices with selection capability
-  const renderPairedDevice = ({ item }: { item: Device }) => {
-    const isSelected = selectedPairedDevices[item.mac] !== undefined;
-    return (
-      <TouchableOpacity
-        onPress={() => togglePairedSelection(item, selectedPairedDevices, setSelectedPairedDevices)}
-        style={[
-          styles.deviceItem,
-          {shadowColor: tc, borderColor: tc, },
-          isSelected && {backgroundColor:pc}
-        ]}
-      >
-        <Text style={[styles.deviceName, isSelected && styles.selectedDeviceText]}>{item.name}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const params = useLocalSearchParams<{ configID: string; configName: string }>();
+  const configName = params.configName || 'Unnamed Configuration';
+  const configID = Number(params.configID);
 
   const themeName = useThemeName();
-  const theme = useTheme();
-  
-  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-  const svbg = themeName === 'dark' ? '#350066' : '#F9F5FF'
+  const bg = themeName === 'dark' ? '#250047' : '#F2E8FF';
+  const pc = themeName === 'dark' ? '#E8004D' : '#3E0094';
+  const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E';
+  const svbg = themeName === 'dark' ? '#350066' : '#F9F5FF';
 
-  //if android
-            let abuffer = 20
-            let iosbuffer=0
-            //else, 
-            if (Platform.OS === 'ios') {
-                abuffer = 0
-                iosbuffer=20
-            }
+  const {
+    connectedDevice,
+    ensurePiNotifications,
+    handleNotification,
+    scannedDevices,
+    pairedDevices
+  } = useBLEContext();
 
-  
+  const [scanLoading, setScanLoading] = useState(true);
+  const [pairedLoading, setPairedLoading] = useState(true);
+  const [selectedScanned, setSelectedScanned] = useState<Record<string, SpeakerDevice>>({});
+  const [selectedSaved, setSelectedSaved] = useState<Record<string, SpeakerDevice>>({});
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [pairedError, setPairedError] = useState<string | null>(null);
 
-  // Debounce function with state tracking
-  const debounce = (func: Function, wait: number) => {
-    let timeout: NodeJS.Timeout;
-    return (...args: any[]) => {
-      if (isDebouncing) return;
-      setIsDebouncing(true);
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        func(...args);
-        setIsDebouncing(false);
-      }, wait);
-    };
-  };
+  const router = useRouter();
 
-  const handlePairDevices = debounce(async () => {
-    if (isPairing || isDebouncing) return;
+  // Start scan on mount; stop on unmount
+  const startScanning = useCallback(async () => {
+    if (!connectedDevice) return;
     
-    setIsPairing(true);
-    setShowLoadingAnimation(true);
+    setScanLoading(true);
+    setScanError(null);
     
     try {
-      // Stop scanning immediately when pair button is clicked
-      if (scanInterval) {
-        clearInterval(scanInterval);
-        setScanInterval(null);
-      }
-      await fetch(`${PI_API_URL}/stop-scan`).catch(err => {
-        console.error("Failed to stop scanning:", err);
-      });
-      
-      // Then proceed with pairing
-      await pairSelectedDevices(
-        selectedDevices,
-        selectedPairedDevices,
-        setPairing,
-        configIDParam,
-        configName,
-        updateConnectionStatus,
-        getSpeakers,
-        addSpeaker,
-        updateSpeakerConnectionStatus,
-        addConfiguration,
-        router
-      );
-    } finally {
-      setIsPairing(false);
-      setShowLoadingAnimation(false);
+      console.log("Starting scan for devices...");
+      await startScanDevices(connectedDevice);
+    } catch (e) {
+      console.error('Failed to start scan', e);
+      setScanError('Could not start speaker scan');
     }
-  }, 1000); // 1 second debounce
+  }, [connectedDevice]);
+
+  // Fetch paired devices
+  const fetchPairedDevicesFromPi = useCallback(async () => {
+    if (!connectedDevice) return;
+    
+    setPairedLoading(true);
+    setPairedError(null);
+    
+    try {
+      console.log("Fetching paired devices...");
+      // Fire-and-forget – actual list comes via SUCCESS notification
+      await fetchPairedDevices(connectedDevice);
+    } catch (error) {
+      console.error('Failed to fetch paired devices:', error);
+      setPairedError('Could not fetch paired devices');
+    } finally {
+      setPairedLoading(false);
+    }
+  }, [connectedDevice]);
+
+  // Setup notification handler and initialize
+  useEffect(() => {
+    if (!connectedDevice) return;
+    
+    (async () => {
+      try {
+        // Setup notifications first
+        await ensurePiNotifications(connectedDevice, handleNotification);
+        
+        // Then start both operations
+        await startScanning();
+        await fetchPairedDevicesFromPi();
+      } catch (e) {
+        console.error('Setup error:', e);
+        Alert.alert('Error', 'Could not set up device communication');
+      }
+    })();
+    
+    return () => {
+      if (connectedDevice) {
+        stopScanDevices(connectedDevice).catch(e => 
+          console.error('Error stopping scan on unmount:', e)
+        );
+      }
+    };
+  }, [connectedDevice]);
+
+  // When the first notification arrives, stop waiting for scan
+  useEffect(() => {
+    if (scannedDevices && scannedDevices.length > 0 && scanLoading) {
+      setScanLoading(false);
+    }
+  }, [scannedDevices, scanLoading]);
+
+  // Stop paired loading when context updates
+  useEffect(() => {
+    if (pairedLoading && pairedDevices.length >= 0) {
+      setPairedLoading(false);
+    }
+  }, [pairedDevices, pairedLoading]);
+
+  const toggleScanned = (d: SpeakerDevice) =>
+    setSelectedScanned(prev => {
+      const copy = { ...prev };
+      if (copy[d.mac]) delete copy[d.mac];
+      else copy[d.mac] = d;
+      return copy;
+    });
+
+  const toggleSaved = (d: SpeakerDevice) =>
+    setSelectedSaved(prev => {
+      const copy = { ...prev };
+      if (copy[d.mac]) delete copy[d.mac];
+      else copy[d.mac] = d;
+      return copy;
+    });
+
+  const handleCreate = async () => {
+    // stop scan immediately
+    if (connectedDevice) {
+      await stopScanDevices(connectedDevice);
+    }
+    const combined = [
+      ...Object.values(selectedScanned),
+      ...Object.values(selectedSaved)
+    ];
+    if (combined.length === 0) {
+      Alert.alert('No speakers', 'Please select at least one speaker.');
+      return;
+    }
+
+    // If we're editing an existing configuration
+    if (!isNaN(configID) && configID > 0) {
+      // Add new devices to existing configuration
+      combined.forEach(device => {
+        addSpeaker(configID, device.name, device.mac);
+        updateSpeakerConnectionStatus(configID, device.mac, false);
+      });
+    } else {
+      // Create new configuration
+      const newId = create_configuration(configName, combined);
+      // Route back to config screen with new ID
+      router.replace({ 
+        pathname: '/settings/config', 
+        params: { 
+          configID: newId.toString(), 
+          configName 
+        } 
+      });
+      return;
+    }
+
+    // For existing configuration, route back to config screen with same ID
+    router.replace({ 
+      pathname: '/settings/config', 
+      params: { 
+        configID: configID.toString(), 
+        configName 
+      } 
+    });
+  };
+
+  const renderItem = (item: SpeakerDevice, selectedMap: Record<string, any>, toggle: (d: SpeakerDevice) => void) => {
+    const isSel = Boolean(selectedMap[item.mac]);
+    return (
+      <TouchableOpacity
+        onPress={() => toggle(item)}
+        style={[styles.deviceItem, { shadowColor: tc, borderColor: tc }, isSel && { backgroundColor: pc }]}
+      >
+        <Text style={[styles.deviceName, isSel && styles.selectedText]}>{item.name}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-     <YStack flex={1} backgroundColor={bg}>
-            {/* Top Bar with Back Button */}
-            <TopBar/>
+    <YStack style={{ flex: 1, backgroundColor: bg }}>
+      <TopBar />
+      <Header title={"Select Speaker"}/>
 
-            {/* Header */}
-            <View style={{
-                paddingTop: 10,
-                paddingBottom: 10,
-                alignItems: "center",
-            }}>
-                <H1 style={{ fontSize: 32, color: tc, fontFamily: "Finlandica-Medium", letterSpacing:1}}>Select Speaker</H1>
-            </View>
+      <View style={{ padding: 10, alignItems: 'center' }}>
+        <H1 style={{ color: tc, fontFamily: 'Finlandica', fontSize: 18 }}>Available Speakers</H1>
+      </View>
 
-            {showLoadingAnimation && (
-              <View style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                zIndex: 1000
-              }}>
-                <View style={{
-                  width: '100%',
-                  height: '100%',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 1001
-                }}>
-                  <LottieView
-                    source={themeName === 'dark' 
-                      ? require('../assets/animations/SyncSonic_Loading_Dark_nbg.json')
-                      : require('../assets/animations/SyncSonic_Loading_Light_nbg.json')}
-                    autoPlay
-                    loop
-                    style={{ 
-                      width: 600, 
-                      height: 600,
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: [{ translateX: -300 }, { translateY: -300 }]
-                    }}
-                  />
-                </View>
-              </View>
-            )}
+      <FlatList
+      data={scannedDevices}
+      keyExtractor={(d: SpeakerDevice) => d.mac}
+      renderItem={({ item }: { item: SpeakerDevice }) => renderItem(item, selectedScanned, toggleScanned)}
+      ListEmptyComponent={
+        scanLoading ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={pc} />
+          </View>
+        ) : scanError ? (
+          <Text style={{ color: 'red', textAlign: 'center', padding: 10 }}>{scanError}</Text>
+        ) : (
+          <Text style={{ textAlign: 'center', padding: 10 }}>No devices found</Text>
+        )
+      }
+      style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
+    />
 
-            {loading ? (
-              <ActivityIndicator size="large" color="#FF0055" />
-            ) : (
-              
-              <FlatList
-                data={devices}
-                keyExtractor={(item) => item.mac}
-                renderItem={renderItem}
-                showsVerticalScrollIndicator={true}
-                indicatorStyle="black"
-                
-                ListEmptyComponent={<H1
-                  style={{ color: tc, fontFamily: "Finlandica", letterSpacing:1 }}
-                  alignSelf='center'
-                  fontSize={15}
-                  lineHeight={44}
-                  fontWeight="400">
-                  No devices found
-                </H1>}
-                style={[styles.list, { 
-                  backgroundColor: svbg,
-                  shadowColor: tc,
-                  borderColor: tc 
-                  }]}
-              />
-            )}
+      <View style={{ padding: 10, alignItems: 'center' }}>
+        <H1 style={{ color: tc, fontFamily: 'Finlandica', fontSize: 18 }}>Paired Speakers</H1>
+      </View>
 
-            {/* Header */}
-            <View style={{
-                paddingTop: 10,
-                paddingBottom: 5,
-                alignItems: "center",
-            }}>
-                <H1 style={{ fontSize: 32,  color: tc, fontFamily: "Finlandica-Medium", letterSpacing: 1}}>Saved Speakers</H1>
-            </View>
-            <FlatList
-              style={[styles.list, 
-                { borderColor: tc, 
-                  backgroundColor: svbg,
-                  shadowColor: tc
-                }]}
-                  
-              data={Object.entries(pairedDevices).map(([mac, name]) => ({ mac, name }))}
-              keyExtractor={(item) => item.mac}
-              renderItem={renderPairedDevice}
-              showsVerticalScrollIndicator={true}
-              indicatorStyle="black"
-              ListEmptyComponent={<H1
-                style={{ color: tc,    
-                        fontFamily: "Finlandica", 
-                        letterSpacing: 1 }}
-                alignSelf='center'
-                fontSize={15}
-                lineHeight={44}
-                fontWeight="400">
-                No paired devices found
-              </H1>}
-            />
+      {pairedLoading ? (
+      <ActivityIndicator size="large" color={pc} />
+    ) : pairedError ? (
+      <View style={{ padding: 10, alignItems: 'center' }}>
+        <Text style={{ color: 'red' }}>{pairedError}</Text>
+      </View>
+    ) : (
+      <FlatList
+        data={pairedDevices}
+        keyExtractor={(d: SpeakerDevice) => d.mac}
+        renderItem={({ item }: { item: SpeakerDevice }) => renderItem(item, selectedSaved, toggleSaved)}
+        ListEmptyComponent={
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20 }}>
+            <Body>No paired speakers found</Body>
+          </View>
+        }
+        style={[styles.list, { backgroundColor: svbg, borderColor: tc }]}
+        contentContainerStyle={pairedDevices.length === 0 ? { flexGrow: 1 } : undefined}
+      />
+    )}
 
 
-            <Button
-              onPress={handlePairDevices}
-              style={{
-                backgroundColor: pc,
-                width: '90%',
-                height: 50,
-                borderRadius: 999,
-                marginBottom: "5%",
-                marginTop: "7%",
-                alignSelf: 'center',
-            }}
-            >
-              {pairing ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <H1 color="white" fontSize={18} alignSelf='center' fontFamily="Inter" letterSpacing={1}>
-                  Pair selected devices
-                </H1>
-              )}
-            </Button>
-
-          </YStack>
-        );
+      <BottomButton
+        onPress={handleCreate}
+        isLoading={pairedLoading}
+        disabled={
+          Object.keys(selectedScanned).length === 0 &&
+          Object.keys(selectedSaved).length === 0
+        }
+        style={{ marginTop: 30 }}
+      >
+        <H1
+          color="white"
+          fontSize={18}
+          alignSelf="center"
+          fontFamily="Inter-Regular"
+          letterSpacing={1}
+        >
+          Create Configuration
+        </H1>
+      </BottomButton>
+    </YStack>
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: '#F2E8FF' 
-  },
-  header: { 
-    fontSize: 32, 
-    fontWeight: 'bold', 
-    textAlign: 'center',
-    color: '#26004E',
-    fontFamily: "Finlandica",
-    letterSpacing: 1
-  },
   list: {
-    maxHeight: "30%",
-    alignSelf: "center",
-    width: "95%",
-    marginBottom: 0,
+    flexGrow: 0,
+    height: Dimensions.get('window').height * 0.3,
+    marginHorizontal: '5%',
     borderRadius: 15,
     borderWidth: 1,
     padding: 10,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 5
+    marginBottom: 20,
   },
   deviceItem: {
     padding: 16,
     borderRadius: 15,
     marginBottom: 10,
-    backgroundColor: "white",
+    backgroundColor: 'white',
+    borderWidth: 1,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.5,
     shadowRadius: 8,
-    elevation: 5
-    
+    elevation: 5,
   },
-  selectedDevice: {
-    backgroundColor: '#3E0094',
-  },
-  deviceName: { 
+  deviceName: {
     fontSize: 18,
-    color: '#26004E',
-    fontFamily: "Finlandica",
-    letterSpacing: 1
+    fontFamily: 'Finlandica',
   },
-  selectedDeviceText: {
-    color: 'white'
+  selectedText: {
+    color: 'white',
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#26004E',
-    textAlign: 'center',
-    fontFamily: "Finlandica",
-    letterSpacing:1
-  },
-  pairButton: {
-    backgroundColor: '#3E0094',
-    //padding: 15,
-    justifyContent: 'center',
-    borderRadius: 99,
-    alignItems: 'center', 
+  button: {
+    alignSelf: 'center',
+    marginVertical: 20,
     width: '90%',
     height: 50,
-    marginBottom: "5%",
-    marginTop: "7%",
-    alignSelf: 'center',
-  },
-  pairButtonText: { 
-    color: '#F2E8FF', 
-    fontSize: 18,
-    fontFamily: "Finlandica",
-    letterSpacing:1
-  },
-  disabledButton: {
-    opacity: 0.7,
+    borderRadius: 25,
+    justifyContent: 'center',
   },
 });

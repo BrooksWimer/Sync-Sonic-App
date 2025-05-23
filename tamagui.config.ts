@@ -1,5 +1,5 @@
 import { createTamagui, getConfig } from '@tamagui/core'
-import colors from './assets/colors/colors';
+import colors from './assets/colors';
 
 
 export const config = createTamagui({

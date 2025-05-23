@@ -1,17 +1,14 @@
-import { SquareX, ArrowLeftSquare, Wifi } from '@tamagui/lucide-icons'
-import { addSpeaker, getSpeakers, deleteSpeaker, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, deleteConfiguration, updateSpeakerConnectionStatus } from '../database';
-import { Button, H1, YStack, View, Input, Label, ScrollView, XStack, useThemeName, useTheme } from "tamagui";
+import { addSpeaker, getSpeakers, addConfiguration, logDatabaseContents, updateConfiguration, deleteSpeakerById, updateSpeakerConnectionStatus } from '@/utils/database';
+import { Button, H1, YStack, Input, ScrollView } from "tamagui";
 import { router, useFocusEffect } from "expo-router";
-import { useState, useEffect, useCallback } from 'react';
-import { Alert, Image, Linking, PermissionsAndroid, Platform } from "react-native";
-import { useRouter } from 'expo-router';
+import { useState, useCallback } from 'react';
+import { Platform } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { TopBar } from '@/components/TopBar';
-import { PI_API_URL } from '../../utils/constants';
-import { removeDevice, saveChanges } from '@/utils/ConfigurationFunctions';
-import * as Font from 'expo-font';
-
+import { TopBar } from '@/components/topbar-variants/TopBar';
+import { BottomButton } from '@/components/buttons/BottomButton';
+import { Header } from '@/components/texts/TitleText';
+import { DeviceCard } from '@/components/cards/DeviceCard';
+import { useAppColors } from '@/styles/useAppColors';
 
 export default function Config() {
     const params = useLocalSearchParams();
@@ -22,44 +19,26 @@ export default function Config() {
     const [configName, setConfigName] = useState(initialConfigName);
     const [devices, setDevices] = useState<{ id: number, name: string, mac: string }[]>([]);
     const [deletedSpeakers, setDeletedSpeakers] = useState<number[]>([]); // Track speakers to delete
-    const [fontsLoaded, setFontsLoaded] = useState(false);
-      
-        useEffect(() => {
-          async function loadFonts() {
-            await Font.loadAsync({
-              'Finlandica-Regular': require('../../assets/fonts/Finlandica-Regular.ttf'),
-              'Finlandica-Medium': require('../../assets/fonts/Finlandica-Medium.ttf'),
-              'Finlandica-SemiBold': require('../../assets/fonts/Finlandica-SemiBold.ttf'),
-              'Finlandica-Bold': require('../../assets/fonts/Finlandica-Bold.ttf'),
-              'Finlandica-Italic': require('../../assets/fonts/Finlandica-Italic.ttf'),
-              'Finlandica-SemiBoldItalic': require('../../assets/fonts/Finlandica-SemiBoldItalic.ttf'),
-              'Finlandica-BoldItalic': require('../../assets/fonts/Finlandica-BoldItalic.ttf'),
-            });
-            setFontsLoaded(true);
-          }
-      
-          loadFonts();
-        }, []);
     
+    
+    let abuffer = 20
+    let iosbuffer=0
+    //else, 
+    if (Platform.OS === 'ios') {
+        abuffer = 0
+        iosbuffer=20
+    }
 
+    // Only load speakers when we have a valid configID
     useFocusEffect(
         useCallback(() => {
-          console.log("DB pull");
-          setDevices(getSpeakers(configID));
+            if (configID && !isNaN(configID)) {
+                console.log("DB pull for config:", configID);
+                setDevices(getSpeakers(configID));
+            }
         }, [configID])
-      );
-
-    useEffect(() => {
-        console.log("updating speaker for config: " + configID)
-        setDevices(getSpeakers(configID));
-    }, [configID]);
-
-    useEffect(() => {
-        console.log("fetching speakers")
-        getSpeakers(configID);
-    }, [configID]);
-
-    // Function to insert dummy data
+    );
+    // DEV Function to insert dummy data
     const insertDummyData = () => {
         console.log("inserting fake data into visible list")
         const dummyDevices = [
@@ -69,70 +48,84 @@ export default function Config() {
         ];
         setDevices(dummyDevices);
     };
-
+    // In edit mode, immediately remove a speaker:
+    // Update the DB, and call the backend disconnect endpoint for that speaker.
+    const removeDevice = async (device: { id: number, name: string, mac: string }) => {
+        console.log("Removing device " + device.id);
+        // If editing an existing configuration, update the DB immediately.
+        if (configID) {
+            console.log("fire")
+            deleteSpeakerById(device.id);
+        }
+        
+        // Just update the local state to remove the device - no backend calls
+        setDevices(prevDevices => prevDevices.filter(d => d.id !== device.id));
+        console.log("local fire")
+    };
+    // updating the DB when creating a new configuration.
+    const saveChanges = () => {
+        if (!configName.trim() || devices.length === 0) return;
+        if (configID) {
+            // In edit mode, configuration updates happen immediately on deletion.
+            console.log("Updating configuration name: " + configName);
+            updateConfiguration(configID, configName);
+        } else {
+            // Create new configuration
+            addConfiguration(configName, (newConfigID) => {
+                devices.forEach(device => addSpeaker(newConfigID, device.name, device.mac));
+                devices.forEach(device => updateSpeakerConnectionStatus(newConfigID, device.mac, true))
+                console.log("New config: " + configName + ":" + newConfigID);
+            });
+        }
+        logDatabaseContents();
+        
+        // Route to SpeakerConfigScreen instead of home
+        router.replace({ 
+            pathname: '/SpeakerConfigScreen', 
+            params: { 
+                configID: configID.toString(), 
+                configName 
+            } 
+        });
+    };
     // The "Find Bluetooth Devices" button is now conditionally labeled.
     // When editing, it becomes "Add Bluetooth Devices".
     const onSelectDevicesPress = () => {
         // Pass along current devices (existing configuration speakers)
         router.replace({
             pathname: '/DeviceSelectionScreen',
-            params: { 
-                configID: configID.toString(), 
-                configName, 
-                existingDevices: JSON.stringify(devices) 
+            params: {
+                configID: configID.toString(),
+                configName,
+                existingDevices: JSON.stringify(devices)
             }
         });
     };
-
     const [isSaveDisabled, setIsSaveDisabled] = useState(true);
-
     useFocusEffect(
-    useCallback(() => {
-        const disabled = !configName.trim() || devices.length === 0;
-        setIsSaveDisabled(disabled);
-    }, [configName, devices])
+        useCallback(() => {
+            const disabled = !configName.trim() || devices.length === 0;
+            setIsSaveDisabled(disabled);
+        }, [configName, devices])
     );
 
-    const themeName = useThemeName();
-    const theme = useTheme();
-      
+    const { bg, pc, tc, stc} = useAppColors();
 
-        const bg = themeName === 'dark' ? '#250047' : '#F2E8FF'
-        const pc = themeName === 'dark' ? '#E8004D' : '#3E0094'
-        const tc = themeName === 'dark' ? '#F2E8FF' : '#26004E'
-        const stc = themeName === 'dark' ? '#9D9D9D' : '#9D9D9D'
-        const dc = themeName === 'dark' ? 'white' : '#26004E'
-         //if android
-        let abuffer = 20
-        let iosbuffer=0
-        //else, 
-        if (Platform.OS === 'ios') {
-            abuffer = 0
-            iosbuffer=50
-        }
-      
-    
+
+
+
+
+
 
     return (
-        <YStack flex={1} backgroundColor={bg}>
-            {/* Top Bar with Back Button */}
+        <YStack flex={1} backgroundColor={bg as any}>
+            {/* Top Bar with Back Button -----------------------------------------------------------------*/}
             <TopBar/>
-
-            {/* Header */}
-                  <View style={{
-                      paddingTop: 20,
-                      paddingBottom: 10,
-                      alignItems: "center",
-                      backgroundColor: bg
-                  }}>
-                    <H1 style={{ color: tc, fontFamily: "Finlandica-Medium", fontSize: 40, lineHeight: 44, marginTop: 15, letterSpacing: 1 }}>
-                      Edit Configuration
-                    </H1>
-                    
-                  </View>
-
-            {/* Configuration Name Input Field */}
-            <YStack marginHorizontal={20} marginTop={5} marginBottom={5} gap={10}>
+            {/* Header -----------------------------------------------------------------------------------*/}
+            <Header title={editHeader}/>
+                
+            {/* Configuration Name Input Field ------------------------------------------------------------*/}
+            <YStack marginHorizontal={20} marginTop={1} gap={10}>
                 <H1
                     style={{ color: tc, fontFamily: "Finlandica" }}
                     alignSelf='center'
@@ -148,24 +141,25 @@ export default function Config() {
                     onChangeText={setConfigName}
                     placeholder="Name"
                     placeholderTextColor={stc}
-                    color={tc}
+                    color={tc as any}
                     borderWidth={1}
-                    borderColor={stc}
+                    borderColor={stc as any}
                     borderRadius={12}
-                    marginTop={5}
-                    marginBottom={5}
                     padding={10}
                     fontSize={16}
                     fontFamily="Finlandica"
                     letterSpacing={1}
                     maxLength={20}
                 />
+                {/* Configuration Name Input Field ------------------------------------------------------------*/}
 
-                {/* Select Devices */}
-                <Button 
+
+
+                {/* Select Devices Button ---------------------------------------------------------------------*/}
+                <Button
                     onPress={onSelectDevicesPress}
                     onLongPress={() => insertDummyData()}
-                    backgroundColor={pc}
+                    backgroundColor={pc as any}
                     color="white"
                     borderRadius={5}
                     padding={10}
@@ -174,95 +168,37 @@ export default function Config() {
                         {configID ? "Add Bluetooth Devices" : "Find Bluetooth Devices"}
                     </H1>
                 </Button>
+                {/* Select Devices Button ---------------------------------------------------------------------*/}
+
             </YStack>
 
-            {/* List of Found Bluetooth Devices */}
+
+
+            {/* List of Added Bluetooth Devices ---------------------------------------------------------------------*/}
             <ScrollView style={{ maxHeight: 300, marginTop: 10, paddingHorizontal: 20 }}>
-            {devices.length === 0 ? (
-                <H1 style={{ color: stc, fontFamily: "Finlandica", letterSpacing:1 }} alignSelf="center">
+                {devices.length === 0 ? (
+                    <H1 style={{ color: stc, fontFamily: "Finlandica", letterSpacing: 1 }} alignSelf="center">
                     No devices connected. Please connect devices
-                </H1>
-            ) : (
-                devices.map((device) => (
-                <YStack
-                    key={device.id}
-                    borderWidth={1}
-                    borderColor={stc}
-                    borderRadius={12}
-                    padding={12}
-                    marginBottom={10}
-                    backgroundColor="transparent"
-                >
-                    <XStack justifyContent="space-between" alignItems="center">
-                        {/* Left block: text lines stacked vertically */}
-                        <YStack flex={1}>
-                            <H1
-                            style={{
-                                fontSize: 16,
-                                fontWeight: "600",
-                                color: tc,
-                                fontFamily: "Finlandica",
-                            }}
-                            >
-                            {device.name}
-                            </H1>
-                            <XStack alignItems="center" marginTop={6}>
-                            <Wifi size={20} color={tc} style={{ marginRight: 8 }} />
-                            <H1
-                                style={{
-                                fontSize: 12,
-                                color: tc,
-                                marginLeft: 6,
-                                fontFamily: "Finlandica",
-                                }}
-                            >
-                                {device.mac}
-                            </H1>
-                            </XStack>
-                        </YStack>
-
-                        {/* Right side: Delete button vertically centered */}
-                        <Button
-                            size={50}
-                            backgroundColor="transparent"
-                            onPress={() => {
-                                removeDevice(device, configID, configName, devices, setDevices);
-                                setDevices(prev => prev.filter(d => d.id !== device.id));
-                              }}
-                            padding={0}
-                            height={50} // match visual height of the text block
-                            minWidth={40}
-                            alignItems="center"
-                            justifyContent="center"
-                            icon={<SquareX size={24} strokeWidth={1} color={dc} />}
-                        />
-                        </XStack>
-
-                </YStack>
-                ))
-            )}
-            </ScrollView>
-
-            {/* Bottom Button */}
-            <Button
-                onPress={() => saveChanges(configID, configName, devices, router)}
-                disabled={isSaveDisabled}
-                style={{
-                    backgroundColor: pc,
-                    width: '90%',
-                    height: 50,
-                    borderRadius: 15,
-                    marginBottom: 20,
-                    marginTop: 50 +iosbuffer,
-                    alignSelf: 'center',
-                    opacity: !isSaveDisabled ? 1 : 0.5,
-                }}
-                pressStyle={{ opacity: !isSaveDisabled ? 0.8 : 0.5 }}
-            >
-                <H1 style={{ color: "white", fontSize: 18, fontFamily: "Inter" }}>
-                    Save
-                </H1>
-            </Button>
+                    </H1>
+                ) : (
+                    devices.map((device) => (
+                    <DeviceCard
+                        key={device.id}
+                        device={device}
+                        onRemove={() => removeDevice(device)}
+                    />
+                    ))
+                )}
+                </ScrollView>
+            {/* List of Added Bluetooth Devices ---------------------------------------------------------------------*/}
+            
+            {/* Save Button---------------------------------------------------------------------*/}
+            <BottomButton
+            text="Save"
+            onPress={saveChanges}
+            disabled={isSaveDisabled}
+            />
+            {/* Save ---------------------------------------------------------------------*/}
 
         </YStack>
     );
